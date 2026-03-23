@@ -591,7 +591,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 85f28de997c3c55449ad63e5c7af8099, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
-  RoadSection: {fileID: 5698400263710736419, guid: 09d4fb6bd838a294b8b4b823fa9a5bf1, type: 3}
+  roadSections:
+  - {fileID: 5698400263710736419, guid: afb21db1e5309424a831e0d4019f182e, type: 3}
+  - {fileID: 5698400263710736419, guid: ecbdf28cc491b46489755be0d369c2a1, type: 3}
+  - {fileID: 5698400263710736419, guid: 869dad72eaf1b0f4685415925c9400ef, type: 3}
+  - {fileID: 5698400263710736419, guid: 1bdb00282af30db4699d8e51e5318b5b, type: 3}
+  - {fileID: 5698400263710736419, guid: 09d4fb6bd838a294b8b4b823fa9a5bf1, type: 3}
 --- !u!114 &1823463721
 MonoBehaviour:
   m_ObjectHideFlags: 0
