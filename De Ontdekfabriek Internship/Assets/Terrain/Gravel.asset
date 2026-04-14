@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4833298f242e3c448aa80782427dbb47, type: 3}
+  m_Name: Gravel
+  m_EditorClassIdentifier: Assembly-CSharp::TerrainProfile
+  terrainName: Gravel
+  sideMoveSpeedMultiplier: 1
+  sideAccelerationMultiplier: 1
+  fovBoost: -5
+  fovTransitionSpeed: 4
+  shakeIntensity: 0.5
+  shakeFrequency: 10
+  wobbleIntensity: 0.2
+  wobbleFrequency: 1
+  leanAngleMultiplier: 0.2
+  leanSpeedMultiplier: 0.2
+  terrainAmbientSound: {fileID: 0}
+  ambientVolume: 0.5
+  ambientPitch: 1
+  blendDuration: 0.5

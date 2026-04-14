@@ -2,20 +2,18 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 /// <summary>
-/// ScooterController — Realistic scooter driving with physics movement,
-/// body lean, and camera tilt. Attach to your scooter root GameObject.
+/// ScreenTilt — Handles player input, movement, and body lean.
+///
+/// CAMERA WRITING IS HANDLED BY TerrainBehaviourController.
+/// This script only calculates the tilt value and exposes it via
+/// CurrentCamTilt so the two scripts never fight over the camera.
 ///
 /// SETUP:
-///   1. Add a Rigidbody to this GameObject (freeze rotation X/Z in constraints).
-///   2. Assign scooterBody (the visual mesh/child that visually leans).
-///   3. Assign cameraRig (your camera or a camera pivot child object).
-///   4. Optionally assign frontWheel & rearWheel transforms for wheel spin.
-///   5. The script uses Rigidbody forces — no CharacterController needed.
+///   1. Attach to your player GameObject (same one with the Rigidbody).
+///   2. Assign scooterBody for lean (optional, skip if still a ball).
+///   3. Do NOT assign cameraRig here — assign it in TerrainBehaviourController.
 /// </summary>
-/// 
-
 [RequireComponent(typeof(Rigidbody))]
-
 public class ScreenTilt : MonoBehaviour
 {
     // ─────────────────────────────────────────────
@@ -25,9 +23,6 @@ public class ScreenTilt : MonoBehaviour
     [Header("References")]
     [Tooltip("Visual body/mesh child that leans left and right. Leave empty for a plain ball.")]
     public Transform scooterBody;
-
-    [Tooltip("Empty parent of your Camera. Assign this to get camera tilt.")]
-    public Transform cameraRig;
 
     // ─────────────────────────────────────────────
     // SIDE MOVEMENT
@@ -42,6 +37,17 @@ public class ScreenTilt : MonoBehaviour
 
     [Tooltip("Hard left/right boundary. Player cannot pass this X position.")]
     public float laneLimit = 4f;
+
+    // ─────────────────────────────────────────────
+    // FORWARD / BACKWARD (TESTING ONLY)
+    // ─────────────────────────────────────────────
+
+    [Header("Forward Movement (Testing)")]
+    [Tooltip("Maximum forward/backward speed in m/s.")]
+    public float forwardMoveSpeed = 12f;
+
+    [Tooltip("How snappy forward/backward acceleration is.")]
+    public float forwardAcceleration = 15f;
 
     // ─────────────────────────────────────────────
     // BODY LEAN
@@ -65,8 +71,16 @@ public class ScreenTilt : MonoBehaviour
     [Tooltip("How fast the camera tilts and recovers.")]
     public float cameraTiltSpeed = 5f;
 
-    [Tooltip("The base Y rotation of your camera rig in degrees. Default -90.")]
-    public float cameraBaseRotationY = -90f;
+    // ─────────────────────────────────────────────
+    // PUBLIC READ-ONLY — used by TerrainBehaviourController
+    // ─────────────────────────────────────────────
+
+    /// <summary>
+    /// The current camera tilt angle calculated by this script.
+    /// TerrainBehaviourController reads this and applies it to the camera
+    /// together with shake and wobble in one single write.
+    /// </summary>
+    public float CurrentCamTilt { get; private set; } = 0f;
 
     // ─────────────────────────────────────────────
     // PRIVATE STATE
@@ -74,9 +88,10 @@ public class ScreenTilt : MonoBehaviour
 
     private Rigidbody rb;
     private float currentSideVelocity = 0f;
+    private float currentForwardVelocity = 0f;
     private float currentLean = 0f;
-    private float currentCamTilt = 0f;
     private float horizontalInput = 0f;
+    private float verticalInput = 0f;
 
     // ─────────────────────────────────────────────
     // UNITY LIFECYCLE
@@ -95,32 +110,41 @@ public class ScreenTilt : MonoBehaviour
     private void Update()
     {
         horizontalInput = 0f;
+        verticalInput = 0f;
 
         if (Keyboard.current != null)
         {
             if (Keyboard.current.aKey.isPressed || Keyboard.current.leftArrowKey.isPressed)
                 horizontalInput -= 1f;
-
             if (Keyboard.current.dKey.isPressed || Keyboard.current.rightArrowKey.isPressed)
                 horizontalInput += 1f;
+
+            if (Keyboard.current.wKey.isPressed || Keyboard.current.upArrowKey.isPressed)
+                verticalInput += 1f;
+            if (Keyboard.current.sKey.isPressed || Keyboard.current.downArrowKey.isPressed)
+                verticalInput -= 1f;
         }
 
         if (Gamepad.current != null)
         {
             float stickX = Gamepad.current.leftStick.x.ReadValue();
-            if (Mathf.Abs(stickX) > 0.1f)
-                horizontalInput += stickX;
+            float stickY = Gamepad.current.leftStick.y.ReadValue();
+
+            if (Mathf.Abs(stickX) > 0.1f) horizontalInput += stickX;
+            if (Mathf.Abs(stickY) > 0.1f) verticalInput += stickY;
 
             horizontalInput = Mathf.Clamp(horizontalInput, -1f, 1f);
+            verticalInput = Mathf.Clamp(verticalInput, -1f, 1f);
         }
 
         HandleBodyLean(horizontalInput);
-        HandleCameraTilt(horizontalInput);
+        CalculateCameraTilt(horizontalInput); // calculate only — do NOT write to camera here
     }
 
     private void FixedUpdate()
     {
         HandleSideMovement(horizontalInput);
+        HandleForwardMovement(verticalInput);
     }
 
     // ─────────────────────────────────────────────
@@ -138,7 +162,6 @@ public class ScreenTilt : MonoBehaviour
 
         Vector3 vel = rb.linearVelocity;
         vel.x = currentSideVelocity;
-        vel.z = 0f;
         rb.linearVelocity = vel;
 
         Vector3 pos = rb.position;
@@ -148,6 +171,24 @@ public class ScreenTilt : MonoBehaviour
             rb.MovePosition(pos);
             currentSideVelocity = 0f;
         }
+    }
+
+    // ─────────────────────────────────────────────
+    // FORWARD / BACKWARD MOVEMENT
+    // ─────────────────────────────────────────────
+
+    private void HandleForwardMovement(float input)
+    {
+        float targetVelocity = input * forwardMoveSpeed;
+        currentForwardVelocity = Mathf.MoveTowards(
+            currentForwardVelocity,
+            targetVelocity,
+            forwardAcceleration * Time.fixedDeltaTime
+        );
+
+        Vector3 vel = rb.linearVelocity;
+        vel.z = currentForwardVelocity;
+        rb.linearVelocity = vel;
     }
 
     // ─────────────────────────────────────────────
@@ -165,20 +206,13 @@ public class ScreenTilt : MonoBehaviour
     }
 
     // ─────────────────────────────────────────────
-    // CAMERA TILT
+    // CAMERA TILT — calculate only, no camera write
     // ─────────────────────────────────────────────
 
-    private void HandleCameraTilt(float input)
+    private void CalculateCameraTilt(float input)
     {
-        if (cameraRig == null) return;
-
         float targetTilt = -input * maxCameraTilt;
-        currentCamTilt = Mathf.Lerp(currentCamTilt, targetTilt, Time.deltaTime * cameraTiltSpeed);
-
-        // Preserve the base Y rotation (-90) and only animate Z (roll/tilt)
-        cameraRig.localRotation = Quaternion.Euler(0f, cameraBaseRotationY, currentCamTilt);
+        CurrentCamTilt = Mathf.Lerp(CurrentCamTilt, targetTilt, Time.deltaTime * cameraTiltSpeed);
+        // TerrainBehaviourController reads CurrentCamTilt and writes to the camera
     }
 }
-
-
-
