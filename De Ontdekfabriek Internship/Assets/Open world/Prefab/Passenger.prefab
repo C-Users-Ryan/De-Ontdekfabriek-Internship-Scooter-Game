@@ -12,8 +12,9 @@ GameObject:
   - component: {fileID: 1817811388326639622}
   - component: {fileID: 1012181326052216046}
   - component: {fileID: 7718217550108346069}
+  - component: {fileID: 3250534941944774269}
   m_Layer: 0
-  m_Name: person
+  m_Name: Passenger
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -110,7 +111,28 @@ CapsuleCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_Radius: 2.5
-  m_Height: 10
+  m_Radius: 0.50000024
+  m_Height: 2
   m_Direction: 1
+  m_Center: {x: -0.00000023841858, y: 0, z: 0}
+--- !u!135 &3250534941944774269
+SphereCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8101585151751781064}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Radius: 4
   m_Center: {x: 0, y: 0, z: 0}
