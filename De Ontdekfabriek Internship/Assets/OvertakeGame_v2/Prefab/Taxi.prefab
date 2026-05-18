@@ -30,8 +30,8 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 3, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
+  m_LocalScale: {x: 0.8, y: 0.8, z: 0.8}
+  m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 67958684589305100}
   - {fileID: 5895606950636535250}
@@ -130,6 +130,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9d42480b35521d43a63aedb130e18c9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OvertakeGame.TrafficVehicle
+  ownSpeed: 0
   isOncoming: 0
 --- !u!1 &1011005182765703288
 GameObject:

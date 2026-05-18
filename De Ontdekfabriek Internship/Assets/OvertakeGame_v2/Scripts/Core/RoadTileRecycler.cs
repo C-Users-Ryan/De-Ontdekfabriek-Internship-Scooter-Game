@@ -63,12 +63,12 @@ namespace OvertakeGame
 
         // ── Internal pool ──────────────────────────────────────────────────────
         private List<TileInstance> _pool = new List<TileInstance>();
-        private float              _weightTotal;
+        private float _weightTotal;
 
         private struct TileInstance
         {
             public GameObject go;
-            public int        prefabIndex; // which variant this instance currently is
+            public int prefabIndex; // which variant this instance currently is
         }
 
         void Start()
@@ -124,9 +124,9 @@ namespace OvertakeGame
                     if (newIdx != inst.prefabIndex)
                     {
                         Destroy(inst.go);
-                        inst.go         = Instantiate(tilePrefabs[newIdx], transform);
+                        inst.go = Instantiate(tilePrefabs[newIdx], transform);
                         inst.prefabIndex = newIdx;
-                        _pool[i]        = inst;
+                        _pool[i] = inst;
                     }
 
                     // Place at front of queue
@@ -148,7 +148,7 @@ namespace OvertakeGame
             for (int i = 0; i < poolSize; i++)
             {
                 int prefabIdx = PickWeightedRandom();
-                var go        = Instantiate(tilePrefabs[prefabIdx], transform);
+                var go = Instantiate(tilePrefabs[prefabIdx], transform);
                 go.transform.position = new Vector3(0f, 0f, z);
                 z += tileLength;
 

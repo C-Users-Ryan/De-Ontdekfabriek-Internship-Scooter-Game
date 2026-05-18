@@ -154,8 +154,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 806, y: 494.427}
-  m_SizeDelta: {x: -1612, y: -988.8641}
+  m_AnchoredPosition: {x: 459.86362, y: 216.06}
+  m_SizeDelta: {x: -1282.2927, y: -587.87}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &44572708
 MonoBehaviour:
@@ -290,8 +290,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 494.43}
-  m_SizeDelta: {x: -880.4647, y: -988.87}
+  m_AnchoredPosition: {x: 0, y: 216.06}
+  m_SizeDelta: {x: -675.72, y: -587.8778}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &52340654
 MonoBehaviour:
@@ -1023,7 +1023,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &516983847
 Transform:
   m_ObjectHideFlags: 0
@@ -1564,6 +1564,7 @@ GameObject:
   - component: {fileID: 836479981}
   - component: {fileID: 836479987}
   - component: {fileID: 836479988}
+  - component: {fileID: 836479989}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -1838,6 +1839,28 @@ MonoBehaviour:
   playerController: {fileID: 836479980}
   cameraRig: {fileID: 914442127}
   manualTiltOffset: 0
+--- !u!114 &836479989
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 836479975}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: edf4108e96862f64a87d412b45419458, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OvertakeGame.HapticFeedback
+  hapticsEnabled: 1
+  offRoadRumbleEnabled: 1
+  potholeHapticEnabled: 1
+  collisionHapticEnabled: 1
+  speedBumpHapticEnabled: 1
+  rockHapticEnabled: 1
+  rumbleInterval: 0.1
+  roadHalfWidth: 4
+  offRoadGraceBuffer: 0.3
+  playerController: {fileID: 836479980}
 --- !u!1 &878589287
 GameObject:
   m_ObjectHideFlags: 0
@@ -1880,11 +1903,11 @@ MonoBehaviour:
   oncomingSpawnMax: 3.5
   despawnDistanceBehind: 40
   sameDirectionPrefabs:
-  - {fileID: 6962567877799210938, guid: cbe6b24e6ab252d428652a31274ed61b, type: 3}
+  - {fileID: 6962567877799210938, guid: 1c1e9de48d076574cad6d24a171a1c28, type: 3}
   oncomingPrefabs:
-  - {fileID: 893760486596467957, guid: 6c3c1c28a15fe134ebd61924e800d8ad, type: 3}
-  - {fileID: 3612788537254713285, guid: e2811476b51d1a34089358b4aa9f3388, type: 3}
-  - {fileID: 6772431940228222569, guid: a9b98daaa6240f049aaa29fb4a26b170, type: 3}
+  - {fileID: 893760486596467957, guid: c16375ed8bb61db4e9f995813c9f738b, type: 3}
+  - {fileID: 3612788537254713285, guid: b216c551fd467c24890a7d752ea4a180, type: 3}
+  - {fileID: 6772431940228222569, guid: 4abaa43b3604a264285d989309d1fb47, type: 3}
   sameDirectionSpeedMin: 9
   sameDirectionSpeedMax: 10
   oncomingSpeedMin: 8
@@ -2079,7 +2102,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -473}
+  m_AnchoredPosition: {x: 0, y: -230}
   m_SizeDelta: {x: 200, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &980908316
@@ -2508,7 +2531,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: -1146, y: -745}
+  m_SizeDelta: {x: -1494.6887, y: -745}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1352699056
 MonoBehaviour:
@@ -2592,7 +2615,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: aa434d2786a51be4d9684ea7c644d45f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OvertakeGame.RoadTileRecycler
-  tilePrefabs: []
+  tilePrefabs:
+  - {fileID: 1330953710}
+  - {fileID: 255094163}
+  - {fileID: 765705592}
   tileWeights: []
   tileLength: 100
   poolSize: 5
