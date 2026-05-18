@@ -4,6 +4,12 @@ using System.Collections.Generic;
 
 namespace OvertakeGame
 {
+    /// <summary>
+    /// Spawns traffic in both lanes.
+    /// In the world-moves model, spawn positions are fixed distances AHEAD of
+    /// the player on Z. Vehicles move toward the player via TrafficVehicle.Update.
+    /// The player's Z never changes, so spawn distances stay constant forever.
+    /// </summary>
     public class TrafficManager : MonoBehaviour
     {
         [Header("Lane Configuration")]
@@ -12,52 +18,44 @@ namespace OvertakeGame
         public float oncomingLaneX = -1.5f;
 
         [Header("Spawn Y")]
-        [Tooltip("World-space Y for all spawned vehicles. Set to your road surface Y. Never copy player Y.")]
+        [Tooltip("World Y for all traffic. Set to your road surface Y.")]
         public float spawnY = 0f;
 
-        // ── Same-direction (player lane) ─────────────────────────────────────
         [Header("Same-Direction Lane")]
-        [Tooltip("How far ahead of the player the pre-warmed line starts at game start.")]
         public float prewarmStartDistance  = 15f;
-        [Tooltip("How far ahead the pre-warmed line reaches at game start. " +
-                 "Should be at least poolSizePerLane * (carLength + minimumCarGap) to fill the pool.")]
         public float prewarmEndDistance    = 200f;
-        [Tooltip("Seconds between spawning a new same-direction car during play.")]
         public float sameDirectionSpawnMin = 3f;
         public float sameDirectionSpawnMax = 6f;
 
-        // ── Oncoming ─────────────────────────────────────────────────────────
         [Header("Oncoming Lane")]
-        [Tooltip("How far ahead oncoming cars spawn. Set high so the player has time to react.")]
+        [Tooltip("How far ahead oncoming cars spawn. Player Z is fixed so this is always the same point.")]
         public float oncomingSpawnDistance = 120f;
-        [Tooltip("Seconds between oncoming spawns.")]
         public float oncomingSpawnMin      = 1.5f;
         public float oncomingSpawnMax      = 3.5f;
 
         [Header("Despawn")]
-        public float despawnDistanceBehind = 40f;
+        [Tooltip("How far behind the player before a vehicle is recycled.")]
+        public float despawnDistanceBehind = 30f;
 
         [Header("Vehicle Prefabs")]
         public List<GameObject> sameDirectionPrefabs;
         public List<GameObject> oncomingPrefabs;
 
-        [Header("Speed Ranges (m/s)")]
-        public float sameDirectionSpeedMin =  4f;
-        public float sameDirectionSpeedMax =  8f;
-        public float oncomingSpeedMin      =  8f;
-        public float oncomingSpeedMax      = 14f;
+        [Header("Own Speed Ranges (m/s) — relative to world speed")]
+        [Tooltip("Same-direction cars move this much slower than the world, making them overtakeable.")]
+        public float sameDirectionSpeedMin =  3f;
+        public float sameDirectionSpeedMax =  7f;
+        [Tooltip("Oncoming cars move this much faster than world speed toward the player.")]
+        public float oncomingSpeedMin      =  5f;
+        public float oncomingSpeedMax      = 10f;
 
         [Header("Pool Settings")]
-        [Tooltip("Pool size for each lane. Make this large enough to cover prewarmEndDistance.")]
         public int poolSizePerLane = 16;
 
         [Header("Minimum Gap (Same-Direction)")]
-        [Tooltip("Clear space in world units between back of one car and front of the next.")]
         public float minimumCarGap = 12f;
-        [Tooltip("Approximate Z length of a traffic car in world units. Match your prefab.")]
-        public float carLength = 4f;
+        public float carLength     = 4f;
 
-        // ── Internal ──────────────────────────────────────────────────────────
         private Transform            _player;
         private List<TrafficVehicle> _samePool     = new List<TrafficVehicle>();
         private List<TrafficVehicle> _oncomingPool = new List<TrafficVehicle>();
@@ -69,11 +67,7 @@ namespace OvertakeGame
             InitPool(sameDirectionPrefabs, _samePool,     poolSizePerLane, false);
             InitPool(oncomingPrefabs,      _oncomingPool, poolSizePerLane, true);
             _spawning = true;
-
-            // Fill the same-direction lane immediately so player starts behind a queue
             PrewarmSameLane();
-
-            // Kick off ongoing spawn coroutines
             StartCoroutine(SameLaneSpawnRoutine());
             StartCoroutine(OncomingSpawnRoutine());
         }
@@ -86,7 +80,6 @@ namespace OvertakeGame
         }
 
         public void StopSpawning()  => _spawning = false;
-
         public void ResumeSpawning()
         {
             if (_spawning) return;
@@ -96,30 +89,23 @@ namespace OvertakeGame
             StartCoroutine(OncomingSpawnRoutine());
         }
 
-        // ── Pre-warm: fill the same-direction lane from start ─────────────────
         private void PrewarmSameLane()
         {
             if (_player == null) return;
-            float laneX  = GetLaneX(false);
-            float nextZ  = _player.position.z + prewarmStartDistance;
+            float laneX = GetLaneX(false);
+            float nextZ = _player.position.z + prewarmStartDistance;
             float limitZ = _player.position.z + prewarmEndDistance;
 
             while (nextZ < limitZ)
             {
                 var tv = GetAvailable(_samePool);
-                if (tv == null) break; // pool exhausted
-
+                if (tv == null) break;
                 float speed = Random.Range(sameDirectionSpeedMin, sameDirectionSpeedMax);
                 tv.Activate(new Vector3(laneX, spawnY, nextZ), speed, false);
-
-                // Advance by car length + required gap so no overlap
-                nextZ += carLength + minimumCarGap + Random.Range(0f, 6f); // small random variation
+                nextZ += carLength + minimumCarGap + Random.Range(0f, 5f);
             }
         }
 
-        // ── Same-direction ongoing routine ────────────────────────────────────
-        // Continuously tops up the lane so it never feels like it ends.
-        // Always places the new car ahead of the furthest active car.
         private IEnumerator SameLaneSpawnRoutine()
         {
             while (true)
@@ -132,24 +118,19 @@ namespace OvertakeGame
                 var tv = GetAvailable(_samePool);
                 if (tv == null) continue;
 
-                float laneX = GetLaneX(false);
-
-                // Place new car ahead of the furthest existing car, respecting the gap
+                float laneX    = GetLaneX(false);
+                float desiredZ = _player.position.z + prewarmEndDistance * 0.6f;
                 float frontOfQueue = GetFurthestActiveFrontZ(_samePool);
-                float desiredZ     = _player.position.z + prewarmEndDistance * 0.6f;
-
                 if (frontOfQueue > float.MinValue)
                 {
-                    float earliestSafe = frontOfQueue + minimumCarGap + carLength;
-                    if (desiredZ < earliestSafe) desiredZ = earliestSafe;
+                    float earliest = frontOfQueue + minimumCarGap + carLength;
+                    if (desiredZ < earliest) desiredZ = earliest;
                 }
-
                 float speed = Random.Range(sameDirectionSpeedMin, sameDirectionSpeedMax);
                 tv.Activate(new Vector3(laneX, spawnY, desiredZ), speed, false);
             }
         }
 
-        // ── Oncoming routine ──────────────────────────────────────────────────
         private IEnumerator OncomingSpawnRoutine()
         {
             while (true)
@@ -162,30 +143,9 @@ namespace OvertakeGame
                 var tv = GetAvailable(_oncomingPool);
                 if (tv == null) continue;
 
-                float laneX  = GetLaneX(true);
-                float spawnZ = _player.position.z + oncomingSpawnDistance; // far ahead
                 float speed  = Random.Range(oncomingSpeedMin, oncomingSpeedMax);
-                tv.Activate(new Vector3(laneX, spawnY, spawnZ), speed, true);
-            }
-        }
-
-        // ── Helpers ───────────────────────────────────────────────────────────
-        private void InitPool(List<GameObject> prefabs, List<TrafficVehicle> pool, int count, bool oncoming)
-        {
-            if (prefabs == null || prefabs.Count == 0)
-            {
-                Debug.LogWarning($"[TrafficManager] No prefabs for {(oncoming ? "oncoming" : "same-direction")} lane.");
-                return;
-            }
-            for (int i = 0; i < count; i++)
-            {
-                var go = Instantiate(prefabs[Random.Range(0, prefabs.Count)],
-                                     new Vector3(0f, -1000f, 0f), Quaternion.identity, transform);
-                go.SetActive(false);
-                go.tag = "Traffic";
-                var tv = go.GetComponent<TrafficVehicle>() ?? go.AddComponent<TrafficVehicle>();
-                tv.isOncoming = oncoming;
-                pool.Add(tv);
+                float spawnZ = _player.position.z + oncomingSpawnDistance;
+                tv.Activate(new Vector3(GetLaneX(true), spawnY, spawnZ), speed, true);
             }
         }
 
@@ -197,6 +157,20 @@ namespace OvertakeGame
                 : (roadConfig.driveOnRight ? playerLaneX   : oncomingLaneX);
         }
 
+        private void InitPool(List<GameObject> prefabs, List<TrafficVehicle> pool, int count, bool oncoming)
+        {
+            if (prefabs == null || prefabs.Count == 0) { Debug.LogWarning($"[TrafficManager] No prefabs for {(oncoming?"oncoming":"same-dir")} lane."); return; }
+            for (int i = 0; i < count; i++)
+            {
+                var go = Instantiate(prefabs[Random.Range(0, prefabs.Count)], new Vector3(0f, -1000f, 0f), Quaternion.identity, transform);
+                go.SetActive(false);
+                go.tag = "Traffic";
+                var tv = go.GetComponent<TrafficVehicle>() ?? go.AddComponent<TrafficVehicle>();
+                tv.isOncoming = oncoming;
+                pool.Add(tv);
+            }
+        }
+
         private TrafficVehicle GetAvailable(List<TrafficVehicle> pool)
         {
             foreach (var tv in pool) if (!tv.gameObject.activeSelf) return tv;
@@ -205,9 +179,9 @@ namespace OvertakeGame
 
         private void RecycleOutOfRange(List<TrafficVehicle> pool)
         {
+            if (_player == null) return;
             foreach (var tv in pool)
-                if (tv.gameObject.activeSelf &&
-                    _player.position.z - tv.transform.position.z > despawnDistanceBehind)
+                if (tv.gameObject.activeSelf && _player.position.z - tv.transform.position.z > despawnDistanceBehind)
                     tv.Deactivate();
         }
 
@@ -217,8 +191,8 @@ namespace OvertakeGame
             foreach (var tv in pool)
             {
                 if (!tv.gameObject.activeSelf) continue;
-                float frontZ = tv.transform.position.z + carLength * 0.5f;
-                if (frontZ > furthest) furthest = frontZ;
+                float f = tv.transform.position.z + carLength * 0.5f;
+                if (f > furthest) furthest = f;
             }
             return furthest;
         }

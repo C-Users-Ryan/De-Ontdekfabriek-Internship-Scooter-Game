@@ -77,7 +77,7 @@ namespace OvertakeGame
             // ── Good speed ────────────────────────────────────────────────────
             if (rewardGoodSpeed && playerController != null)
             {
-                float kmh = playerController.CurrentSpeedKmh;
+                float kmh = WorldSpeed.Instance != null ? WorldSpeed.Instance.CurrentKmh : 0f;
                 if (kmh >= goodSpeedMin && kmh <= goodSpeedMax)
                     GiveOverTime(ref _speedDebt, goodSpeedPointsPerSecond, dt);
             }

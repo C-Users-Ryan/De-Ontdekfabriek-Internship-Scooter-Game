@@ -18,12 +18,14 @@ namespace OvertakeGame
         public bool deductOnWrongLane = true;
         public bool deductOnSpeeding  = true;
         public bool deductOnPothole   = true;
+        public bool deductOnRock      = true;
 
         [Header("Warning Toggles")]
         public bool warnOnWrongLane = true;
         public bool warnOnSpeeding  = true;
         public bool warnOnCollision = true;
         public bool warnOnPothole   = true;
+        public bool warnOnRock       = true;
 
         [Header("═══ Manager References ═══")]
         public ScoreManager      scoreManager;
@@ -33,6 +35,7 @@ namespace OvertakeGame
         public WarningSystem     warningSystem;
         public CheckpointManager checkpointManager;
         public PotholeManager    potholeManager;
+        public RockManager       rockManager;
 
         public enum GameState { Playing, AtCheckpoint, GameOver, Finished }
         public GameState CurrentState { get; private set; } = GameState.Playing;
@@ -60,6 +63,7 @@ namespace OvertakeGame
             CurrentState = GameState.Playing;
             trafficManager?.ResumeSpawning();
             potholeManager?.ResumeSpawning();
+            rockManager?.ResumeSpawning();
             timerManager?.StartTimer(useSessionTimer ? sessionDuration : -1f);
         }
 
@@ -109,6 +113,7 @@ namespace OvertakeGame
             if (CurrentState != GameState.Playing) return;
             CurrentState = GameState.AtCheckpoint;
             potholeManager?.StopSpawning();
+            rockManager?.StopSpawning();
 
             if (checkpointManager != null)
                 checkpointManager.SpawnCheckpoint();
@@ -120,12 +125,22 @@ namespace OvertakeGame
             }
         }
 
+        public void OnPlayerHitRock()
+        {
+            if (CurrentState != GameState.Playing) return;
+            if (deductOnRock)
+                scoreManager?.DeductPoints(ScoreManager.DeductionReason.Rock);
+            if (warnOnRock)
+                warningSystem?.ShowWarning(WarningSystem.WarningType.Rock);
+        }
+
         public void TriggerGameOver()
         {
             if (CurrentState == GameState.GameOver) return;
             CurrentState = GameState.GameOver;
             trafficManager?.StopSpawning();
             potholeManager?.StopSpawning();
+            rockManager?.StopSpawning();
             uiManager?.ShowGameOverScreen(scoreManager?.CurrentScore ?? 0);
         }
 

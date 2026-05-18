@@ -33,6 +33,7 @@ namespace OvertakeGame
             if (Time.time - _lastCollisionTime < collisionCooldown) return;
             _lastCollisionTime = Time.time;
             GameManager.Instance?.OnPlayerHitTraffic();
+            HapticFeedback.Instance?.OnTrafficCollision();
         }
     }
 }

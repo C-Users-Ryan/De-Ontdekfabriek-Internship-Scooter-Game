@@ -6,7 +6,7 @@ namespace OvertakeGame
 {
     public class ScoreManager : MonoBehaviour
     {
-        public enum DeductionReason { Collision, WrongLane, Speeding, Pothole }
+        public enum DeductionReason { Collision, WrongLane, Speeding, Pothole, Rock }
 
         [Header("Score Settings")]
         public int startingScore = 1000;
@@ -14,6 +14,7 @@ namespace OvertakeGame
         [Header("Instant Deduction Amounts")]
         public int collisionDeduction = 50;
         public int potholeDeduction   = 20;
+        public int rockDeduction      = 15;
 
         [Header("Per-Second Deduction Rates")]
         public float wrongLaneDeductionPerSecond = 10f;
@@ -49,6 +50,7 @@ namespace OvertakeGame
             {
                 DeductionReason.Collision => collisionDeduction,
                 DeductionReason.Pothole   => potholeDeduction,
+                DeductionReason.Rock      => rockDeduction,
                 _ => 0
             };
             ApplyDeduction(amount);

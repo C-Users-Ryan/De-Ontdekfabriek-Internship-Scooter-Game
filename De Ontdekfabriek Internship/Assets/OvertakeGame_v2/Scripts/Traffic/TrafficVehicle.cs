@@ -3,20 +3,25 @@ using UnityEngine;
 namespace OvertakeGame
 {
     /// <summary>
-    /// Individual traffic car. Activated/deactivated by TrafficManager via object pool.
+    /// A traffic vehicle in the world-moves model.
+    /// Same-direction vehicles move at (WorldSpeed - ownSpeed) toward the player,
+    /// so they appear slower than the player.
+    /// Oncoming vehicles move at (WorldSpeed + ownSpeed) toward the player,
+    /// so they appear much faster.
     /// </summary>
     public class TrafficVehicle : MonoBehaviour
     {
-        public bool isOncoming;
+        /// <summary>This vehicle's own speed relative to world speed (m/s).</summary>
+        public float ownSpeed;
+        public bool  isOncoming;
 
-        private float _speed;
-        private bool  _active;
+        private bool _active;
 
         public void Activate(Vector3 position, float speed, bool oncoming)
         {
             transform.position = position;
-            _speed     = speed;
-            isOncoming = oncoming;
+            ownSpeed           = speed;
+            isOncoming         = oncoming;
             transform.rotation = oncoming
                 ? Quaternion.Euler(0f, 180f, 0f)
                 : Quaternion.identity;
@@ -33,8 +38,15 @@ namespace OvertakeGame
         void Update()
         {
             if (!_active) return;
-            float dir = isOncoming ? -1f : 1f;
-            transform.Translate(Vector3.forward * dir * _speed * Time.deltaTime, Space.World);
+
+            float worldSpd = WorldSpeed.Instance != null ? WorldSpeed.Instance.Current : 10f;
+
+            // How fast this vehicle moves toward the player (in -Z)
+            float moveSpeed = isOncoming
+                ? worldSpd + ownSpeed   // oncoming: world speed + their speed
+                : worldSpd - ownSpeed;  // same-dir: world speed - their speed (slower = overtakeable)
+
+            transform.Translate(Vector3.back * moveSpeed * Time.deltaTime, Space.World);
         }
     }
 }

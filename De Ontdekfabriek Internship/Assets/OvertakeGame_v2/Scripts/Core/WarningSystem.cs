@@ -7,13 +7,14 @@ namespace OvertakeGame
 {
     public class WarningSystem : MonoBehaviour
     {
-        public enum WarningType { Collision, WrongLane, Speeding, Pothole }
+        public enum WarningType { Collision, WrongLane, Speeding, Pothole, Rock }
 
         [Header("Warning Messages")]
         public string collisionWarningText = "⚠ COLLISION!";
         public string wrongLaneWarningText  = "⚠ WRONG LANE!";
         public string speedingWarningText   = "⚠ SPEEDING!";
         public string potholeWarningText    = "⚠ POTHOLE!";
+        public string rockWarningText      = "⚠ ROCK!";
 
         [Header("Display Settings")]
         public float warningDisplayDuration  = 2f;
@@ -42,6 +43,7 @@ namespace OvertakeGame
                     WarningType.WrongLane => wrongLaneWarningText,
                     WarningType.Speeding  => speedingWarningText,
                     WarningType.Pothole   => potholeWarningText,
+                    WarningType.Rock      => rockWarningText,
                     _                     => "⚠ WARNING"
                 };
 
