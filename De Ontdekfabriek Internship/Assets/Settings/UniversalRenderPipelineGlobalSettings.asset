@@ -68,7 +68,20 @@ MonoBehaviour:
       - rid: 9019637083778842636
       - rid: 9019637083778842637
     m_RuntimeSettings:
-      m_List: []
+      m_List:
+      - rid: 6852985685364965378
+      - rid: 6852985685364965379
+      - rid: 6852985685364965380
+      - rid: 6852985685364965381
+      - rid: 6852985685364965384
+      - rid: 6852985685364965385
+      - rid: 6852985685364965392
+      - rid: 6852985685364965394
+      - rid: 8712630790384254976
+      - rid: 9019637083778842629
+      - rid: 9019637083778842630
+      - rid: 9019637083778842635
+      - rid: 9019637083778842637
   m_AssetVersion: 10
   m_ObsoleteDefaultVolumeProfile: {fileID: 0}
   m_RenderingLayerNames:
@@ -367,7 +380,7 @@ MonoBehaviour:
       type: {class: VrsRenderPipelineRuntimeResources, ns: UnityEngine.Rendering, asm: Unity.RenderPipelines.Core.Runtime}
       data:
         m_TextureComputeShader: {fileID: 7200000, guid: cacb30de6c40c7444bbc78cb0a81fd2a, type: 3}
-        m_VisualizationShader: {fileID: 4800000, guid: 620b55b8040a88d468e94abe55bed5ba, type: 3}
+        m_VisualizationShader: {fileID: 4800000, guid: 60e29b7951f20da47b11861d166b7036, type: 3}
         m_VisualizationLookupTable:
           m_Data:
           - {r: 0.785, g: 0.23, b: 0.2, a: 1}
