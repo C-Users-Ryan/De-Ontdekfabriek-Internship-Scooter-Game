@@ -4,24 +4,14 @@ using System.Collections;
 namespace OvertakeGame
 {
     /// <summary>
-    /// A single rock obstacle on the road.
-    /// Activated by RockManager via object pool. Moves at WorldSpeed.
-    ///
-    /// On hit: haptic feedback, camera shake, speed penalty, point deduction.
-    ///
-    /// PREFAB SETUP:
-    ///   - Rock mesh (sphere with rough material works as placeholder)
-    ///   - Sphere or Box Collider — IsTrigger = true
-    ///   - Tag: "Rock"  (create in Project Settings > Tags first)
-    ///   - No Rigidbody
+    /// Rock obstacle that moves with the world and triggers a hit response.
+    /// The player teleport bug was caused by CameraShake storing position at Awake —
+    /// this script itself does not touch player or camera position.
     /// </summary>
     public class RockObstacle : MonoBehaviour
     {
         [Header("Hit Response")]
-        [Tooltip("Speed reduction applied to WorldSpeed on hit (m/s).")]
         public float speedPenalty = 2.5f;
-
-        [Header("Tags")]
         public string playerTag = "Player";
 
         private bool _active;
@@ -31,17 +21,22 @@ namespace OvertakeGame
         {
             foreach (var col in GetComponentsInChildren<Collider>())
                 col.isTrigger = true;
+
             var rb = GetComponent<Rigidbody>();
-            if (rb != null) { Debug.LogWarning("[RockObstacle] Removing Rigidbody."); Destroy(rb); }
+            if (rb != null)
+            {
+                Debug.LogWarning("[RockObstacle] Rigidbody found and removed — rocks use trigger colliders only.");
+                Destroy(rb);
+            }
         }
 
         public void Activate(Vector3 position, float scale)
         {
-            transform.position   = position;
+            transform.position = position;
             transform.localScale = Vector3.one * scale;
-            transform.rotation   = Random.rotation;
+            transform.rotation = Random.rotation;
             _triggered = false;
-            _active    = true;
+            _active = true;
             gameObject.SetActive(true);
         }
 
@@ -59,23 +54,20 @@ namespace OvertakeGame
 
         void OnTriggerEnter(Collider other)
         {
-            if (_triggered || !_active) return;
-            if (!other.CompareTag(playerTag)) return;
-
+            if (_triggered || !_active || !other.CompareTag(playerTag)) return;
             _triggered = true;
+
             GameManager.Instance?.OnPlayerHitRock();
             HapticFeedback.Instance?.OnRockHit();
-            CameraShake.Instance?.Shake();
+            CameraShake.Instance?.Shake();  // safe now — shake captures position at call time
 
-            // Brief speed penalty — override then release
             if (WorldSpeed.Instance != null)
             {
-                float reduced = Mathf.Max(0f, WorldSpeed.Instance.Current - speedPenalty);
-                WorldSpeed.Instance.OverrideSpeed(reduced);
+                WorldSpeed.Instance.OverrideSpeed(
+                    Mathf.Max(0f, WorldSpeed.Instance.Current - speedPenalty));
                 StartCoroutine(ClearOverrideAfter(0.3f));
             }
 
-            // Reuse scooter wobble
             var pc = other.GetComponentInParent<PlayerController>()
                   ?? other.GetComponent<PlayerController>();
             pc?.ApplyPotholeHit();

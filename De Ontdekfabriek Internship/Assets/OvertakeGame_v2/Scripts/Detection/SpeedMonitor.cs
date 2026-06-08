@@ -2,13 +2,9 @@ using UnityEngine;
 
 namespace OvertakeGame
 {
-    /// <summary>
-    /// Monitors world speed (which equals the player's perceived speed)
-    /// and notifies GameManager when sustained speeding is detected.
-    /// </summary>
     public class SpeedMonitor : MonoBehaviour
     {
-        [Header("Speed Limit Settings")]
+        [Header("Speed Limit")]
         public float speedLimitKmh       = 80f;
         public float speedingGracePeriod = 2f;
 
@@ -29,11 +25,7 @@ namespace OvertakeGame
                     GameManager.Instance?.OnPlayerSpeeding();
                 }
             }
-            else
-            {
-                _speedingTimer = 0f;
-                IsSpeeding     = false;
-            }
+            else { _speedingTimer = 0f; IsSpeeding = false; }
         }
     }
 }

@@ -3,9 +3,13 @@ using TMPro;
 
 namespace OvertakeGame
 {
+    /// <summary>
+    /// Visual speedometer. Attach to the speedometer sub-object in the Canvas.
+    /// Called from PlayerController.Update() each frame.
+    /// </summary>
     public class Speedometer : MonoBehaviour
     {
-        [Header("Needle Settings")]
+        [Header("Needle")]
         public RectTransform needleTransform;
         public float needleZeroAngle = -135f;
         public float needleMaxAngle  =  135f;
@@ -19,12 +23,9 @@ namespace OvertakeGame
 
         public void UpdateSpeed(float speedKmh)
         {
-            float t     = Mathf.Clamp01(speedKmh / maxSpeedKmh);
-            float angle = Mathf.Lerp(needleZeroAngle, needleMaxAngle, t);
-
+            float t = Mathf.Clamp01(speedKmh / maxSpeedKmh);
             if (needleTransform != null)
-                needleTransform.localRotation = Quaternion.Euler(0f, 0f, angle);
-
+                needleTransform.localRotation = Quaternion.Euler(0f, 0f, Mathf.Lerp(needleZeroAngle, needleMaxAngle, t));
             if (speedText != null)
                 speedText.text = string.Format(textFormat, Mathf.RoundToInt(speedKmh));
         }

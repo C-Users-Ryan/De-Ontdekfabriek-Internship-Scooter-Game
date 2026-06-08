@@ -11,7 +11,7 @@ namespace OvertakeGame
         [Header("Score Settings")]
         public int startingScore = 1000;
 
-        [Header("Instant Deduction Amounts")]
+        [Header("Instant Deductions")]
         public int collisionDeduction = 50;
         public int potholeDeduction   = 20;
         public int rockDeduction      = 15;
@@ -20,14 +20,13 @@ namespace OvertakeGame
         public float wrongLaneDeductionPerSecond = 10f;
         public float speedingDeductionPerSecond  = 8f;
 
-        [Header("Score Clamping")]
+        [Header("Score Floor")]
         public int minimumScore = 0;
 
         public int CurrentScore { get; private set; }
         public event Action<int> OnScoreChanged;
 
-        private readonly Dictionary<DeductionReason, float> _fractionalDebt
-            = new Dictionary<DeductionReason, float>();
+        private readonly Dictionary<DeductionReason, float> _fractionalDebt = new();
 
         void Awake() => CurrentScore = startingScore;
 
@@ -51,7 +50,7 @@ namespace OvertakeGame
                 DeductionReason.Collision => collisionDeduction,
                 DeductionReason.Pothole   => potholeDeduction,
                 DeductionReason.Rock      => rockDeduction,
-                _ => 0
+                _                         => 0
             };
             ApplyDeduction(amount);
         }
@@ -62,7 +61,7 @@ namespace OvertakeGame
             {
                 DeductionReason.WrongLane => wrongLaneDeductionPerSecond,
                 DeductionReason.Speeding  => speedingDeductionPerSecond,
-                _ => 0f
+                _                         => 0f
             };
             _fractionalDebt.TryGetValue(reason, out float debt);
             debt += rate * deltaTime;

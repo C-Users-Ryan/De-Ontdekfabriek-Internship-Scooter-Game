@@ -4,37 +4,31 @@ using System.Collections;
 namespace OvertakeGame
 {
     /// <summary>
-    /// Shakes the camera when the player hits a pothole.
-    /// Attach to the Camera GameObject (or a camera rig parent).
+    /// Attach to the follow camera. Adds a decaying shake on pothole/rock hits.
+    /// Works additively with any follow script — shake is applied as local position offset.
     ///
-    /// SETUP: Attach to your follow camera. The shake is additive to whatever
-    /// position the camera is already at, so it works with any follow script.
+    /// FIX: _originalLocalPos is now captured at the START of each shake, not in Awake.
+    /// Capturing it in Awake stored the camera's position before the player ever moved,
+    /// so every shake snapped the camera back to world origin.
     /// </summary>
     public class CameraShake : MonoBehaviour
     {
         public static CameraShake Instance { get; private set; }
 
         [Header("Shake Settings")]
-        [Tooltip("How long the shake lasts in seconds.")]
-        public float shakeDuration  = 0.35f;
-
-        [Tooltip("Maximum positional offset during shake (world units).")]
+        public float shakeDuration = 0.35f;
         public float shakeMagnitude = 0.15f;
+        public float dampingSpeed = 4f;
 
-        [Tooltip("How quickly the shake decays to zero.")]
-        public float dampingSpeed   = 4f;
-
-        private Vector3   _originalLocalPos;
         private Coroutine _shakeCoroutine;
 
         void Awake()
         {
             if (Instance != null && Instance != this) { Destroy(this); return; }
             Instance = this;
-            _originalLocalPos = transform.localPosition;
+            // Do NOT store localPosition here — the player hasn't moved yet.
         }
 
-        /// <summary>Trigger a shake. Called by Pothole on hit.</summary>
         public void Shake()
         {
             if (_shakeCoroutine != null) StopCoroutine(_shakeCoroutine);
@@ -43,23 +37,21 @@ namespace OvertakeGame
 
         private IEnumerator ShakeRoutine()
         {
-            float elapsed  = 0f;
-            float duration = shakeDuration;
+            // Capture the resting local position RIGHT NOW, mid-game, not at scene load.
+            Vector3 restingLocalPos = transform.localPosition;
 
-            while (elapsed < duration)
+            float elapsed = 0f;
+            while (elapsed < shakeDuration)
             {
-                float strength = Mathf.Lerp(shakeMagnitude, 0f, elapsed / duration);
-
-                transform.localPosition = _originalLocalPos + new Vector3(
+                float strength = Mathf.Lerp(shakeMagnitude, 0f, elapsed / shakeDuration);
+                transform.localPosition = restingLocalPos + new Vector3(
                     Random.Range(-strength, strength),
-                    Random.Range(-strength, strength),
-                    0f);
-
+                    Random.Range(-strength, strength), 0f);
                 elapsed += Time.deltaTime;
                 yield return null;
             }
 
-            transform.localPosition = _originalLocalPos;
+            transform.localPosition = restingLocalPos;
         }
     }
 }

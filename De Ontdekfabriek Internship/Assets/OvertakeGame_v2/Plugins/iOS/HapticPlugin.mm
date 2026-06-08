@@ -1,37 +1,34 @@
 // HapticPlugin.mm
-// Native iOS plugin for Unity — accesses the Taptic Engine directly.
+// Native iOS plugin for Unity — accesses the Taptic Engine.
 // Place in Assets/OvertakeGame/Plugins/iOS/
-// Unity will compile this automatically when building for iOS.
+// Unity compiles this automatically when building for iOS.
 
 #import <UIKit/UIKit.h>
 
 extern "C" {
-
-    // Impact haptic: style 0=Light, 1=Medium, 2=Heavy
+    // style: 0=Light, 1=Medium, 2=Heavy
     void _TriggerImpactHaptic(int style) {
-        UIImpactFeedbackStyle feedbackStyle;
+        UIImpactFeedbackStyle s;
         switch(style) {
-            case 0:  feedbackStyle = UIImpactFeedbackStyleLight;  break;
-            case 2:  feedbackStyle = UIImpactFeedbackStyleHeavy;  break;
-            default: feedbackStyle = UIImpactFeedbackStyleMedium; break;
+            case 0:  s = UIImpactFeedbackStyleLight;  break;
+            case 2:  s = UIImpactFeedbackStyleHeavy;  break;
+            default: s = UIImpactFeedbackStyleMedium; break;
         }
-        UIImpactFeedbackGenerator *generator =
-            [[UIImpactFeedbackGenerator alloc] initWithStyle:feedbackStyle];
-        [generator prepare];
-        [generator impactOccurred];
+        UIImpactFeedbackGenerator *g = [[UIImpactFeedbackGenerator alloc] initWithStyle:s];
+        [g prepare];
+        [g impactOccurred];
     }
 
-    // Notification haptic: type 0=Success, 1=Warning, 2=Error
+    // type: 0=Success, 1=Warning, 2=Error
     void _TriggerNotificationHaptic(int type) {
-        UINotificationFeedbackType feedbackType;
+        UINotificationFeedbackType t;
         switch(type) {
-            case 0:  feedbackType = UINotificationFeedbackTypeSuccess; break;
-            case 1:  feedbackType = UINotificationFeedbackTypeWarning; break;
-            default: feedbackType = UINotificationFeedbackTypeError;   break;
+            case 0:  t = UINotificationFeedbackTypeSuccess; break;
+            case 1:  t = UINotificationFeedbackTypeWarning; break;
+            default: t = UINotificationFeedbackTypeError;   break;
         }
-        UINotificationFeedbackGenerator *generator =
-            [[UINotificationFeedbackGenerator alloc] init];
-        [generator prepare];
-        [generator notificationOccurred:feedbackType];
+        UINotificationFeedbackGenerator *g = [[UINotificationFeedbackGenerator alloc] init];
+        [g prepare];
+        [g notificationOccurred:t];
     }
 }

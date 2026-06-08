@@ -13,15 +13,15 @@ namespace OvertakeGame
     {
         /// <summary>This vehicle's own speed relative to world speed (m/s).</summary>
         public float ownSpeed;
-        public bool  isOncoming;
+        public bool isOncoming;
 
         private bool _active;
 
         public void Activate(Vector3 position, float speed, bool oncoming)
         {
             transform.position = position;
-            ownSpeed           = speed;
-            isOncoming         = oncoming;
+            ownSpeed = speed;
+            isOncoming = oncoming;
             transform.rotation = oncoming
                 ? Quaternion.Euler(0f, 180f, 0f)
                 : Quaternion.identity;

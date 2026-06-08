@@ -4,9 +4,14 @@ using TMPro;
 
 namespace OvertakeGame
 {
+    /// <summary>
+    /// Manages all HUD elements and overlay screens.
+    /// Wire every reference in the Inspector.
+    /// Uses SwahiliUI for localised button/label text where available.
+    /// </summary>
     public class UIManager : MonoBehaviour
     {
-        [Header("HUD Elements")]
+        [Header("HUD")]
         public TMP_Text   scoreText;
         public TMP_Text   timerText;
         public GameObject timerPanel;
@@ -22,13 +27,9 @@ namespace OvertakeGame
         public Button     restartButtonFinish;
 
         [Header("Checkpoint Screen")]
-        [Tooltip("Panel shown during the pause at a checkpoint between rounds.")]
         public GameObject checkpointPanel;
-        [Tooltip("Text showing which round just completed.")]
         public TMP_Text   checkpointRoundText;
-        [Tooltip("Text showing score at checkpoint.")]
         public TMP_Text   checkpointScoreText;
-        [Tooltip("Countdown text showing seconds until next round starts.")]
         public TMP_Text   checkpointCountdownText;
 
         [Header("Manager References")]
@@ -40,11 +41,10 @@ namespace OvertakeGame
 
         void Start()
         {
-            if (scoreManager != null)
-                scoreManager.OnScoreChanged += UpdateScoreDisplay;
+            if (scoreManager != null) scoreManager.OnScoreChanged += UpdateScoreDisplay;
 
             restartButtonGameOver?.onClick.AddListener(() => GameManager.Instance?.RestartGame());
-            restartButtonFinish?.onClick.AddListener(()   => GameManager.Instance?.RestartGame());
+            restartButtonFinish  ?.onClick.AddListener(() => GameManager.Instance?.RestartGame());
 
             HideGameOverScreen();
             HideFinishScreen();
@@ -52,65 +52,59 @@ namespace OvertakeGame
 
             timerPanel?.SetActive(timerManager != null && timerManager.IsLimited);
             UpdateScoreDisplay(scoreManager?.CurrentScore ?? 0);
+            RefreshSwahiliLabels();
         }
 
         void Update()
         {
-            // Timer display
             if (timerManager != null && timerManager.IsLimited && timerText != null)
                 timerText.text = timerManager.GetFormattedTime();
 
-            // Checkpoint countdown
             if (_checkpointActive && _checkpointCountdown > 0f)
             {
                 _checkpointCountdown -= Time.deltaTime;
                 if (checkpointCountdownText != null)
-                    checkpointCountdownText.text = $"Next round in {Mathf.CeilToInt(Mathf.Max(0f, _checkpointCountdown))}s";
+                    checkpointCountdownText.text = $"{SwahiliUI.I?.Get("playagain") ?? "Next round"} in {Mathf.CeilToInt(Mathf.Max(0f, _checkpointCountdown))}s";
             }
         }
 
         private void UpdateScoreDisplay(int score)
         {
-            if (scoreText != null) scoreText.text = $"Score: {score}";
+            if (scoreText != null)
+                scoreText.text = $"{SwahiliUI.I?.Get("score") ?? "SCORE"}  {score}";
         }
 
-        // ─── Game Over ────────────────────────────────────────────────────────
+        private void RefreshSwahiliLabels()
+        {
+            if (SwahiliUI.I == null) return;
+            UpdateScoreDisplay(scoreManager?.CurrentScore ?? 0);
+        }
+
         public void ShowGameOverScreen(int finalScore)
         {
             gameOverPanel?.SetActive(true);
             if (gameOverScoreText != null)
-                gameOverScoreText.text = $"Game Over\nFinal Score: {finalScore}";
+                gameOverScoreText.text = $"{SwahiliUI.I?.Get("gameover") ?? "GAME OVER"}\n{finalScore}";
         }
         public void HideGameOverScreen() => gameOverPanel?.SetActive(false);
 
-        // ─── Finish ───────────────────────────────────────────────────────────
         public void ShowFinishScreen(int finalScore)
         {
             finishPanel?.SetActive(true);
             if (finishScoreText != null)
-                finishScoreText.text = $"Finished!\nFinal Score: {finalScore}";
+                finishScoreText.text = $"{SwahiliUI.I?.Get("score") ?? "SCORE"}: {finalScore}";
         }
         public void HideFinishScreen() => finishPanel?.SetActive(false);
 
-        // ─── Checkpoint ───────────────────────────────────────────────────────
-        public void ShowCheckpointScreen(int roundJustCompleted, int score, float countdown)
+        public void ShowCheckpointScreen(int roundCompleted, int score, float countdown)
         {
             checkpointPanel?.SetActive(true);
             _checkpointActive    = true;
             _checkpointCountdown = countdown;
-
-            if (checkpointRoundText != null)
-                checkpointRoundText.text = $"Round {roundJustCompleted} Complete!";
-            if (checkpointScoreText != null)
-                checkpointScoreText.text = $"Score: {score}";
-            if (checkpointCountdownText != null)
-                checkpointCountdownText.text = $"Next round in {Mathf.CeilToInt(countdown)}s";
+            if (checkpointRoundText  != null) checkpointRoundText.text  = $"Round {roundCompleted} Complete!";
+            if (checkpointScoreText  != null) checkpointScoreText.text  = $"{SwahiliUI.I?.Get("score") ?? "SCORE"}: {score}";
+            if (checkpointCountdownText != null) checkpointCountdownText.text = $"Next round in {Mathf.CeilToInt(countdown)}s";
         }
-
-        public void HideCheckpointScreen()
-        {
-            _checkpointActive = false;
-            checkpointPanel?.SetActive(false);
-        }
+        public void HideCheckpointScreen() { _checkpointActive = false; checkpointPanel?.SetActive(false); }
     }
 }

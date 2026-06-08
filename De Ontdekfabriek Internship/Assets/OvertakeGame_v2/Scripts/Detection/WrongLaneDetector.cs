@@ -6,18 +6,11 @@ namespace OvertakeGame
     {
         [Header("Lane Detection")]
         public RoadSideConfig roadConfig;
-
-        [Tooltip("World X of the road centre line (divider). Usually 0.")]
-        public float centreLaneX = 0f;
-
-        [Tooltip("Grace buffer in world units before counting as wrong lane.")]
-        public float graceBuffer = 0.2f;
-
-        [Tooltip("Seconds the player must be in the wrong lane before penalties start.")]
-        public float gracePeriod = 0.5f;
+        public float centreLaneX   = 0f;
+        public float graceBuffer   = 0.2f;
+        public float gracePeriod   = 0.5f;
 
         public bool IsInWrongLane { get; private set; }
-
         private float _wrongLaneTimer;
 
         void Update()
@@ -39,11 +32,7 @@ namespace OvertakeGame
                     GameManager.Instance?.OnPlayerInWrongLane();
                 }
             }
-            else
-            {
-                _wrongLaneTimer = 0f;
-                IsInWrongLane   = false;
-            }
+            else { _wrongLaneTimer = 0f; IsInWrongLane = false; }
         }
     }
 }

@@ -15,32 +15,21 @@ namespace OvertakeGame
         public float checkpointBrakeRate = 25f;
 
         [Header("References")]
-        public PlayerController playerController;
-        public TimerManager     timerManager;
-        public TrafficManager   trafficManager;
-        public ScoreManager     scoreManager;
-        public UIManager        uiManager;
-        public GameManager      gameManager;
+        public TimerManager   timerManager;
+        public TrafficManager trafficManager;
+        public ScoreManager   scoreManager;
+        public UIManager      uiManager;
+        public GameManager    gameManager;
 
         private GameObject _activeCheckpoint;
         private bool       _checkpointSpawned;
         private bool       _atCheckpoint;
         private int        _roundNumber = 1;
 
-        void OnEnable()
-        {
-            if (timerManager != null) timerManager.OnTimerExpired += OnTimerExpired;
-        }
-        void OnDisable()
-        {
-            if (timerManager != null) timerManager.OnTimerExpired -= OnTimerExpired;
-        }
+        void OnEnable()  { if (timerManager != null) timerManager.OnTimerExpired += OnTimerExpired; }
+        void OnDisable() { if (timerManager != null) timerManager.OnTimerExpired -= OnTimerExpired; }
 
-        private void OnTimerExpired()
-        {
-            if (_checkpointSpawned) return;
-            SpawnCheckpoint();
-        }
+        private void OnTimerExpired() { if (!_checkpointSpawned) SpawnCheckpoint(); }
 
         public void SpawnCheckpoint()
         {
@@ -48,10 +37,12 @@ namespace OvertakeGame
             _checkpointSpawned = true;
             trafficManager?.StopSpawning();
 
-            // Spawn the checkpoint ahead of the fixed player position
-            float playerZ = playerController != null ? playerController.transform.position.z : 0f;
-            Vector3 spawnPos = new Vector3(0f, checkpointY, playerZ + checkpointSpawnDistance);
-            _activeCheckpoint = Instantiate(checkpointPrefab, spawnPos, Quaternion.identity);
+            var pc = FindFirstObjectByType<PlayerController>();
+            float px = pc != null ? pc.transform.position.x : 0f;
+            float pz = pc != null ? pc.transform.position.z : 0f;
+
+            _activeCheckpoint = Instantiate(checkpointPrefab,
+                new Vector3(px, checkpointY, pz + checkpointSpawnDistance), Quaternion.identity);
 
             var trigger = _activeCheckpoint.GetComponent<CheckpointTrigger>()
                        ?? _activeCheckpoint.AddComponent<CheckpointTrigger>();
@@ -67,7 +58,7 @@ namespace OvertakeGame
 
         private IEnumerator CheckpointSequence()
         {
-            // Brake the world to a stop
+            // Brake world to stop
             if (WorldSpeed.Instance != null)
             {
                 while (WorldSpeed.Instance.Current > 0.1f)

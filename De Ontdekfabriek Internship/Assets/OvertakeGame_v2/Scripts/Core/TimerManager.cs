@@ -5,15 +5,14 @@ namespace OvertakeGame
 {
     public class TimerManager : MonoBehaviour
     {
-        public float TimeRemaining  { get; private set; }
+        public float TimeRemaining   { get; private set; }
         public float SessionDuration { get; private set; }
-        public bool  IsRunning      { get; private set; }
-        public bool  IsLimited      { get; private set; }
+        public bool  IsRunning       { get; private set; }
+        public bool  IsLimited       { get; private set; }
 
-        public event Action         OnTimerExpired;
-        public event Action<float>  OnTimerTick;
+        public event Action        OnTimerExpired;
+        public event Action<float> OnTimerTick;
 
-        /// <summary>Pass -1 for unlimited session.</summary>
         public void StartTimer(float duration)
         {
             SessionDuration = duration;
@@ -27,10 +26,8 @@ namespace OvertakeGame
         void Update()
         {
             if (!IsRunning || !IsLimited) return;
-
             TimeRemaining -= Time.deltaTime;
             OnTimerTick?.Invoke(TimeRemaining);
-
             if (TimeRemaining <= 0f)
             {
                 TimeRemaining = 0f;

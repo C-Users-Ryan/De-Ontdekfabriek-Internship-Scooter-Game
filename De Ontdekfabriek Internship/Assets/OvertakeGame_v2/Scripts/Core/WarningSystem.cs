@@ -14,7 +14,7 @@ namespace OvertakeGame
         public string wrongLaneWarningText  = "⚠ WRONG LANE!";
         public string speedingWarningText   = "⚠ SPEEDING!";
         public string potholeWarningText    = "⚠ POTHOLE!";
-        public string rockWarningText      = "⚠ ROCK!";
+        public string rockWarningText       = "⚠ ROCK!";
 
         [Header("Display Settings")]
         public float warningDisplayDuration  = 2f;
@@ -35,7 +35,6 @@ namespace OvertakeGame
                 Time.time - last < warningCooldownPerType) return;
 
             _lastShownTime[type] = Time.time;
-
             if (warningText != null)
                 warningText.text = type switch
                 {
