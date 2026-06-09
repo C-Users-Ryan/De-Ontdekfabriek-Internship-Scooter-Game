@@ -12,4 +12,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8854a2396f15723458f8c35e17904566, type: 3}
   m_Name: RoadSideConfig
   m_EditorClassIdentifier: Assembly-CSharp::OvertakeGame.RoadSideConfig
-  driveOnRight: 1
+  driveOnRight: 0
