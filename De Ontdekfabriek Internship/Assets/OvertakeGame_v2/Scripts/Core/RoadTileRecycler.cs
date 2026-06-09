@@ -30,6 +30,10 @@ namespace OvertakeGame
         [Header("Player Reference (auto-found if null)")]
         public Transform playerTransform;
 
+        [Header("Sequencer (optional)")]
+        [Tooltip("When assigned, tile selection is delegated to the RoadSequencer instead of the weighted list above.")]
+        public RoadSequencer sequencer;
+
         private List<TileInstance> _pool = new();
 
         /// <summary>
@@ -40,7 +44,7 @@ namespace OvertakeGame
 
         private float _weightTotal;
 
-        private struct TileInstance { public GameObject go; public int prefabIndex; }
+        private struct TileInstance { public GameObject go; public GameObject sourcePrefab; }
 
         void Start()
         {
@@ -49,7 +53,7 @@ namespace OvertakeGame
                 var pc = FindFirstObjectByType<PlayerController>();
                 if (pc != null) playerTransform = pc.transform;
             }
-            if (tilePrefabs == null || tilePrefabs.Count == 0) { Debug.LogError("[RoadTileRecycler] No tile prefabs!"); return; }
+            if (sequencer == null && (tilePrefabs == null || tilePrefabs.Count == 0)) { Debug.LogError("[RoadTileRecycler] No tile prefabs and no sequencer!"); return; }
             BuildWeightTable();
             InitPool();
         }
@@ -75,17 +79,21 @@ namespace OvertakeGame
                 float frontEdge = inst.go.transform.position.z + tileLength;
                 if (frontEdge >= recycleLine) continue;
 
-                int newIdx = PickWeightedRandom();
+                GameObject nextPrefab = sequencer != null
+                    ? sequencer.NextTile()
+                    : tilePrefabs[PickWeightedRandom()];
+
+                if (nextPrefab == null) continue;
 
                 // Accumulate heading from TileDefinition if present
-                var def = tilePrefabs[newIdx].GetComponent<TileDefinition>();
+                var def = nextPrefab.GetComponent<TileDefinition>();
                 if (def != null) CurrentHeadingDeg += def.curveAngle;
 
-                if (newIdx != inst.prefabIndex)
+                if (nextPrefab != inst.sourcePrefab)
                 {
                     Destroy(inst.go);
-                    inst.go = Instantiate(tilePrefabs[newIdx], transform);
-                    inst.prefabIndex = newIdx;
+                    inst.go = Instantiate(nextPrefab, transform);
+                    inst.sourcePrefab = nextPrefab;
                 }
                 furthestBackEdge += tileLength;
                 inst.go.transform.position = new Vector3(0f, 0f, furthestBackEdge);
@@ -98,10 +106,16 @@ namespace OvertakeGame
             float z = firstTileStartZ;
             for (int i = 0; i < poolSize; i++)
             {
-                int idx = PickWeightedRandom();
-                var go = Instantiate(tilePrefabs[idx], transform);
+                GameObject prefab = sequencer != null
+                    ? sequencer.NextTile()
+                    : tilePrefabs[PickWeightedRandom()];
+
+                if (prefab == null && tilePrefabs.Count > 0) prefab = tilePrefabs[0];
+                if (prefab == null) continue;
+
+                var go = Instantiate(prefab, transform);
                 go.transform.position = new Vector3(0f, 0f, z);
-                _pool.Add(new TileInstance { go = go, prefabIndex = idx });
+                _pool.Add(new TileInstance { go = go, sourcePrefab = prefab });
                 z += tileLength;
             }
         }

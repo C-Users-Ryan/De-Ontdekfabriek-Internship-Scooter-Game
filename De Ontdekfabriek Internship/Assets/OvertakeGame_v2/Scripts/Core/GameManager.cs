@@ -39,6 +39,11 @@ namespace OvertakeGame
         public enum GameState { Playing, AtCheckpoint, GameOver, Finished }
         public GameState CurrentState { get; private set; } = GameState.Playing;
 
+        /// <summary>Seconds elapsed since the current session started.</summary>
+        public float SessionTime => timerManager != null
+            ? Mathf.Max(0f, timerManager.SessionDuration - timerManager.TimeRemaining)
+            : 0f;
+
         private float _sessionDistance;
 
         void Awake()
