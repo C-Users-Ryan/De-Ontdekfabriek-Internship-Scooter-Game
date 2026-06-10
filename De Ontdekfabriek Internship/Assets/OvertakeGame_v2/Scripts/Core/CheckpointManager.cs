@@ -38,11 +38,11 @@ namespace OvertakeGame
             trafficManager?.StopSpawning();
 
             var pc = FindFirstObjectByType<PlayerController>();
-            float px = pc != null ? pc.transform.position.x : 0f;
-            float pz = pc != null ? pc.transform.position.z : 0f;
+            Vector3 playerPos = pc != null ? pc.transform.position : Vector3.zero;
+            Vector3 spawnPos  = playerPos + (-RoadDirection.Current) * checkpointSpawnDistance;
+            spawnPos.y        = checkpointY;
 
-            _activeCheckpoint = Instantiate(checkpointPrefab,
-                new Vector3(px, checkpointY, pz + checkpointSpawnDistance), Quaternion.identity);
+            _activeCheckpoint = Instantiate(checkpointPrefab, spawnPos, Quaternion.identity);
 
             var trigger = _activeCheckpoint.GetComponent<CheckpointTrigger>()
                        ?? _activeCheckpoint.AddComponent<CheckpointTrigger>();

@@ -61,9 +61,10 @@ namespace OvertakeGame
         {
             Current = newDirection.normalized;
 
-            // Steer axis is always perpendicular to travel in the XZ plane
-            // Cross product with up gives the right-hand perpendicular
-            SteerpAxis = Vector3.Cross(Vector3.up, Current).normalized;
+            // Steer axis is always perpendicular to travel in the XZ plane.
+            // Cross(Current, up) gives the right-hand perpendicular with the correct sign:
+            // -Z travel → SteerpAxis = Vector3.right, -X travel → SteerpAxis = Vector3.back.
+            SteerpAxis = Vector3.Cross(Current, Vector3.up).normalized;
 
             // Track cumulative rotation for camera / player visual alignment
             float newYRot = Mathf.Atan2(Current.x, Current.z) * Mathf.Rad2Deg;

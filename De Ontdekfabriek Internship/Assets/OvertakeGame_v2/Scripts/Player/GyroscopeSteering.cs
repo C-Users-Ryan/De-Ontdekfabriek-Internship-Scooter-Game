@@ -43,6 +43,7 @@ namespace OvertakeGame
         private float      _smoothedTilt;
         private float      _currentCameraRollAngle;
         private float      _simulatedTilt;
+        private float      _rawTiltThisFrame;
         private Quaternion _calibrationOffset = Quaternion.identity;
 
         void Start()
@@ -60,8 +61,8 @@ namespace OvertakeGame
         {
             if (!enableGyroSteering) return;
 
-            float rawTilt      = GetRawTilt();
-            float adjustedTilt = rawTilt - manualTiltOffset;
+            _rawTiltThisFrame  = GetRawTilt();
+            float adjustedTilt = _rawTiltThisFrame - manualTiltOffset;
             if (Mathf.Abs(adjustedTilt) < deadZone)
                 adjustedTilt = 0f;
             else
@@ -73,16 +74,18 @@ namespace OvertakeGame
 
             if (playerController != null)
                 playerController.mobileLateral = CurrentSteeringInput;
+        }
 
-            if (enableHorizonLock && cameraRig != null)
-            {
-                float targetRoll = -rawTilt * horizonLockStrength;
-                _currentCameraRollAngle = Mathf.LerpAngle(
-                    _currentCameraRollAngle, targetRoll, horizonLockSmoothing * Time.deltaTime);
-                Vector3 e = cameraRig.localEulerAngles;
-                e.z = _currentCameraRollAngle;
-                cameraRig.localEulerAngles = e;
-            }
+        void LateUpdate()
+        {
+            // Camera write in LateUpdate — single-writer rule for cameraRig.
+            if (!enableHorizonLock || cameraRig == null) return;
+            float targetRoll = -_rawTiltThisFrame * horizonLockStrength;
+            _currentCameraRollAngle = Mathf.LerpAngle(
+                _currentCameraRollAngle, targetRoll, horizonLockSmoothing * Time.deltaTime);
+            Vector3 e = cameraRig.localEulerAngles;
+            e.z = _currentCameraRollAngle;
+            cameraRig.localEulerAngles = e;
         }
 
         private float GetRawTilt()

@@ -92,30 +92,36 @@ namespace OvertakeGame
                 if (!_spawning) yield break;
                 if (_player == null || GameManager.Instance?.CurrentState != GameManager.GameState.Playing) continue;
                 if (enableClusters && Random.value < clusterChance) SpawnCluster();
-                else SpawnSingle(_player.position.z + spawnDistanceAhead);
+                else SpawnSingle();
             }
         }
 
-        private void SpawnSingle(float spawnZ)
+        private void SpawnSingle()
         {
             var r = GetAvailable(); if (r == null) return;
-            r.Activate(new Vector3(PickSpawnX(), spawnY, spawnZ), Random.Range(minScale, maxScale));
+            Vector3 spawnPos = _player.position
+                + (-RoadDirection.Current) * spawnDistanceAhead
+                + RoadDirection.SteerpAxis  * PickSpawnOffset();
+            r.Activate(new Vector3(spawnPos.x, spawnY, spawnPos.z), Random.Range(minScale, maxScale));
         }
 
         private void SpawnCluster()
         {
-            float baseZ = _player.position.z + spawnDistanceAhead;
-            float baseX = PickSpawnX();
+            float baseOffset = PickSpawnOffset();
+            Vector3 basePos  = _player.position
+                + (-RoadDirection.Current) * spawnDistanceAhead
+                + RoadDirection.SteerpAxis  * baseOffset;
             for (int i = 0; i < clusterCount; i++)
             {
                 var r = GetAvailable(); if (r == null) break;
-                r.Activate(new Vector3(baseX + Random.Range(-clusterSpread, clusterSpread), spawnY,
-                    baseZ + i * clusterZSpacing + Random.Range(-0.5f, 0.5f)),
-                    Random.Range(minScale, maxScale * 0.8f));
+                Vector3 pos = basePos
+                    + RoadDirection.SteerpAxis  * Random.Range(-clusterSpread, clusterSpread)
+                    + (-RoadDirection.Current)  * (i * clusterZSpacing + Random.Range(-0.5f, 0.5f));
+                r.Activate(new Vector3(pos.x, spawnY, pos.z), Random.Range(minScale, maxScale * 0.8f));
             }
         }
 
-        private float PickSpawnX() => spawnZone switch
+        private float PickSpawnOffset() => spawnZone switch
         {
             SpawnZone.PlayerLaneOnly   => playerLaneX + Random.Range(-laneHalfWidth, laneHalfWidth),
             SpawnZone.OncomingLaneOnly => oncomingLaneX + Random.Range(-laneHalfWidth, laneHalfWidth),
@@ -125,6 +131,6 @@ namespace OvertakeGame
         };
 
         private RockObstacle GetAvailable() { foreach (var r in _pool) if (!r.gameObject.activeSelf) return r; return null; }
-        private void RecycleOutOfRange() { foreach (var r in _pool) if (r.gameObject.activeSelf && _player.position.z - r.transform.position.z > despawnDistanceBehind) r.Deactivate(); }
+        private void RecycleOutOfRange() { foreach (var r in _pool) if (r.gameObject.activeSelf && Vector3.Dot(_player.position - r.transform.position, -RoadDirection.Current) > despawnDistanceBehind) r.Deactivate(); }
     }
 }

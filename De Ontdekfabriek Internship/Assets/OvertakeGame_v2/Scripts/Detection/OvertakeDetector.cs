@@ -17,15 +17,17 @@ namespace OvertakeGame
         {
             if (GameManager.Instance?.CurrentState != GameManager.GameState.Playing) return;
 
-            float playerZ = transform.position.z;
-            var allVehicles = FindObjectsByType<TrafficVehicle>(FindObjectsSortMode.None);
+            // Measure progress along the travel axis so overtake detection survives turns.
+            Vector3 travelAxis = -RoadDirection.Current;
+            float playerProgress = Vector3.Dot(transform.position, travelAxis);
 
-            foreach (var tv in allVehicles)
+            for (int i = 0; i < TrafficVehicle.Active.Count; i++)
             {
-                if (!tv.gameObject.activeSelf || tv.isOncoming) continue;
-                float carZ = tv.transform.position.z;
+                var tv = TrafficVehicle.Active[i];
+                if (tv == null || tv.isOncoming) continue;
+                float carProgress = Vector3.Dot(tv.transform.position, travelAxis);
 
-                if (playerZ > carZ + overtakeThreshold)
+                if (playerProgress > carProgress + overtakeThreshold)
                 {
                     if (!_alreadyOvertaken.Contains(tv))
                     {
@@ -33,7 +35,7 @@ namespace OvertakeGame
                         rewardSystem?.OnOvertakeCompleted();
                     }
                 }
-                else if (playerZ < carZ - overtakeThreshold)
+                else if (playerProgress < carProgress - overtakeThreshold)
                     _alreadyOvertaken.Remove(tv);
             }
             _alreadyOvertaken.RemoveWhere(tv => tv == null || !tv.gameObject.activeSelf);

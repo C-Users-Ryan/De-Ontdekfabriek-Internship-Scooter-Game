@@ -82,16 +82,19 @@ namespace OvertakeGame
         private void PrewarmSameLane()
         {
             if (_player == null) return;
-            float laneX = GetLaneX(false);
-            float nextZ = _player.position.z + prewarmStartDistance;
-            float limitZ= _player.position.z + prewarmEndDistance;
-            while (nextZ < limitZ)
+            float laneOffset = GetLaneOffset(false);
+            float nextDist   = prewarmStartDistance;
+            float limitDist  = prewarmEndDistance;
+            while (nextDist < limitDist)
             {
                 var tv = GetAvailable(_samePool);
                 if (tv == null) break;
-                tv.Activate(new Vector3(laneX, spawnY, nextZ),
+                Vector3 spawnPos = _player.position
+                    + (-RoadDirection.Current) * nextDist
+                    + RoadDirection.SteerpAxis  * laneOffset;
+                tv.Activate(new Vector3(spawnPos.x, spawnY, spawnPos.z),
                     Random.Range(sameDirectionSpeedMin, sameDirectionSpeedMax), false);
-                nextZ += carLength + minimumCarGap + Random.Range(0f, 5f);
+                nextDist += carLength + minimumCarGap + Random.Range(0f, 5f);
             }
         }
 
@@ -104,10 +107,13 @@ namespace OvertakeGame
                 if (_player == null || GameManager.Instance?.CurrentState != GameManager.GameState.Playing) continue;
                 var tv = GetAvailable(_samePool);
                 if (tv == null) continue;
-                float desiredZ = _player.position.z + prewarmEndDistance * 0.6f;
-                float front    = GetFurthestFrontZ(_samePool);
-                if (front > float.MinValue) { float earliest = front + minimumCarGap + carLength; if (desiredZ < earliest) desiredZ = earliest; }
-                tv.Activate(new Vector3(GetLaneX(false), spawnY, desiredZ),
+                float desiredDist  = prewarmEndDistance * 0.6f;
+                float frontDist    = GetFurthestFrontDist(_samePool);
+                if (frontDist > float.MinValue) { float earliest = frontDist + minimumCarGap + carLength; if (desiredDist < earliest) desiredDist = earliest; }
+                Vector3 sameSpawn = _player.position
+                    + (-RoadDirection.Current) * desiredDist
+                    + RoadDirection.SteerpAxis  * GetLaneOffset(false);
+                tv.Activate(new Vector3(sameSpawn.x, spawnY, sameSpawn.z),
                     Random.Range(sameDirectionSpeedMin, sameDirectionSpeedMax), false);
             }
         }
@@ -121,13 +127,15 @@ namespace OvertakeGame
                 if (_player == null || GameManager.Instance?.CurrentState != GameManager.GameState.Playing) continue;
                 var tv = GetAvailable(_oncomingPool);
                 if (tv == null) continue;
-                tv.Activate(new Vector3(GetLaneX(true), spawnY,
-                    _player.position.z + oncomingSpawnDistance),
+                Vector3 oncomingSpawn = _player.position
+                    + (-RoadDirection.Current) * oncomingSpawnDistance
+                    + RoadDirection.SteerpAxis  * GetLaneOffset(true);
+                tv.Activate(new Vector3(oncomingSpawn.x, spawnY, oncomingSpawn.z),
                     Random.Range(oncomingSpeedMin, oncomingSpeedMax), true);
             }
         }
 
-        private float GetLaneX(bool oncoming)
+        private float GetLaneOffset(bool oncoming)
         {
             if (roadConfig == null) return oncoming ? oncomingLaneX : playerLaneX;
             return oncoming
@@ -152,12 +160,17 @@ namespace OvertakeGame
         { foreach (var tv in pool) if (!tv.gameObject.activeSelf) return tv; return null; }
 
         private void RecycleOutOfRange(List<TrafficVehicle> pool)
-        { foreach (var tv in pool) if (tv.gameObject.activeSelf && _player.position.z - tv.transform.position.z > despawnDistanceBehind) tv.Deactivate(); }
+        { foreach (var tv in pool) if (tv.gameObject.activeSelf && Vector3.Dot(_player.position - tv.transform.position, -RoadDirection.Current) > despawnDistanceBehind) tv.Deactivate(); }
 
-        private float GetFurthestFrontZ(List<TrafficVehicle> pool)
+        private float GetFurthestFrontDist(List<TrafficVehicle> pool)
         {
             float f = float.MinValue;
-            foreach (var tv in pool) { if (!tv.gameObject.activeSelf) continue; float z = tv.transform.position.z + carLength * 0.5f; if (z > f) f = z; }
+            foreach (var tv in pool)
+            {
+                if (!tv.gameObject.activeSelf) continue;
+                float d = Vector3.Dot(tv.transform.position, -RoadDirection.Current) + carLength * 0.5f;
+                if (d > f) f = d;
+            }
             return f;
         }
     }

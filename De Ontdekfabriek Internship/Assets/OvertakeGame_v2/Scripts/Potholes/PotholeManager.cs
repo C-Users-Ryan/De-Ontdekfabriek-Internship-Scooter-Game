@@ -85,13 +85,16 @@ namespace OvertakeGame
                 if (_player == null || GameManager.Instance?.CurrentState != GameManager.GameState.Playing) continue;
                 var ph = GetAvailable();
                 if (ph == null) continue;
-                float laneX   = spawnSide switch { LaneSide.PlayerLaneOnly => playerLaneX, LaneSide.OncomingLaneOnly => oncomingLaneX, _ => Random.value > 0.5f ? playerLaneX : oncomingLaneX };
-                float xOffset = Random.Range(-laneHalfWidth, laneHalfWidth);
-                ph.Activate(new Vector3(laneX + xOffset, spawnY, _player.position.z + spawnDistanceAhead), Random.Range(minScale, maxScale));
+                float laneOffset = spawnSide switch { LaneSide.PlayerLaneOnly => playerLaneX, LaneSide.OncomingLaneOnly => oncomingLaneX, _ => Random.value > 0.5f ? playerLaneX : oncomingLaneX };
+                float steerOffset = Random.Range(-laneHalfWidth, laneHalfWidth);
+                Vector3 spawnPos = _player.position
+                    + (-RoadDirection.Current) * spawnDistanceAhead
+                    + RoadDirection.SteerpAxis  * (laneOffset + steerOffset);
+                ph.Activate(new Vector3(spawnPos.x, spawnY, spawnPos.z), Random.Range(minScale, maxScale));
             }
         }
 
         private Pothole GetAvailable() { foreach (var ph in _pool) if (!ph.gameObject.activeSelf) return ph; return null; }
-        private void RecycleOutOfRange() { foreach (var ph in _pool) if (ph.gameObject.activeSelf && _player.position.z - ph.transform.position.z > despawnDistanceBehind) ph.Deactivate(); }
+        private void RecycleOutOfRange() { foreach (var ph in _pool) if (ph.gameObject.activeSelf && Vector3.Dot(_player.position - ph.transform.position, -RoadDirection.Current) > despawnDistanceBehind) ph.Deactivate(); }
     }
 }

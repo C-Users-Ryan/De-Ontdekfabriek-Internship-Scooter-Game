@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 namespace OvertakeGame
 {
@@ -11,6 +12,9 @@ namespace OvertakeGame
     /// </summary>
     public class TrafficVehicle : MonoBehaviour
     {
+        /// <summary>All currently active TrafficVehicles. Updated by Activate/Deactivate.</summary>
+        public static readonly List<TrafficVehicle> Active = new();
+
         /// <summary>This vehicle's own speed relative to world speed (m/s).</summary>
         public float ownSpeed;
         public bool isOncoming;
@@ -27,13 +31,17 @@ namespace OvertakeGame
                 : Quaternion.identity;
             gameObject.SetActive(true);
             _active = true;
+            if (!Active.Contains(this)) Active.Add(this);
         }
 
         public void Deactivate()
         {
             _active = false;
             gameObject.SetActive(false);
+            Active.Remove(this);
         }
+
+        void OnDisable() => Active.Remove(this);
 
         void Update()
         {
@@ -41,12 +49,12 @@ namespace OvertakeGame
 
             float worldSpd = WorldSpeed.Instance != null ? WorldSpeed.Instance.Current : 10f;
 
-            // How fast this vehicle moves toward the player (in -Z)
+            // How fast this vehicle moves toward the player along RoadDirection.Current
             float moveSpeed = isOncoming
                 ? worldSpd + ownSpeed   // oncoming: world speed + their speed
                 : worldSpd - ownSpeed;  // same-dir: world speed - their speed (slower = overtakeable)
 
-            transform.Translate(Vector3.back * moveSpeed * Time.deltaTime, Space.World);
+            transform.Translate(RoadDirection.Current * moveSpeed * Time.deltaTime, Space.World);
         }
     }
 }

@@ -12,8 +12,9 @@ namespace OvertakeGame
     public class PlayerController : MonoBehaviour
     {
         [Header("Lateral Movement")]
-        public float lateralSpeed  = 6f;
-        public float roadHalfWidth = 4f;
+        public float lateralSpeed        = 6f;
+        public float lateralAcceleration = 30f;
+        public float roadHalfWidth       = 4f;
 
         [Header("Pothole / Rock Hit Response")]
         public float potholeWobbleDuration = 0.6f;
@@ -68,7 +69,8 @@ namespace OvertakeGame
 
             WorldSpeed.Instance?.SetInput(gas, brake);
             CurrentLateralInput = lateral;
-            _lateralVelocity    = lateral * lateralSpeed;
+            float targetVelocity = lateral * lateralSpeed;
+            _lateralVelocity = Mathf.MoveTowards(_lateralVelocity, targetVelocity, lateralAcceleration * Time.deltaTime);
 
             // Update analytics distance each frame
             // Distance is approximated from world speed accumulation
@@ -78,15 +80,18 @@ namespace OvertakeGame
 
         void FixedUpdate()
         {
-            float clampedX = Mathf.Clamp(_rb.position.x, -roadHalfWidth, roadHalfWidth);
-            if ((clampedX <= -roadHalfWidth && _lateralVelocity < 0f) ||
-                (clampedX >=  roadHalfWidth && _lateralVelocity > 0f))
+            Vector3 steerAxis    = RoadDirection.SteerpAxis;
+            float   steerPos     = Vector3.Dot(_rb.position, steerAxis);
+            float   clampedSteer = Mathf.Clamp(steerPos, -roadHalfWidth, roadHalfWidth);
+
+            if ((clampedSteer <= -roadHalfWidth && _lateralVelocity < 0f) ||
+                (clampedSteer >=  roadHalfWidth && _lateralVelocity > 0f))
                 _lateralVelocity = 0f;
 
-            _rb.linearVelocity = new Vector3(_lateralVelocity, 0f, 0f);
+            _rb.linearVelocity = steerAxis * _lateralVelocity;
 
-            if (_rb.position.x != clampedX)
-                _rb.position = new Vector3(clampedX, _rb.position.y, _rb.position.z);
+            if (steerPos != clampedSteer)
+                _rb.position += steerAxis * (clampedSteer - steerPos);
         }
 
         private float _distanceAccumulator;

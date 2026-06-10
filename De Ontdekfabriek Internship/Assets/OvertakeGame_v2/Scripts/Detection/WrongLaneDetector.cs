@@ -18,7 +18,7 @@ namespace OvertakeGame
             if (GameManager.Instance?.CurrentState != GameManager.GameState.Playing) return;
             if (roadConfig == null) return;
 
-            float px = transform.position.x;
+            float px = Vector3.Dot(transform.position, RoadDirection.SteerpAxis);
             bool overCentre = roadConfig.driveOnRight
                 ? px < (centreLaneX - graceBuffer)
                 : px > (centreLaneX + graceBuffer);

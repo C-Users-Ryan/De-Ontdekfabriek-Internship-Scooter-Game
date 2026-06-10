@@ -31,7 +31,7 @@ namespace OvertakeGame
         void Update()
         {
             if (!_active || WorldSpeed.Instance == null) return;
-            transform.Translate(Vector3.back * WorldSpeed.Instance.Current * Time.deltaTime, Space.World);
+            transform.Translate(RoadDirection.Current * WorldSpeed.Instance.Current * Time.deltaTime, Space.World);
         }
 
         void OnTriggerEnter(Collider other)

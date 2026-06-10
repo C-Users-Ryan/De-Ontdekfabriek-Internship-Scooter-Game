@@ -32,7 +32,9 @@ namespace OvertakeGame
         {
             if (Time.time - _lastCollisionTime < collisionCooldown) return;
             _lastCollisionTime = Time.time;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.Log($"[CollisionHandler] Hit: {objName}");
+#endif
             GameManager.Instance?.OnPlayerHitTraffic();
             HapticFeedback.Instance?.OnTrafficCollision();
         }

@@ -144,7 +144,6 @@ namespace OvertakeGame
             trafficManager?.StopSpawning();
             potholeManager?.StopSpawning();
             rockManager?.StopSpawning();
-            AudioManager.I?.OnCrash();
             int score = scoreManager?.CurrentScore ?? 0;
             GameOverScreen.I?.Show(score, _sessionDistance);
             uiManager?.ShowGameOverScreen(score);

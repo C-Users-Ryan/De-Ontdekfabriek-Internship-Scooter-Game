@@ -1,4 +1,3 @@
-using Mono.Cecil;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -63,20 +62,22 @@ namespace OvertakeGame
             if (playerTransform == null || _pool.Count == 0 || WorldSpeed.Instance == null) return;
 
             float speed = WorldSpeed.Instance.Current;
-            float recycleLine = playerTransform.position.z - recycleOffset;
+            Vector3 aheadAxis   = -RoadDirection.Current;
+            float playerAhead   = Vector3.Dot(playerTransform.position, aheadAxis);
+            float recycleLine   = playerAhead - recycleOffset;
 
             // Move all tiles toward player
             for (int i = 0; i < _pool.Count; i++)
-                _pool[i].go?.transform.Translate(Vector3.back * speed * Time.deltaTime, Space.World);
+                _pool[i].go?.transform.Translate(RoadDirection.Current * speed * Time.deltaTime, Space.World);
 
             // Find furthest back edge before recycling
-            float furthestBackEdge = GetFurthestBackEdge();
+            float furthestBackEdge = GetFurthestBackEdge(aheadAxis);
 
             for (int i = 0; i < _pool.Count; i++)
             {
                 var inst = _pool[i];
                 if (inst.go == null) continue;
-                float frontEdge = inst.go.transform.position.z + tileLength;
+                float frontEdge = Vector3.Dot(inst.go.transform.position, aheadAxis) + tileLength;
                 if (frontEdge >= recycleLine) continue;
 
                 GameObject nextPrefab = sequencer != null
@@ -96,14 +97,15 @@ namespace OvertakeGame
                     inst.sourcePrefab = nextPrefab;
                 }
                 furthestBackEdge += tileLength;
-                inst.go.transform.position = new Vector3(0f, 0f, furthestBackEdge);
+                inst.go.transform.position = aheadAxis * furthestBackEdge;
                 _pool[i] = inst;
             }
         }
 
         private void InitPool()
         {
-            float z = firstTileStartZ;
+            Vector3 aheadAxis = -RoadDirection.Current;
+            float   dist      = firstTileStartZ;   // reused as "distance ahead" at start (Z value)
             for (int i = 0; i < poolSize; i++)
             {
                 GameObject prefab = sequencer != null
@@ -114,18 +116,21 @@ namespace OvertakeGame
                 if (prefab == null) continue;
 
                 var go = Instantiate(prefab, transform);
-                go.transform.position = new Vector3(0f, 0f, z);
+                go.transform.position = aheadAxis * dist;
                 _pool.Add(new TileInstance { go = go, sourcePrefab = prefab });
-                z += tileLength;
+                dist += tileLength;
             }
         }
 
-        private float GetFurthestBackEdge()
+        private float GetFurthestBackEdge(Vector3 aheadAxis)
         {
             float f = float.MinValue;
             foreach (var inst in _pool)
-                if (inst.go != null && inst.go.transform.position.z > f)
-                    f = inst.go.transform.position.z;
+            {
+                if (inst.go == null) continue;
+                float d = Vector3.Dot(inst.go.transform.position, aheadAxis);
+                if (d > f) f = d;
+            }
             return f;
         }
 

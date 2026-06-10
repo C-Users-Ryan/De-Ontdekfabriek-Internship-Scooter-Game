@@ -69,6 +69,7 @@ namespace OvertakeGame
         private float _phaseDuration;    // how long each phase lasts = dayDuration / 3
         private bool _transitioning;
         private Coroutine _transitionCoroutine;
+        private int _cycleIndex;         // cached index to avoid Array.IndexOf each advance
 
         private static readonly TimeOfDay[] _cycle =
             { TimeOfDay.Morning, TimeOfDay.Midday, TimeOfDay.Sunset };
@@ -84,7 +85,9 @@ namespace OvertakeGame
         void Start()
         {
             _phaseDuration = dayDuration / 3f;
-            _phaseTimer = 0f;
+            _phaseTimer    = 0f;
+            _cycleIndex    = System.Array.IndexOf(_cycle, startTime);
+            if (_cycleIndex < 0) _cycleIndex = 0;
             Current = startTime;
             ApplyInstant(Current);
         }
@@ -123,8 +126,8 @@ namespace OvertakeGame
 
         private void AdvanceCycle()
         {
-            int nextIndex = (System.Array.IndexOf(_cycle, Current) + 1) % _cycle.Length;
-            SetTime(_cycle[nextIndex]);
+            _cycleIndex = (_cycleIndex + 1) % _cycle.Length;
+            SetTime(_cycle[_cycleIndex]);
         }
 
         // ── Instant apply ─────────────────────────────────────────────────────
