@@ -103,7 +103,6 @@ GameObject:
   - component: {fileID: 23000011804630486}
   - component: {fileID: 64000010738702302}
   - component: {fileID: 8580624177724808057}
-  - component: {fileID: -7014825901694861282}
   m_Layer: 0
   m_Name: Car_7F
   m_TagString: Traffic
@@ -231,23 +230,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 2.577401, y: 1.8134836, z: 5.12975}
   m_Center: {x: 0, y: 1.1297568, z: 0.028942347}
---- !u!114 &-7014825901694861282
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1000010765064010}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8b9dd6bafa48cb74abaf076abac0bb2e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::LorryBehaviour
-  isOncoming: 0
-  baseSpeed: 5
-  prefabForwardOffset: 0
-  despawnBehindZ: -25
-  driftAmount: 0.08
 --- !u!1 &1000011878043056
 GameObject:
   m_ObjectHideFlags: 0
