@@ -158,7 +158,7 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _AdaptiveThicnkess: 0.392
+    - _AdaptiveThicnkess: 0.001
     - _AddPrecomputedVelocity: 0
     - _AdditionalLightsAmount: 1
     - _AdditionalLightsFaloff: 1
@@ -211,9 +211,9 @@ Material:
     - _OcclusionStrength: 1
     - _Outline: 0.0015
     - _OutlineDynamicSpeed: 0.0131
-    - _OutlineNoiseIntesity: 1
-    - _OutlineNoiseScale: 10
-    - _OutlineTextureStrength: 0.134
+    - _OutlineNoiseIntesity: 0.1
+    - _OutlineNoiseScale: 0.2
+    - _OutlineTextureStrength: 0.1
     - _OutlineType: 0
     - _OutlineWidth: 0.0065
     - _OutlineWidth2: 0.0065
@@ -254,7 +254,7 @@ Material:
     - _StepOffset: 0
     - _Strength: 0
     - _Surface: 0
-    - _Thicnkess: 0.0376
+    - _Thicnkess: 0.001
     - _UVAnimationSpeed: 0
     - _UVAnimationSpeedSpec: 0
     - _UVAnimationSpeedWarp: 0

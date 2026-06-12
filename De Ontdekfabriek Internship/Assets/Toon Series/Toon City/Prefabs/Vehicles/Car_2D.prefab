@@ -465,7 +465,7 @@ GameObject:
   - component: {fileID: 95000013598202710}
   - component: {fileID: 64000010309617516}
   - component: {fileID: -3954477062056969928}
-  - component: {fileID: -6605937049660770562}
+  - component: {fileID: 4966157993997915937}
   m_Layer: 0
   m_Name: Car_2D
   m_TagString: Traffic
@@ -618,7 +618,7 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 2.7447238, y: 2.96051, z: 5.5577145}
   m_Center: {x: 0, y: 1.7084769, z: -0.038209558}
---- !u!114 &-6605937049660770562
+--- !u!114 &4966157993997915937
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -627,14 +627,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 1000013270697380}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8b9dd6bafa48cb74abaf076abac0bb2e, type: 3}
+  m_Script: {fileID: 11500000, guid: d9d42480b35521d43a63aedb130e18c9, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::LorryBehaviour
+  m_EditorClassIdentifier: Assembly-CSharp::OvertakeGame.TrafficVehicle
+  ownSpeed: 0
   isOncoming: 0
-  baseSpeed: 5
-  prefabForwardOffset: 0
-  despawnBehindZ: -25
-  driftAmount: 0.08
 --- !u!1 &1000013954051172
 GameObject:
   m_ObjectHideFlags: 0

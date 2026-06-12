@@ -509,11 +509,8 @@ MonoBehaviour:
   m_GameObject: {fileID: 1000014133723966}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8b9dd6bafa48cb74abaf076abac0bb2e, type: 3}
+  m_Script: {fileID: 11500000, guid: d9d42480b35521d43a63aedb130e18c9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LorryBehaviour
+  ownSpeed: 0
   isOncoming: 0
-  baseSpeed: 5
-  prefabForwardOffset: 0
-  despawnBehindZ: -25
-  driftAmount: 0.08

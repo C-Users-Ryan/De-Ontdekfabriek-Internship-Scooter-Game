@@ -36,6 +36,7 @@ Material:
   - _USEOUTLINE_ON
   - _USESPECULAR_ON
   m_InvalidKeywords:
+  - _OVERLAYMODE_HALFTONE
   - _SPECULARHIGHLIGHTS_OFF
   - _USESHADOWS_ON
   m_LightmapFlags: 6
@@ -69,7 +70,8 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints: []
-    m_Floats: []
+    m_Floats:
+    - _UseEmission: 1
     m_Colors: []
   m_BuildTextureStacks: []
   m_AllowLocking: 1

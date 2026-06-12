@@ -1,0 +1,747 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &90202767504896541
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6591311677536462902}
+  - component: {fileID: 7315224436813824361}
+  m_Layer: 0
+  m_Name: PotholeManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6591311677536462902
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 90202767504896541}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5415126903282711541}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &7315224436813824361
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 90202767504896541}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e3bb7e7a84cf46b4d8be3a8ddadcb4ef, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OvertakeGame.PotholeManager
+  spawnSide: 2
+  playerLaneX: 1.5
+  oncomingLaneX: -1.5
+  laneHalfWidth: 0.8
+  spawnY: 0.01
+  spawnDistanceAhead: 70
+  despawnDistanceBehind: 20
+  spawnIntervalMin: 1
+  spawnIntervalMax: 6
+  rampDensityOverTime: 1
+  rampDuration: 15.5
+  minIntervalAtPeak: 1
+  minScale: 0.05
+  maxScale: 0.1
+  potholePrefab: {fileID: 2992770352758673186, guid: 6187032dee846274e95877e77c0bd13e, type: 3}
+  poolSize: 12
+--- !u!1 &144599708722267926
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5184292629613516251}
+  - component: {fileID: 6377426278275656664}
+  m_Layer: 0
+  m_Name: RewardSystem
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5184292629613516251
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 144599708722267926}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5415126903282711541}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6377426278275656664
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 144599708722267926}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e48df717b516c364c886d756810b2d2f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OvertakeGame.RewardSystem
+  rewardSurvivalTime: 1
+  rewardOvertaking: 1
+  rewardCorrectLane: 1
+  rewardGoodSpeed: 1
+  survivalPointsPerSecond: 2
+  overtakePoints: 25
+  correctLanePointsPerSecond: 3
+  goodSpeedPointsPerSecond: 2
+  goodSpeedMin: 40
+  goodSpeedMax: 75
+  scoreManager: {fileID: 3144714481134095555}
+  laneDetector: {fileID: 0}
+--- !u!1 &808897645234991382
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2380436770262961952}
+  - component: {fileID: 2373690256726058687}
+  m_Layer: 0
+  m_Name: RockManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2380436770262961952
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 808897645234991382}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5415126903282711541}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2373690256726058687
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 808897645234991382}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 32d8be6e127428043b78ac0403fde26b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OvertakeGame.RockManager
+  spawnZone: 3
+  playerLaneX: 1.5
+  oncomingLaneX: -1.5
+  laneHalfWidth: 1
+  roadEdgeX: 4
+  shoulderSpawnWidth: 0.8
+  spawnY: 0.15
+  spawnDistanceAhead: 80
+  despawnDistanceBehind: 20
+  spawnIntervalMin: 4
+  spawnIntervalMax: 8
+  rampDensityOverTime: 1
+  rampDuration: 90
+  minIntervalAtPeak: 1.5
+  minScale: 0.3
+  maxScale: 0.9
+  enableClusters: 1
+  clusterChance: 0.25
+  clusterCount: 3
+  clusterSpread: 1.2
+  clusterZSpacing: 2.5
+  rockPrefabs:
+  - {fileID: 117838, guid: 61de5fa9a401cbd4bb49b95b935606c4, type: 3}
+  - {fileID: 149470, guid: c34a8209b95e9a24d9fd38da3394ddb4, type: 3}
+  - {fileID: 174630, guid: dbaf764bc4239df438dd5f405411368e, type: 3}
+  - {fileID: 120876, guid: 6625250ba263a5b4fa8ac6af8df6aa0d, type: 3}
+  - {fileID: 156018, guid: 0544f5d1430206a4c8edecaa94bd2ffe, type: 3}
+  - {fileID: 136694, guid: bb75656da45a48b41828ec258430b0df, type: 3}
+  - {fileID: 142770, guid: e90c9733a79343143a2af3060cac5518, type: 3}
+  - {fileID: 138104, guid: 25b88f2cde6c7e04c875a7a4b7ea3c1d, type: 3}
+  - {fileID: 105112, guid: 5dacf2b7a4a47b845bfa4dcca8a92836, type: 3}
+  - {fileID: 173574, guid: 7c87c256106f82c418e4cb87b23d93d0, type: 3}
+  - {fileID: 170284, guid: 1ee236002cf90f8438b89a953cd156be, type: 3}
+  poolSize: 20
+--- !u!1 &1429111551065424357
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4624353482004970607}
+  - component: {fileID: 584092956663223100}
+  m_Layer: 0
+  m_Name: TimerManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4624353482004970607
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1429111551065424357}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5415126903282711541}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &584092956663223100
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1429111551065424357}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 16d17a0104ee8414ab7065000bbddb20, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OvertakeGame.TimerManager
+--- !u!1 &2681988708393667485
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5793715566780464815}
+  - component: {fileID: 7526180901700916759}
+  m_Layer: 0
+  m_Name: Day&NightCycle
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5793715566780464815
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2681988708393667485}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5415126903282711541}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &7526180901700916759
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2681988708393667485}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 99809bc1182b79c4d9926ddd55a1d138, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OvertakeGame.DayCycleManager
+  morningVolume: {fileID: 0}
+  middayVolume: {fileID: 0}
+  sunsetVolume: {fileID: 0}
+  directionalLight: {fileID: 0}
+  morningLightColour: {r: 1, g: 0.82, b: 0.54, a: 1}
+  morningIntensity: 0.7
+  middayLightColour: {r: 1, g: 0.99, b: 0.91, a: 1}
+  middayIntensity: 1.2
+  sunsetLightColour: {r: 1, g: 0.42, b: 0.17, a: 1}
+  sunsetIntensity: 0.6
+  dayDuration: 15
+  transitionDuration: 3
+  startTime: 2
+  autoCycle: 1
+--- !u!1 &2718714703951809538
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4507456857830420799}
+  - component: {fileID: 48521368683241510}
+  m_Layer: 0
+  m_Name: WarningSystem
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4507456857830420799
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2718714703951809538}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5415126903282711541}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &48521368683241510
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2718714703951809538}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a4f66b10b098d4b40823749cc8b3aeb7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OvertakeGame.WarningSystem
+  collisionWarningText: COLLISION!
+  wrongLaneWarningText: WRONG LANE!
+  speedingWarningText: SPEEDING!
+  potholeWarningText: "\u26A0 POTHOLE!"
+  rockWarningText: "\u26A0 ROCK!"
+  warningDisplayDuration: 2
+  warningCooldownPerType: 10
+  warningPanel: {fileID: 0}
+  warningText: {fileID: 0}
+--- !u!1 &2847253298593433173
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 14809727939301497}
+  - component: {fileID: 4718570899590977391}
+  - component: {fileID: 677565174240358818}
+  - component: {fileID: 4538331698594360061}
+  - component: {fileID: 5747724145106613331}
+  m_Layer: 0
+  m_Name: WorldSpeedManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &14809727939301497
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2847253298593433173}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5415126903282711541}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4718570899590977391
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2847253298593433173}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3d276aa6e995c5c4781c4d5773968a68, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OvertakeGame.WorldSpeed
+  baseSpeed: 10
+  maxSpeed: 30
+  accelerationForce: 15
+  brakeForce: 20
+  naturalDeceleration: 5
+--- !u!114 &677565174240358818
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2847253298593433173}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c7a7ba24dd2d8c04db69087926acbe1f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OvertakeGame.TurnTrigger
+  turnDirection: {x: -1, y: 0, z: 0}
+  cameraRig: {fileID: 0}
+  rotateDuration: 0.35
+  playerRigidbody: {fileID: 0}
+  playerTag: Player
+--- !u!114 &4538331698594360061
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2847253298593433173}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 67bca2f4516964b42879b7c8518a9c5e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OvertakeGame.RoadDirection
+  startingDirection: {x: 0, y: 0, z: -1}
+--- !u!114 &5747724145106613331
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2847253298593433173}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 67bca2f4516964b42879b7c8518a9c5e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OvertakeGame.RoadDirection
+  startingDirection: {x: 0, y: 0, z: -1}
+--- !u!1 &4601853814292717255
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5415126903282711541}
+  - component: {fileID: 888538984119716244}
+  - component: {fileID: 7889569507876238307}
+  m_Layer: 0
+  m_Name: GameManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5415126903282711541
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4601853814292717255}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: -0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 5184292629613516251}
+  - {fileID: 4208065781306028919}
+  - {fileID: 2552993210578605153}
+  - {fileID: 4624353482004970607}
+  - {fileID: 4507456857830420799}
+  - {fileID: 5210142463324654984}
+  - {fileID: 6591311677536462902}
+  - {fileID: 2380436770262961952}
+  - {fileID: 14809727939301497}
+  - {fileID: 5793715566780464815}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &888538984119716244
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4601853814292717255}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ca7379f27e480ec4292c4b1746c3be44, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OvertakeGame.GameManager
+  gameOverOnCollision: 1
+  useSessionTimer: 0
+  sessionDuration: 120
+  deductOnCollision: 1
+  deductOnWrongLane: 1
+  deductOnSpeeding: 1
+  deductOnPothole: 1
+  deductOnRock: 1
+  warnOnWrongLane: 1
+  warnOnSpeeding: 1
+  warnOnCollision: 1
+  warnOnPothole: 1
+  warnOnRock: 1
+  scoreManager: {fileID: 3144714481134095555}
+  timerManager: {fileID: 584092956663223100}
+  uiManager: {fileID: 0}
+  trafficManager: {fileID: 7465497120323179657}
+  warningSystem: {fileID: 48521368683241510}
+  checkpointManager: {fileID: 0}
+  potholeManager: {fileID: 7315224436813824361}
+  rockManager: {fileID: 2373690256726058687}
+--- !u!114 &7889569507876238307
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4601853814292717255}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3d276aa6e995c5c4781c4d5773968a68, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OvertakeGame.WorldSpeed
+  baseSpeed: 10
+  maxSpeed: 30
+  accelerationForce: 15
+  brakeForce: 20
+  naturalDeceleration: 5
+--- !u!1 &6025500428774312818
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5210142463324654984}
+  - component: {fileID: 7465497120323179657}
+  m_Layer: 0
+  m_Name: TrafficManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5210142463324654984
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6025500428774312818}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5415126903282711541}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &7465497120323179657
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6025500428774312818}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2d8fd8afafb1b8a4c985d170b85f55a1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OvertakeGame.TrafficManager
+  roadConfig: {fileID: 11400000, guid: 88999544e61a8e343897ffa341f5fdba, type: 2}
+  playerLaneX: 1.5
+  oncomingLaneX: -1.5
+  spawnY: 0
+  prewarmStartDistance: 15
+  prewarmEndDistance: 200
+  sameDirectionSpawnMin: 3
+  sameDirectionSpawnMax: 10
+  oncomingSpawnDistance: 120
+  oncomingSpawnMin: 1.5
+  oncomingSpawnMax: 3.5
+  despawnDistanceBehind: 40
+  sameDirectionPrefabs:
+  - {fileID: 1000010603113068, guid: 9c89b8165b9d54e90a47b1663eefb92f, type: 3}
+  - {fileID: 1000013329013634, guid: 0c6f22b3334224c8483ffb3c90e63898, type: 3}
+  - {fileID: 1000014279071982, guid: 734d9118011a24d4ebdc1ed338cd9247, type: 3}
+  - {fileID: 1000010975236142, guid: 23dee292e3a9e4d8ea247628b1c0a248, type: 3}
+  - {fileID: 1000011772067806, guid: 7f34d41b84df54fcdbf864e4f6369501, type: 3}
+  - {fileID: 1000011494229852, guid: a49e234e7ee81490886ca0f2637ad6de, type: 3}
+  - {fileID: 1000010340674042, guid: 23e8bd7b589e74ba59517a1ae59c9ba5, type: 3}
+  - {fileID: 1000014032264494, guid: b30b084d6775541f6a40b8a2124fd2ef, type: 3}
+  - {fileID: 1000013270697380, guid: 46b9d892351e7498e8783bcaee251594, type: 3}
+  - {fileID: 1000011187822232, guid: f6bf466eaf2af4fd2837e778be38f8dc, type: 3}
+  - {fileID: 1000010954139730, guid: a30bb3f1634154428824acbdbc6e7503, type: 3}
+  oncomingPrefabs:
+  - {fileID: 1000013270697380, guid: 46b9d892351e7498e8783bcaee251594, type: 3}
+  - {fileID: 1000014221146776, guid: 3ec02e502e4c74c70a89dac3bb333d1f, type: 3}
+  - {fileID: 1000011067043236, guid: 8753792580b334e748ef9fa3c75decb7, type: 3}
+  - {fileID: 1000011187822232, guid: f6bf466eaf2af4fd2837e778be38f8dc, type: 3}
+  - {fileID: 1000010954139730, guid: a30bb3f1634154428824acbdbc6e7503, type: 3}
+  - {fileID: 1000014289515206, guid: 22bf15112ed77437897eaf6143749687, type: 3}
+  - {fileID: 1000014133723966, guid: 9316ca20037aa460bbe7ad1129a0fa21, type: 3}
+  - {fileID: 1000013281362706, guid: 9017d95f607e942a7aa0dbd619ded6cc, type: 3}
+  - {fileID: 1000012389131226, guid: 73fead72e0aaf46a3a96b621e7ef02bb, type: 3}
+  - {fileID: 1000013206033564, guid: e9110a221dbd8499094f5f8442a45d13, type: 3}
+  - {fileID: 1000010765064010, guid: d4ebdc08b5dea4e85be86342b70f16f4, type: 3}
+  - {fileID: 1000010801063532, guid: d7712ae12a9a443d5924224621fb72e5, type: 3}
+  - {fileID: 1000010603113068, guid: 9c89b8165b9d54e90a47b1663eefb92f, type: 3}
+  - {fileID: 1000013329013634, guid: 0c6f22b3334224c8483ffb3c90e63898, type: 3}
+  - {fileID: 1000014279071982, guid: 734d9118011a24d4ebdc1ed338cd9247, type: 3}
+  - {fileID: 1000010975236142, guid: 23dee292e3a9e4d8ea247628b1c0a248, type: 3}
+  - {fileID: 1000013801073452, guid: 2f36652a93ba44cc1a5e79b7809b2662, type: 3}
+  - {fileID: 1000012947280246, guid: 9ee169e630ea647f9ac6794dad1d089a, type: 3}
+  - {fileID: 1000011646726720, guid: 217ebe9d908534e2791a79ee299b96e1, type: 3}
+  - {fileID: 1000010340674042, guid: 23e8bd7b589e74ba59517a1ae59c9ba5, type: 3}
+  - {fileID: 1000013778709090, guid: bc7128f3e526e47aa8d64f70e0eb434f, type: 3}
+  - {fileID: 1000014032264494, guid: b30b084d6775541f6a40b8a2124fd2ef, type: 3}
+  - {fileID: 1459134165095346, guid: f0cf55e62ba5542b3a5ed082dfd02d45, type: 3}
+  - {fileID: 1977218975603334, guid: 4c7e554646886475d903d180777ec6e5, type: 3}
+  - {fileID: 1889331636350386, guid: 8efc5d3fa07ce4b48902bf7586fef532, type: 3}
+  - {fileID: 1599407379974198, guid: 08d1123ddce16435f8ab6b93b2bd9dad, type: 3}
+  sameDirectionSpeedMin: 9
+  sameDirectionSpeedMax: 10
+  oncomingSpeedMin: 8
+  oncomingSpeedMax: 14
+  poolSizePerLane: 30
+  minimumCarGap: 25
+  carLength: 7
+--- !u!1 &7786175550056147455
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4208065781306028919}
+  - component: {fileID: 8809559385297988467}
+  m_Layer: 0
+  m_Name: RoadTile Recycler
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4208065781306028919
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7786175550056147455}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5415126903282711541}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8809559385297988467
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7786175550056147455}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aa434d2786a51be4d9684ea7c644d45f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OvertakeGame.RoadTileRecycler
+  tilePrefabs:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  tileWeights: []
+  tileLength: 100
+  poolSize: 5
+  recycleOffset: 10
+  firstTileStartZ: -50
+  playerTransform: {fileID: 0}
+  sequencer: {fileID: 0}
+--- !u!1 &8567380562709812698
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2552993210578605153}
+  - component: {fileID: 3144714481134095555}
+  m_Layer: 0
+  m_Name: ScoreManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2552993210578605153
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8567380562709812698}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5415126903282711541}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3144714481134095555
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8567380562709812698}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 49179314957de184680ab8d508035bd0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OvertakeGame.ScoreManager
+  startingScore: 1000
+  collisionDeduction: 50
+  potholeDeduction: 20
+  rockDeduction: 15
+  wrongLaneDeductionPerSecond: 10
+  speedingDeductionPerSecond: 8
+  minimumScore: 0

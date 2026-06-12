@@ -26,6 +26,7 @@ Material:
   m_InvalidKeywords:
   - _EMISSION
   - _HEIGHTFOGCOLOR
+  - _OVERLAYMODE_HALFTONE
   - _USEDIFFUSEWARP_ON
   m_LightmapFlags: 0
   m_EnableInstancingVariants: 0
@@ -127,7 +128,7 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _AdaptiveThicnkess: 0.19
+    - _AdaptiveThicnkess: 0.01
     - _AdditionalLightsAmount: 1
     - _AdditionalLightsFaloff: 1
     - _AdditionalLightsIntesity: 1
@@ -166,8 +167,8 @@ Material:
     - _NormalMapStrength: 1
     - _OcclusionStrength: 1
     - _OutlineDynamicSpeed: 0
-    - _OutlineNoiseIntesity: 0.3
-    - _OutlineNoiseScale: 10
+    - _OutlineNoiseIntesity: 0.01
+    - _OutlineNoiseScale: 0.2
     - _OutlineTextureStrength: 0
     - _OutlineType: 0
     - _OverlayMode: 1
@@ -200,7 +201,7 @@ Material:
     - _StepHalftoneTexture: 0
     - _StepOffset: 0
     - _Strength: 0
-    - _Thicnkess: 0.0278
+    - _Thicnkess: 0.01
     - _UVAnimationSpeed: 0
     - _UVAnimationSpeedSpec: 0
     - _UVAnimationSpeedWarp: 0
