@@ -19,7 +19,8 @@ namespace KenyaScooter.Roads
         public string[] contextTags;
 
         [Header("Tiles (ordered)")]
-        public RoadTile[] tiles;
+        [Tooltip("Ordered tile prefabs. ANY prefab can be dropped here: if it has no RoadTile component, one is added automatically (a plain straight tile of default length). Prefabs that already have a RoadTile keep their authored length/turn.")]
+        public GameObject[] tiles;
 
         [Header("Selection (M23)")]
         public float weight = 1f;

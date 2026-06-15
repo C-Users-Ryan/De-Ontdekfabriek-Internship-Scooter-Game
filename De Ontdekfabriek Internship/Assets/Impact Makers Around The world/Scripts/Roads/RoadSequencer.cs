@@ -110,7 +110,10 @@ namespace KenyaScooter.Roads
             lastUsedAtTile[next] = tilesSpawnedTotal;
 
             for (int i = 0; i < next.tiles.Length; i++)
-                prefabQueue.Enqueue(next.tiles[i]);
+            {
+                RoadTile t = ResolveTile(next.tiles[i]);
+                if (t != null) prefabQueue.Enqueue(t);
+            }
 
             GameEvents.RaiseSequenceChanged(next);
         }
@@ -187,7 +190,10 @@ namespace KenyaScooter.Roads
             CurrentSequence = openingSequence;
             lastUsedAtTile[openingSequence] = 0;
             for (int i = 0; i < openingSequence.tiles.Length; i++)
-                prefabQueue.Enqueue(openingSequence.tiles[i]);
+            {
+                RoadTile t = ResolveTile(openingSequence.tiles[i]);
+                if (t != null) prefabQueue.Enqueue(t);
+            }
             GameEvents.RaiseSequenceChanged(openingSequence);
 
             while (RoadDirection.Longitudinal(chainPosition) < playerLong + spawnHorizon)
@@ -226,7 +232,7 @@ namespace KenyaScooter.Roads
 
             for (int i = 0; i < sequence.tiles.Length; i++)
             {
-                RoadTile prefab = sequence.tiles[i];
+                RoadTile prefab = ResolveTile(sequence.tiles[i]);
                 if (prefab == null || pools.ContainsKey(prefab))
                     continue;
 
@@ -240,6 +246,19 @@ namespace KenyaScooter.Roads
                     pool.AllInstances[j].SourcePool = pool;
                 pools.Add(prefab, pool);
             }
+        }
+
+        /// <summary>
+        /// Resolves a tile prefab to its RoadTile. Any prefab in a sequence's Tiles list
+        /// is accepted: one without a RoadTile gets one added (a straight tile of default
+        /// length), so authoring a road never hits a "type mismatch".
+        /// </summary>
+        private static RoadTile ResolveTile(GameObject prefab)
+        {
+            if (prefab == null) return null;
+            RoadTile rt = prefab.GetComponent<RoadTile>();
+            if (rt == null) rt = prefab.AddComponent<RoadTile>();
+            return rt;
         }
     }
 }
