@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 4191971693091151914}
   - component: {fileID: 6605652052079560480}
   - component: {fileID: 6303300955747408295}
+  - component: {fileID: -775974317322565007}
   m_Layer: 0
   m_Name: Plane
   m_TagString: Untagged
@@ -110,6 +111,22 @@ MeshCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 5
-  m_Convex: 0
+  m_Convex: 1
   m_CookingOptions: 30
   m_Mesh: {fileID: 10209, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &-775974317322565007
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 407421697814997566}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 558afecf9ee3b144b993210f5a11a28c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::KenyaScooter.Roads.RoadTile
+  length: 30
+  difficulty: 0
+  curveAngle: 0
+  exitAnchor: {fileID: 0}

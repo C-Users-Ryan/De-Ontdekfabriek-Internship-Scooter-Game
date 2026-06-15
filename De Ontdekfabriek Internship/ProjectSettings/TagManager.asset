@@ -17,11 +17,11 @@ TagManager:
   - UI
   - Ground
   - Vehicle
+  - Player
+  - 
   - Traffic
-  - 
-  - 
-  - 
-  - 
+  - Hazard
+  - TileTrigger
   - 
   - 
   - 
