@@ -8027,6 +8027,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Plane (4)
       objectReference: {fileID: 0}
+    - target: {fileID: 4336945347436357929, guid: 81ae4e4d4cdc85e4fa4991cfeabc74f9, type: 3}
+      propertyPath: difficulty
+      value: 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
