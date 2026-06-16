@@ -47,7 +47,6 @@ namespace KenyaScooter.Roads
         // never spin forever, because every tile adds a fixed length.
         private float aheadArc;   // metres of road built ahead of the player
         private float behindArc;  // metres of road still kept behind the player
-        private bool pausedAtTurn; // holds the build at a turn tile until the player takes it
 
         // Hard cap on tiles built in one pass — a backstop if a tile ever fails to add road length
         // (a zero-length tile) so the build loop can never freeze the game.
@@ -108,7 +107,7 @@ namespace KenyaScooter.Roads
         private void BuildAhead()
         {
             int built = 0;
-            while (!pausedAtTurn && aheadArc < spawnHorizon)
+            while (aheadArc < spawnHorizon)
             {
                 int before = activeTiles.Count;
                 SpawnNextTile();
@@ -150,11 +149,6 @@ namespace KenyaScooter.Roads
             chainRotation = tile.ExitRotation;
             aheadArc += tile.length;
             tilesSpawnedTotal++;
-
-            // Stop building past a turn tile until the player actually takes the turn. Otherwise the
-            // chain curves through two turns at once and spirals back over itself (the second-turn break).
-            if (Mathf.Abs(tile.curveAngle) > 0.01f)
-                pausedAtTurn = true;
         }
 
         private void AdvanceSequence()
@@ -273,7 +267,6 @@ namespace KenyaScooter.Roads
             // The first tile starts half the despawn gap behind the player; the rest builds ahead.
             behindArc = despawnBehind * 0.5f;
             aheadArc = -despawnBehind * 0.5f;
-            pausedAtTurn = false;
 
             // Opening is forced, never weighted (Req §4.3).
             CurrentSequence = openingSequence;
@@ -320,8 +313,6 @@ namespace KenyaScooter.Roads
         /// </summary>
         private void HandleDirectionChanged(Vector3 previous, Vector3 next)
         {
-            pausedAtTurn = false; // turn taken — resume building the road ahead in the new direction
-
             float roadLateral = RoadDirection.Lateral(chainPosition);
             Vector3 shift = -RoadDirection.SteerAxis * roadLateral;
             for (int i = 0; i < activeTiles.Count; i++)

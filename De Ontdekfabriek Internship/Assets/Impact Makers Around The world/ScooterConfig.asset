@@ -13,15 +13,15 @@ MonoBehaviour:
   m_Name: ScooterConfig
   m_EditorClassIdentifier: Assembly-CSharp::KenyaScooter.Config.ScooterConfig
   baseSpeed: 10
-  maxSpeed: 30
+  maxSpeed: 20
   minSpeed: 0
-  acceleration: 15
+  acceleration: 10
   brakeDeceleration: 25
   naturalDeceleration: 5
-  lateralAcceleration: 12
+  lateralAcceleration: 8
   maxLateralSpeed: 6
   rideHeight: 0.5
-  maxLeanAngle: 18
+  maxLeanAngle: 14
   leanResponse: 240
   wobbleAmplitude: 9
   wobbleFrequency: 11

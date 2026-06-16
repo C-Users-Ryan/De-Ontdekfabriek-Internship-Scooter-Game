@@ -19,14 +19,6 @@ namespace KenyaScooter.Core
         /// <summary>(old travel axis, new travel axis). Raised when a TurnTrigger fires.</summary>
         public static event Action<Vector3, Vector3> DirectionChanged;
 
-        /// <summary>True for a short settle window right after a turn (M3). Collisions are skipped
-        /// while this holds — the turn moment (camera sweep, re-centring) is chaotic, so it would be
-        /// unfair to be hit mid-corner. Time-based, so it behaves identically on tablet and desktop.</summary>
-        public static bool IsTurning => Time.time < turnSettleUntil;
-
-        private const float TurnSettleSeconds = 0.6f;
-        private static float turnSettleUntil;
-
         /// <summary>Signed distance of a world position along the travel axis.</summary>
         public static float Longitudinal(Vector3 worldPosition) => Vector3.Dot(worldPosition, Current);
 
@@ -43,7 +35,6 @@ namespace KenyaScooter.Core
             Vector3 rotated = Quaternion.AngleAxis(signedDegrees, Vector3.up) * Current;
             Current = SnapToCardinal(rotated);
             SteerAxis = Vector3.Cross(Vector3.up, Current);
-            turnSettleUntil = Time.time + TurnSettleSeconds; // brief invulnerability while the turn settles
             DirectionChanged?.Invoke(previous, Current);
         }
 
@@ -52,7 +43,6 @@ namespace KenyaScooter.Core
         {
             Current = Vector3.forward;
             SteerAxis = Vector3.right;
-            turnSettleUntil = 0f;
         }
 
         private static Vector3 SnapToCardinal(Vector3 direction)
@@ -68,7 +58,6 @@ namespace KenyaScooter.Core
             Current = Vector3.forward;
             SteerAxis = Vector3.right;
             DirectionChanged = null;
-            turnSettleUntil = 0f;
         }
     }
 }

@@ -44,8 +44,6 @@ namespace KenyaScooter.Hazards
         {
             if (consumed || GameManager.State != GameState.Playing)
                 return;
-            if (RoadDirection.IsTurning)
-                return; // no hits mid-turn (M3) — stay armed so it can still hit once the turn settles
             if (other.GetComponentInParent<PlayerController>() == null)
                 return;
 

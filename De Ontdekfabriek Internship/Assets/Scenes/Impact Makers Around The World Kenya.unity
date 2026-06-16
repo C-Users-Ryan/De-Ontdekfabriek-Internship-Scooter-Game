@@ -618,7 +618,7 @@ MonoBehaviour:
   priority: 0
   blendDistance: 0
   weight: 1
-  sharedProfile: {fileID: 11400000, guid: fb7552ff2acb1624283c7dac15e6ed20, type: 2}
+  sharedProfile: {fileID: 11400000, guid: 55808ce6f1ac5824fa4ced7c6b9de423, type: 2}
 --- !u!1 &589613451
 GameObject:
   m_ObjectHideFlags: 0
@@ -5912,7 +5912,7 @@ MonoBehaviour:
   sequences:
   - {fileID: 11400000, guid: 5cd39b66b7974d34597e747832276aa5, type: 2}
   player: {fileID: 1896502479}
-  spawnHorizon: 500
+  spawnHorizon: 200
   despawnBehind: 35
   poolSizePerTile: 4
 --- !u!1 &917926511

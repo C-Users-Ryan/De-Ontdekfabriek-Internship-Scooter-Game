@@ -45,8 +45,8 @@ namespace KenyaScooter.Player
         {
             if (GameManager.State != GameState.Playing)
                 return;
-            if (Time.time < cooldownUntil || Time.time < invulnerableUntil || RoadDirection.IsTurning)
-                return; // no hits mid-turn (M3)
+            if (Time.time < cooldownUntil || Time.time < invulnerableUntil)
+                return;
             if (other.GetComponentInParent<Hazard>() != null)
                 return; // hazards report themselves (M21/M22)
 
