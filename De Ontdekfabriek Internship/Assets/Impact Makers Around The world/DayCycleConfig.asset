@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1d0752fefcbd5c8498fcc5a956ea8b4b, type: 3}
+  m_Name: DayCycleConfig
+  m_EditorClassIdentifier: Assembly-CSharp::KenyaScooter.Config.DayCycleConfig
+  phases:
+  - label: ASUBUHI
+    startTime: 0
+    labelColour: {r: 0.75, g: 0.88, b: 1, a: 1}
+    sunEuler: {x: 18, y: -35, z: 0}
+    sunColour: {r: 1, g: 0.96, b: 0.88, a: 1}
+    sunIntensity: 0.95
+    fogColour: {r: 0.78, g: 0.86, b: 0.92, a: 1}
+  - label: MCHANA
+    startTime: 30
+    labelColour: {r: 1, g: 0.98, b: 0.8, a: 1}
+    sunEuler: {x: 62, y: -20, z: 0}
+    sunColour: {r: 1, g: 1, b: 1, a: 1}
+    sunIntensity: 1.15
+    fogColour: {r: 0.85, g: 0.9, b: 0.95, a: 1}
+  - label: ALASIRI
+    startTime: 75
+    labelColour: {r: 1, g: 0.85, b: 0.6, a: 1}
+    sunEuler: {x: 34, y: 25, z: 0}
+    sunColour: {r: 1, g: 0.88, b: 0.7, a: 1}
+    sunIntensity: 1
+    fogColour: {r: 0.9, g: 0.82, b: 0.7, a: 1}
+  - label: JIONI
+    startTime: 105
+    labelColour: {r: 1, g: 0.62, b: 0.38, a: 1}
+    sunEuler: {x: 9, y: 48, z: 0}
+    sunColour: {r: 1, g: 0.6, b: 0.35, a: 1}
+    sunIntensity: 0.8
+    fogColour: {r: 0.85, g: 0.6, b: 0.45, a: 1}
+  transitionSeconds: 4

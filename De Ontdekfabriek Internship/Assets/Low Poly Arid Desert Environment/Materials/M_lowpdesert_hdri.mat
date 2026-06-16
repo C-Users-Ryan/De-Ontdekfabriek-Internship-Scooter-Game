@@ -17,8 +17,10 @@ Material:
   - _OVERLAYMODE_NONE
   - _RIMSPLITCOLOR_NOSPLIT
   - _USEADDITIONALLIGHTSDIFFUSE_ON
+  - _USEDYNAMICOUTLINE_ON
   - _USEHATCHINGCONSTANTSCALE_ON
   - _USELIGHTRAMP_STEP
+  - _USEOUTLINE_ON
   - _USEPURESKETCH_ON
   - _USESPECULAR_ON
   m_InvalidKeywords:
@@ -182,7 +184,7 @@ Material:
     - _AORemapMax: 1
     - _AORemapMin: 0
     - _ATDistance: 1
-    - _AdaptiveThicnkess: 0
+    - _AdaptiveThicnkess: 0.01
     - _AddPrecomputedVelocity: 0
     - _AdditionalLightsAmount: 1
     - _AdditionalLightsFaloff: 1
@@ -269,7 +271,7 @@ Material:
     - _NormalScale: 1
     - _OcclusionStrength: 1
     - _OpaqueCullMode: 2
-    - _OutlineDynamicSpeed: 0
+    - _OutlineDynamicSpeed: 0.01
     - _OutlineNoiseIntesity: 1
     - _OutlineNoiseScale: 10
     - _OutlineTextureStrength: 0
@@ -331,7 +333,7 @@ Material:
     - _TexWorldScale: 1
     - _TexWorldScaleEmissive: 1
     - _Thickness: 1
-    - _Thicnkess: 0
+    - _Thicnkess: 0.01
     - _TransmissionEnable: 1
     - _TransparentBackfaceEnable: 0
     - _TransparentCullMode: 2
@@ -359,13 +361,13 @@ Material:
     - _UseBacklight: 0
     - _UseDiffuseWarp: 0
     - _UseDiffuseWarpAsOverlay: 0
-    - _UseDynamicOutline: 0
+    - _UseDynamicOutline: 1
     - _UseEmission: 0
     - _UseEmissiveIntensity: 0
     - _UseEnvironmentRefletion: 0
     - _UseHatchingConstantScale: 1
     - _UseLightRamp: 0
-    - _UseOutline: 0
+    - _UseOutline: 1
     - _UsePureSketch: 1
     - _UseRimLight: 0
     - _UseScreenUvs: 0

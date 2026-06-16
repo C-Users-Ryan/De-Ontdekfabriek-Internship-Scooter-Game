@@ -36,6 +36,7 @@ Material:
   - _USEOUTLINE_ON
   - _USESPECULAR_ON
   m_InvalidKeywords:
+  - _OVERLAYMODE_HALFTONE
   - _SPECULARHIGHLIGHTS_OFF
   - _USESHADOWS_ON
   m_LightmapFlags: 4

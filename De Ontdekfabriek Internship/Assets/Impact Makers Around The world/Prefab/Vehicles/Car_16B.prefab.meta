@@ -1,0 +1,19 @@
+fileFormatVersion: 2
+guid: e42fc75050d8f194285e74d1fab8914b
+labels:
+- transport
+- truck
+- vehicle
+timeCreated: 1499301715
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 88379
+  packageName: Toon City
+  packageVersion: 1.4.6
+  assetPath: Assets/Toon Series/Toon City/Prefabs/Vehicles/Car_16B.prefab
+  uploadId: 920136

@@ -1,0 +1,19 @@
+fileFormatVersion: 2
+guid: 4ec0ad496e176d746a76411ba1f4e9f9
+labels:
+- cab
+- car
+- taxi
+timeCreated: 1499301668
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 88379
+  packageName: Toon City
+  packageVersion: 1.4.6
+  assetPath: Assets/Toon Series/Toon City/Prefabs/Vehicles/Car_7F.prefab
+  uploadId: 920136

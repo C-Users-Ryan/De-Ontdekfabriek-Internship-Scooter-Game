@@ -1,0 +1,82 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 922b4a420381ccb45875ea35abb76928, type: 3}
+  m_Name: ScoreConfig
+  m_EditorClassIdentifier: Assembly-CSharp::KenyaScooter.Config.ScoreConfig
+  scoreOvertakes: 1
+  deductCollisions: 1
+  deductWrongLane: 1
+  deductSpeeding: 1
+  deductPotholes: 1
+  deductRocks: 1
+  deductSpeedBumps: 1
+  trickleEnabled: 1
+  correctLaneBonusEnabled: 0
+  cleanZoneBonusEnabled: 0
+  collisionDeduction: 60
+  rewindPenalty: 80
+  potholeDeduction: 50
+  rockDeduction: 35
+  speedBumpUnmarkedDeduction: 100
+  speedBumpPaintedDeduction: 60
+  wrongLanePerSecond: 25
+  speedingPerSecond: 15
+  tricklePerSecond: 2
+  correctLaneBonus: 10
+  correctLaneBonusInterval: 5
+  cleanZoneBonus: 25
+  hazardSpeedScale:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 0.33
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  streakTiers:
+  - fromStreak: 0
+    multiplier: 1
+  - fromStreak: 2
+    multiplier: 1.5
+  - fromStreak: 4
+    multiplier: 2
+  - fromStreak: 6
+    multiplier: 2.5
+  - fromStreak: 8
+    multiplier: 3
+  popupMinPoints: 25
+  scoreFloor: 0

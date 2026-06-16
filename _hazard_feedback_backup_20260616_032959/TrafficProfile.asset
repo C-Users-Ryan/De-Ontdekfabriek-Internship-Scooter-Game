@@ -1,0 +1,52 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cacab0e1b29d0644cbca6bf0601c9697, type: 3}
+  m_Name: TrafficProfile
+  m_EditorClassIdentifier: Assembly-CSharp::KenyaScooter.Traffic.TrafficBehaviourProfile
+  normalWeight: 0.5
+  aggressiveWeight: 0.15
+  cautiousWeight: 0.25
+  distractedWeight: 0.1
+  sameDirectionIntervalMult: 1
+  oncomingIntervalMult: 1
+  sameDirectionSpeedMult: 1
+  oncomingSpeedMult: 1
+  jamMode: 0
+  personalities:
+  - personality: 0
+    speedMultiplierRange: {x: 0.95, y: 1.05}
+    yieldShift: 0.05
+    swerveShift: 0.35
+    driftAmplitude: 0.08
+    driftFrequency: 0.3
+    speedJitter: 0
+  - personality: 1
+    speedMultiplierRange: {x: 1.1, y: 1.25}
+    yieldShift: 0
+    swerveShift: 0.15
+    driftAmplitude: 0.05
+    driftFrequency: 0.2
+    speedJitter: 0
+  - personality: 2
+    speedMultiplierRange: {x: 0.8, y: 0.95}
+    yieldShift: 0.25
+    swerveShift: 0.6
+    driftAmplitude: 0.06
+    driftFrequency: 0.25
+    speedJitter: 0
+  - personality: 3
+    speedMultiplierRange: {x: 0.85, y: 1.1}
+    yieldShift: 0.1
+    swerveShift: 0.25
+    driftAmplitude: 0.5
+    driftFrequency: 0.55
+    speedJitter: 1.5

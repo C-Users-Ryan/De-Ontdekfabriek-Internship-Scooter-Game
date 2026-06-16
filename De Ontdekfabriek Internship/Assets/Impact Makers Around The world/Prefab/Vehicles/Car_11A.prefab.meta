@@ -1,0 +1,19 @@
+fileFormatVersion: 2
+guid: 67fc36df1e6161940a6496bfb60dc7bb
+labels:
+- car
+- firetruck
+- vehicle
+timeCreated: 1489097212
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 88379
+  packageName: Toon City
+  packageVersion: 1.4.6
+  assetPath: Assets/Toon Series/Toon City/Prefabs/Vehicles/Car_11A.prefab
+  uploadId: 920136
