@@ -58,12 +58,26 @@ namespace KenyaScooter.SafetyNet
         /// <summary>Called once per instance at creation (pools never destroy, so indices stay stable).</summary>
         public void Register(IRewindable participant)
         {
-            if (participants.Count >= config.maxRewindParticipants)
-            {
-                Debug.LogWarning("[RewindSystem] Participant cap reached — increase maxRewindParticipants in SafetyNetConfig.");
-                return;
-            }
+            // Grow the buffers to fit every participant rather than dropping the overflow: a dropped
+            // participant is never rewound, so it stays put while everything else snaps back — which reads
+            // as the object you hit "following you back" and as cars clipping through the rewound traffic.
             participants.Add(participant);
+            EnsureSampleCapacity(participants.Count);
+        }
+
+        /// <summary>Grows every frame's sample array so all participants get a slot. Only runs on registration
+        /// (startup + rare pool expansion), never per-frame, so recording still allocates nothing.</summary>
+        private void EnsureSampleCapacity(int needed)
+        {
+            if (frames == null || needed <= frames[0].samples.Length)
+                return;
+            int newSize = Mathf.Max(needed, frames[0].samples.Length * 2);
+            for (int i = 0; i < capacity; i++)
+            {
+                var grown = new RewindSample[newSize];
+                System.Array.Copy(frames[i].samples, grown, frames[i].samples.Length);
+                frames[i].samples = grown;
+            }
         }
 
         private void Update()

@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7f2f86454082bf04583b6e5a19218626, type: 3}
+  m_Name: UITheme_Ugani
+  m_EditorClassIdentifier: Assembly-CSharp::KenyaScooter.UI.UITheme
+  accent: {r: 0.94509804, g: 0.5686275, b: 0.25490198, a: 1}
+  gold: {r: 0.8156863, g: 0.72156864, b: 0.35686275, a: 1}
+  burnt: {r: 0.76862746, g: 0.32941177, b: 0.08627451, a: 1}
+  rust: {r: 0.68235296, g: 0.3529412, b: 0.10980392, a: 1}
+  oxblood: {r: 0.46666667, g: 0.08627451, b: 0.07450981, a: 1}
+  surfaceBase: {r: 0.101960786, g: 0.07450981, b: 0.0627451, a: 1}
+  surfaceRaise: {r: 0.16470589, g: 0.11764706, b: 0.09411765, a: 1}
+  inkPrimary: {r: 1, g: 0.9647059, b: 0.9254902, a: 1}
+  inkMuted: {r: 0.7882353, g: 0.7176471, b: 0.6509804, a: 1}
+  success: {r: 0.40392157, g: 0.7058824, b: 0.30588236, a: 1}
+  caution: {r: 0.9607843, g: 0.7058824, b: 0.23529412, a: 1}
+  danger: {r: 0.8980392, g: 0.20784314, b: 0.16862746, a: 1}
+  displayXl: 104
+  displayL: 64
+  heading: 36
+  body: 24
+  caption: 17
+  displayFont: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  bodyFont: {fileID: 11400000, guid: 2e498d1c8094910479dc3e1b768306a4, type: 2}
+  panelRadius: 24
+  panelOpacity: 0.92
+  hairlineWidth: 1
+  primaryButtonHeight: 56
+  buttonRadius: 28
+  overlayDim: 0.55

@@ -1,4 +1,5 @@
 using UnityEngine;
+using KenyaScooter.Config;
 using KenyaScooter.Core;
 using KenyaScooter.Player;
 
@@ -45,12 +46,23 @@ namespace KenyaScooter.Traffic
                 }
 
                 if (!vehicle.PassPending && playerLong > vehicleLong + threshold)
+                {
                     vehicle.PassPending = true;
+                    // A legal overtake is made toward the oncoming side (the opposite of the
+                    // country's own side): for Kenya (drive-on-left) that means passing on the right.
+                    float playerLat = RoadDirection.Lateral(player.position);
+                    float vehicleLat = RoadDirection.Lateral(vehicle.transform.position);
+                    float ownSide = RoadSideConfig.Active != null ? RoadSideConfig.Active.OwnSide : -1f;
+                    vehicle.PassOnCorrectSide = (playerLat - vehicleLat) * (-ownSide) > 0f;
+                }
 
                 if (vehicle.PassPending && inOwnLane)
                 {
                     vehicle.PassDone = true;
-                    GameEvents.RaiseOvertakeCompleted(vehicle);
+                    if (vehicle.PassOnCorrectSide)
+                        GameEvents.RaiseOvertakeCompleted(vehicle);   // points + counts as a clean overtake
+                    else
+                        GameEvents.RaiseIllegalOvertake(vehicle);     // no points, corrective warning only
                 }
             }
         }

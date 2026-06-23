@@ -24,14 +24,17 @@ namespace KenyaScooter.Player
         [Header("Turn lean (M3)")]
         [Tooltip("Extra degrees the bike leans into a road turn, on top of any steering lean.")]
         [SerializeField] private float turnLeanAngle = 16f;
-        [Tooltip("Seconds the turn lean holds before easing back upright.")]
-        [SerializeField] private float turnLeanHold = 0.4f;
+        [Tooltip("Road bend rate (deg/s) that produces the FULL turn lean. A sharper bend than this still caps at " +
+                 "turnLeanAngle. Keep this near the curve rate a real bend actually produces: a 90° tile over its " +
+                 "length L ridden at speed v gives CurveRate = (90/L)*v deg/s, e.g. a 90°/200 m tile at 10-20 m/s is " +
+                 "only ~4.5-9 deg/s, so a high reference here leaves the lean nearly invisible. ~8 makes a cruise-speed " +
+                 "bend lean hard; lower for an even stronger dip.")]
+        [SerializeField] private float turnLeanReferenceRate = 8f;
 
         private float steerRoll;
         private float rollVelocity;
         private float turnLean;
         private float turnLeanVelocity;
-        private float turnLeanTarget;
         private Quaternion baseRotation = Quaternion.identity;
         private Vector3 basePosition;
         private Vector3 pivotLocal;
@@ -63,17 +66,6 @@ namespace KenyaScooter.Player
                 Debug.LogWarning("[ScooterLean] No visual assigned and no child mesh found, so the scooter will not lean. Assign the model child in the Inspector.", this);
             if (config == null)
                 Debug.LogWarning("[ScooterLean] No ScooterConfig found (assign one, or add a PlayerController that has one), so the scooter will not lean.", this);
-        }
-
-        private void OnEnable() => RoadDirection.DirectionChanged += HandleDirectionChanged;
-        private void OnDisable() => RoadDirection.DirectionChanged -= HandleDirectionChanged;
-
-        /// <summary>Kick the bike into a lean when the road turns (M3): work out which way the turn
-        /// goes and set a temporary roll into it, which eases back upright over turnLeanHold.</summary>
-        private void HandleDirectionChanged(Vector3 previous, Vector3 next)
-        {
-            float signed = Vector3.SignedAngle(previous, next, Vector3.up); // +right, -left
-            turnLeanTarget = -Mathf.Sign(signed) * turnLeanAngle;           // lean into the turn (matches the steer-lean sign)
         }
 
         private Transform FindVisualChild()
@@ -118,11 +110,11 @@ namespace KenyaScooter.Player
             float target = -ScooterInputRouter.Instance.Lateral * config.maxLeanAngle;
             steerRoll = Mathf.SmoothDampAngle(steerRoll, target, ref rollVelocity, Mathf.Max(0.0001f, leanSmoothTime));
 
-            // Turn lean (M3): ease toward the turn target while the target itself decays back to zero
-            // over turnLeanHold, so the bike dips into the corner and rights itself once through it.
-            float decay = turnLeanAngle / Mathf.Max(0.05f, turnLeanHold) * Time.deltaTime;
-            turnLeanTarget = Mathf.MoveTowards(turnLeanTarget, 0f, decay);
-            turnLean = Mathf.SmoothDampAngle(turnLean, turnLeanTarget, ref turnLeanVelocity, 0.12f);
+            // Turn lean (M3): lean into the road's live bend. CurveRate is signed deg/s (+ bends right),
+            // so the bike dips into the corner while the road curves and rights itself on the straight —
+            // matching the steer-lean sign. Scaled by how sharp the bend is, capped at turnLeanAngle.
+            float curveLeanTarget = -Mathf.Clamp(RoadDirection.CurveRate / Mathf.Max(1f, turnLeanReferenceRate), -1f, 1f) * turnLeanAngle;
+            turnLean = Mathf.SmoothDampAngle(turnLean, curveLeanTarget, ref turnLeanVelocity, 0.12f);
 
             float roll = steerRoll + turnLean + (wobble != null ? wobble.CurrentRoll : 0f);
 

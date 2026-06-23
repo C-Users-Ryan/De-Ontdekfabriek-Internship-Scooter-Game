@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using KenyaScooter.Config;
 using KenyaScooter.Core;
+using KenyaScooter.Hazards;
 using KenyaScooter.SafetyNet;
 
 namespace KenyaScooter.Traffic
@@ -54,6 +55,8 @@ namespace KenyaScooter.Traffic
         [System.NonSerialized] public bool PassPending;
         [System.NonSerialized] public bool PassDone;
         [System.NonSerialized] public bool PassInvalidated;
+        /// <summary>True when the pass happened on the legal side (toward the oncoming lane). Set by OvertakeDetector.</summary>
+        [System.NonSerialized] public bool PassOnCorrectSide;
         [System.NonSerialized] public bool NearMissDone;
         [System.NonSerialized] public float NearMissPrevDelta;
         [System.NonSerialized] public bool WasHitByPlayer;
@@ -71,6 +74,20 @@ namespace KenyaScooter.Traffic
         private float highlightAmount;
         private bool vergeStopArmed;
         private bool vergeStopping;
+        private float hazardHoldLat;    // the lateral the last hazard dodge settled on
+        private float hazardHoldTimer;  // counts down after a hazard passes, easing the car back to its lane
+
+        // Hazard avoidance (M21 fairness): cars ease around hazards in their lane, which also telegraphs them.
+        private const float HazardLookahead = 16f;     // first notice the hazard this far ahead and begin easing over
+        private const float HazardDodgeFull = 6f;      // be fully alongside-clear by this distance (ease in between the two)
+        private const float HazardLaneBand = 1.4f;     // a hazard counts as "in my lane" within this lateral distance
+        private const float HazardClearance = 1.7f;    // aim this far to the clear side of the hazard centre
+        private const float HazardReleaseHold = 0.5f;  // keep steering wide for this long after passing, then ease back
+        private const float CarAvoidGap = 1.8f;        // keep at least this lateral gap from another car
+        private const float CarAvoidLongWindow = 6f;   // only cars this close longitudinally can block the dodge
+        private const float FollowDistance = 10f;      // start slowing behind a same-direction car within this gap
+        private const float MinFollowGap = 4.5f;       // never close nearer than this (about a car length)
+        private const float FollowLaneBand = 1.2f;     // a car counts as "ahead in my lane" within this lateral distance
 
         private void Awake()
         {
@@ -95,11 +112,14 @@ namespace KenyaScooter.Traffic
                 ? 0f
                 : Random.Range(range.x, range.y) * Random.Range(settings.speedMultiplierRange.x, settings.speedMultiplierRange.y) * profileMult;
 
-            // Same-direction traffic sits just under the player's base (coasting) speed, so coasting keeps
-            // pace, gas pulls ahead to overtake, and braking drops you back. Kept below base (not equal) so
-            // cars still drift backwards and despawn — a car that matched exactly would never recycle.
+            // Same-direction traffic cruises clearly BELOW the player's base (coasting) speed, so the player
+            // closes on it and can complete an overtake across the normal speed range — not only near max.
+            // Coasting still overtakes (gently); gas overtakes faster; braking lets cars pull ahead. Held this
+            // far under base so a pass actually finishes without flooring it, while cars still drift back and
+            // despawn. (Previously 0.82-0.97 of base — almost the player's own coasting speed — which made the
+            // closing speed near zero at cruise, so overtakes only scored at top speed.)
             if (Direction == LaneDirection.SameDirection && !isStaticObstacle && WorldSpeed.Instance != null)
-                baseSpeed = Mathf.Min(baseSpeed, WorldSpeed.Instance.BaseSpeed * Random.Range(0.82f, 0.97f));
+                baseSpeed = Mathf.Min(baseSpeed, WorldSpeed.Instance.BaseSpeed * Random.Range(0.6f, 0.78f));
 
             // Per-vehicle yield willingness, so two cars of the same personality still differ.
             yieldBias = Random.Range(0.5f, 1.25f);
@@ -109,8 +129,11 @@ namespace KenyaScooter.Traffic
             driftPhase = Random.value * 100f;
             vergeStopArmed = !isStaticObstacle && direction == LaneDirection.SameDirection && Random.value < vergeStopChance;
             vergeStopping = false;
+            hazardHoldLat = RoadDirection.Lateral(position);
+            hazardHoldTimer = 0f;
 
             PassStarted = PassPending = PassDone = PassInvalidated = false;
+            PassOnCorrectSide = false;
             NearMissDone = false;
             NearMissPrevDelta = float.MaxValue;
             WasHitByPlayer = false;
@@ -171,6 +194,17 @@ namespace KenyaScooter.Traffic
                     lateralTarget += Mathf.Sign(selfLat - playerLat) * settings.swerveShift;
             }
 
+            // Both lanes share the same hazard-dodge and anti-clip spacing: every moving car eases around
+            // the hazards in its own lane and never slides into the car ahead of or beside it. Verge-stoppers
+            // and parked obstacles are exempt — they are meant to sit still.
+            if (!isStaticObstacle && !vergeStopping)
+            {
+                float selfLat = RoadDirection.Lateral(transform.position);
+                lateralTarget = AvoidHazards(selfLong, lateralTarget, deltaTime);
+                targetSpeed = Mathf.Min(targetSpeed, FollowSpeedCap(selfLong, selfLat)); // don't rear-end the car ahead
+                lateralTarget = SpaceFromTraffic(selfLong, selfLat, lateralTarget);       // don't steer into a car beside me
+            }
+
             CurrentSpeed = Mathf.MoveTowards(CurrentSpeed, Mathf.Max(0f, targetSpeed), 3f * deltaTime);
 
             // Net longitudinal motion = own driving minus world scroll (M1).
@@ -192,6 +226,127 @@ namespace KenyaScooter.Traffic
 
             if (horn != null)
                 horn.Tick(ahead, RoadDirection.Lateral(playerPosition) - RoadDirection.Lateral(position));
+        }
+
+        /// <summary>
+        /// Steers the lateral target around the nearest hazard ahead in this car's own lane — works for both
+        /// directions ("ahead" follows the car's heading). The swerve EASES in with proximity (a gentle lean
+        /// far out, fully clear by the time it is alongside) and EASES back out over <see cref="HazardReleaseHold"/>
+        /// seconds after passing, so it reads as a driver flowing around a pothole, not a snap step. It picks
+        /// whichever side of the hazard leaves more room inside the lane, never crossing into oncoming. The dodge
+        /// is only taken into clear space: if a car in the same lane sits in the path, it holds its line and rides
+        /// over the hazard instead — so this can never push two cars into each other.
+        /// </summary>
+        private float AvoidHazards(float selfLong, float lateralTarget, float deltaTime)
+        {
+            float travelDir = Direction == LaneDirection.SameDirection ? 1f : -1f; // "ahead" is along my heading
+
+            Hazard nearest = null;
+            float nearestGap = HazardLookahead;
+            List<Hazard> hazards = Hazard.Active;
+            for (int i = 0; i < hazards.Count; i++)
+            {
+                Hazard hz = hazards[i];
+                if (hz == null) continue;
+                float hAhead = (RoadDirection.Longitudinal(hz.transform.position) - selfLong) * travelDir;
+                if (hAhead <= 0f || hAhead >= nearestGap) continue;
+                if (Mathf.Abs(RoadDirection.Lateral(hz.transform.position) - lateralTarget) > HazardLaneBand) continue;
+                nearest = hz; nearestGap = hAhead;
+            }
+
+            if (nearest != null)
+            {
+                float dodge = LaneDodgeTarget(RoadDirection.Lateral(nearest.transform.position));
+                float dodgeDir = Mathf.Sign(dodge - lateralTarget);
+                if (!DodgeBlockedByTraffic(selfLong, lateralTarget, dodge, dodgeDir))
+                {
+                    // Ease the swerve in as the hazard nears: a faint lean at HazardLookahead, fully over by HazardDodgeFull.
+                    float reach = Mathf.Max(0.01f, HazardLookahead - HazardDodgeFull);
+                    float proximity = Mathf.SmoothStep(0f, 1f, 1f - Mathf.Clamp01((nearestGap - HazardDodgeFull) / reach));
+                    float target = Mathf.Lerp(lateralTarget, dodge, proximity);
+                    hazardHoldLat = target;
+                    hazardHoldTimer = HazardReleaseHold;
+                    return target;
+                }
+            }
+
+            // Past the hazard (or boxed out of the dodge): ease back from the line we were holding so the
+            // car merges back into lane smoothly instead of snapping straight once the hazard clears.
+            if (hazardHoldTimer > 0f)
+            {
+                hazardHoldTimer -= deltaTime;
+                return Mathf.Lerp(lateralTarget, hazardHoldLat, Mathf.Clamp01(hazardHoldTimer / HazardReleaseHold));
+            }
+            return lateralTarget;
+        }
+
+        /// <summary>Lateral the car should aim for to clear a hazard: to whichever side of it leaves more room
+        /// inside this car's own lane, kept between the centre buffer and the verge so it never crosses into oncoming.</summary>
+        private float LaneDodgeTarget(float hazardLat)
+        {
+            float laneSide = laneCentre < 0f ? -1f : 1f; // toward my own verge (works for either lane)
+            float limit = RoadSideConfig.Active != null ? RoadSideConfig.Active.playerLateralLimit : 4.2f;
+            float buffer = RoadSideConfig.Active != null ? RoadSideConfig.Active.centreBuffer : 0.5f;
+            float vergeEdge = laneSide * (limit - width * 0.5f);    // outer usable lateral, my side
+            float centreEdge = laneSide * (buffer + width * 0.5f);  // inner usable lateral, just shy of the centre line
+            float dodge = Mathf.Abs(vergeEdge - hazardLat) >= Mathf.Abs(centreEdge - hazardLat)
+                ? hazardLat + laneSide * HazardClearance   // more room toward the verge
+                : hazardLat - laneSide * HazardClearance;  // more room toward the centre line (still my lane)
+            return Mathf.Clamp(dodge, Mathf.Min(vergeEdge, centreEdge), Mathf.Max(vergeEdge, centreEdge));
+        }
+
+        private bool DodgeBlockedByTraffic(float selfLong, float fromLat, float toLat, float dodgeDir)
+        {
+            for (int i = 0; i < Active.Count; i++)
+            {
+                TrafficVehicle v = Active[i];
+                if (v == this || v.Direction != Direction) continue; // only cars sharing my lane can be in the way
+                if (Mathf.Abs(RoadDirection.Longitudinal(v.transform.position) - selfLong) > CarAvoidLongWindow) continue;
+                float vLat = RoadDirection.Lateral(v.transform.position);
+                if ((vLat - fromLat) * dodgeDir <= 0f) continue;          // car is not on the side I am dodging toward
+                if ((vLat - toLat) * dodgeDir < CarAvoidGap) return true; // car sits inside the dodge path
+            }
+            return false;
+        }
+
+        // Car-following: cap my speed behind the nearest car ahead in my own lane, so I never rear-end it.
+        // "Ahead" follows my heading, so this holds for oncoming traffic queueing up too.
+        private float FollowSpeedCap(float selfLong, float selfLat)
+        {
+            float travelDir = Direction == LaneDirection.SameDirection ? 1f : -1f;
+            float leaderGap = FollowDistance;
+            float leaderSpeed = 0f;
+            bool found = false;
+            for (int i = 0; i < Active.Count; i++)
+            {
+                TrafficVehicle v = Active[i];
+                if (v == this || v.Direction != Direction) continue;
+                float gap = (RoadDirection.Longitudinal(v.transform.position) - selfLong) * travelDir;
+                if (gap <= 0f || gap >= leaderGap) continue;
+                if (Mathf.Abs(RoadDirection.Lateral(v.transform.position) - selfLat) > FollowLaneBand) continue;
+                leaderGap = gap; leaderSpeed = v.CurrentSpeed; found = true;
+            }
+            if (!found)
+                return float.MaxValue;
+            float t = Mathf.InverseLerp(MinFollowGap, FollowDistance, leaderGap); // 0 at the min gap, 1 at the follow distance
+            return Mathf.Lerp(leaderSpeed * 0.8f, leaderSpeed, t);
+        }
+
+        // Lateral spacing: clamp the lateral target so I never steer within a car's width of another car in my
+        // lane alongside me — so two cars can never slide sideways into each other.
+        private float SpaceFromTraffic(float selfLong, float selfLat, float lateralTarget)
+        {
+            for (int i = 0; i < Active.Count; i++)
+            {
+                TrafficVehicle v = Active[i];
+                if (v == this || v.Direction != Direction) continue;
+                if (Mathf.Abs(RoadDirection.Longitudinal(v.transform.position) - selfLong) > (length + v.length) * 0.5f) continue;
+                float vLat = RoadDirection.Lateral(v.transform.position);
+                float minGap = (width + v.width) * 0.5f + 0.3f;
+                if (vLat >= selfLat) lateralTarget = Mathf.Min(lateralTarget, vLat - minGap);
+                else                 lateralTarget = Mathf.Max(lateralTarget, vLat + minGap);
+            }
+            return lateralTarget;
         }
 
         /// <summary>Brief emission pulse on a near miss (M18). MaterialPropertyBlock — no material instancing.</summary>

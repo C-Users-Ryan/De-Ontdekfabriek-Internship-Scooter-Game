@@ -72,11 +72,24 @@ namespace KenyaScooter.Traffic
                     Despawn(vehicle); // pulled too far ahead (the player braked) — recycle so spawning never stalls
             }
 
-            if (state == GameState.Playing)
+            if (state == GameState.Playing && !CurveAhead())
             {
                 SpawnSameDirection(playerLong);
                 SpawnOncoming(playerLong);
             }
+        }
+
+        /// <summary>
+        /// True when the road bends within the spawn distance. Traffic is placed on the straight +Z
+        /// spawn line, which leaves the road through a curve, so spawning pauses across a bend and the
+        /// existing stream flows through and clears — the road thins naturally at a turn, then resumes.
+        /// </summary>
+        private bool CurveAhead()
+        {
+            if (RoadSequencer.Instance == null)
+                return false;
+            float lookAhead = Mathf.Max(config.sameDirectionSpawnDistance, config.oncomingSpawnDistance) + 30f;
+            return Mathf.Abs(RoadSequencer.Instance.SharpestCurveWithin(lookAhead)) > 5f;
         }
 
         // ---- Spawning -------------------------------------------------------------

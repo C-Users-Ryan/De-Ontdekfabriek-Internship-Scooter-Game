@@ -20,6 +20,9 @@ namespace KenyaScooter.Core
         /// <summary>Every instance ever created by this pool, for rewind registration and reconciliation.</summary>
         public readonly List<T> AllInstances = new List<T>();
 
+        /// <summary>The prefab this pool clones — lets callers map an instance back to its source prefab (used by the rewind tile re-queue).</summary>
+        public T Prefab => prefab;
+
         public ObjectPool(T prefab, Transform parent, int initialSize, Action<T> onCreated = null)
         {
             this.prefab = prefab;

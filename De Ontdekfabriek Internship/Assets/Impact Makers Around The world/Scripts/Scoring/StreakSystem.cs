@@ -20,8 +20,17 @@ namespace KenyaScooter.Scoring
         public int BestStreak { get; private set; }
         public float Multiplier => MultiplierFor(Streak);
 
-        private void OnEnable() => GameEvents.SessionReset += HandleSessionReset;
-        private void OnDisable() => GameEvents.SessionReset -= HandleSessionReset;
+        private void OnEnable()
+        {
+            GameEvents.SessionReset += HandleSessionReset;
+            GameEvents.GroupReset += HandleGroupReset;
+        }
+
+        private void OnDisable()
+        {
+            GameEvents.SessionReset -= HandleSessionReset;
+            GameEvents.GroupReset -= HandleGroupReset;
+        }
 
         public void RegisterCleanOvertake()
         {
@@ -41,15 +50,29 @@ namespace KenyaScooter.Scoring
 
         private float MultiplierFor(int streak)
         {
+            ScoreConfig.StreakTier[] tiers = config != null ? config.streakTiers : null;
+            if (tiers == null || tiers.Length == 0)
+            {
+                // Default ladder for an auto-created StreakSystem with no ScoreConfig wired.
+                if (streak >= 8) return 3f;
+                if (streak >= 6) return 2.5f;
+                if (streak >= 4) return 2f;
+                if (streak >= 2) return 1.5f;
+                return 1f;
+            }
             float multiplier = 1f;
-            ScoreConfig.StreakTier[] tiers = config.streakTiers;
             for (int i = 0; i < tiers.Length; i++)
                 if (streak >= tiers[i].fromStreak)
                     multiplier = tiers[i].multiplier;
             return multiplier;
         }
 
-        private void HandleSessionReset()
+        // The shared streak carries across players WITHIN a group — so one player's clean driving keeps the
+        // team's multiplier alive and one player's mistake costs everyone. A new turn just refreshes the UI.
+        private void HandleSessionReset() => GameEvents.RaiseStreakChanged(Streak, Multiplier);
+
+        // A new class group wipes the shared streak.
+        private void HandleGroupReset()
         {
             Streak = 0;
             BestStreak = 0;

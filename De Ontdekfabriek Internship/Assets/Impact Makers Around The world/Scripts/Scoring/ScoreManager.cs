@@ -35,8 +35,9 @@ namespace KenyaScooter.Scoring
         {
             Instance = this;
             if (streak == null)
-                Debug.LogWarning("[ScoreManager] The Streak field is not assigned — assign the StreakSystem component in the Inspector. " +
-                    "Scoring still works, but the streak multiplier is treated as 1× until you do.", this);
+                streak = FindObjectOfType<StreakSystem>();
+            if (streak == null)
+                streak = gameObject.AddComponent<StreakSystem>(); // self-create so the multiplier works with zero scene wiring
         }
 
         private void OnEnable()

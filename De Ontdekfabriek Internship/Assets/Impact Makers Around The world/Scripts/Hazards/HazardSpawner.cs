@@ -14,11 +14,15 @@ namespace KenyaScooter.Hazards
     /// ramp, rocks only on murram/tsavo/construction sequences, speed bumps capped per
     /// session. Clusters are laterally staggered so the player can thread through.
     /// Spawning stops at the checkpoint; scrolling continues (Req §9.1).
+    ///
+    /// Each hazard is parametrised by its point on the road — arc-length along the centreline plus a
+    /// lateral offset — and its world pose is re-derived every frame through RoadSequencer's curve mapping
+    /// (the same one that places the tiles). So hazards ride a bend with the road instead of scrolling down
+    /// the straight +Z line, and keep populating the road through curves (no thinning approaching a turn).
     /// </summary>
     public sealed class HazardSpawner : MonoBehaviour
     {
         [SerializeField] private HazardSpawnConfig[] configs;
-        [SerializeField] private Transform player;
         [SerializeField] private float despawnBehindDistance = 25f;
 
         private sealed class SpawnState
@@ -78,35 +82,41 @@ namespace KenyaScooter.Hazards
             if (state != GameState.Playing && state != GameState.AtCheckpoint)
                 return;
 
-            // Central scroll (M1) and despawn.
-            Vector3 delta = -RoadDirection.Current * (WorldSpeed.Instance.Current * Time.deltaTime);
-            float playerLong = RoadDirection.Longitudinal(player.position);
+            float playerArc = PlayerArc;
+
+            // Re-place every active hazard from its fixed point on the road (arc + lateral) so it rides the
+            // curve exactly like the tiles do (M1, M3): the road bends around the stationary player, so a
+            // hazard scrolled down the straight +Z line would float off the surface through a bend. Despawn
+            // once it has passed far enough behind the player (measured along the road, not in world Z).
             for (int i = active.Count - 1; i >= 0; i--)
             {
                 Hazard hazard = active[i];
-                hazard.transform.position += delta;
-                if (playerLong - RoadDirection.Longitudinal(hazard.transform.position) > despawnBehindDistance)
+                if (playerArc - hazard.RoadArc > despawnBehindDistance)
                 {
                     hazard.SourcePool.Release(hazard);
                     active.RemoveAt(i);
+                    continue;
                 }
+                PlaceOnRoad(hazard);
             }
 
             if (state != GameState.Playing)
                 return;
 
-            float travelled = WorldSpeed.Instance.DistanceTravelled;
             for (int i = 0; i < states.Count; i++)
-                TrySpawnCluster(states[i], travelled, playerLong);
+                TrySpawnCluster(states[i], playerArc);
         }
 
-        private void TrySpawnCluster(SpawnState state, float travelled, float playerLong)
+        private void TrySpawnCluster(SpawnState state, float playerArc)
         {
             HazardSpawnConfig config = state.config;
-            if (travelled < state.nextClusterAt)
+            if (playerArc < state.nextClusterAt)
                 return;
             if (config.maxPerSession > 0 && state.clustersThisSession >= config.maxPerSession)
                 return;
+
+            // No bend gate any more: hazards are placed in road space and follow the curve (see SpawnCluster /
+            // RoadSequencer.TryGetRoadPose), so the road no longer thins approaching a turn.
 
             // Context filter (Req §6.2): rocks only appear on murram/tsavo/construction.
             // Blank/empty tag entries are ignored, so a stray empty element can't gate a hazard to never spawn.
@@ -115,20 +125,20 @@ namespace KenyaScooter.Hazards
                 RoadSequence current = RoadSequencer.Instance != null ? RoadSequencer.Instance.CurrentSequence : null;
                 if (current == null || !current.HasAnyTag(config.requiredContextTags))
                 {
-                    state.nextClusterAt = travelled + 20f; // retry once the zone changes
+                    state.nextClusterAt = playerArc + 20f; // retry once the zone changes
                     return;
                 }
             }
 
-            SpawnCluster(state, playerLong);
+            SpawnCluster(state, playerArc);
             state.clustersThisSession++;
-            state.nextClusterAt = travelled + IntervalFor(config);
+            state.nextClusterAt = playerArc + IntervalFor(config);
         }
 
-        private void SpawnCluster(SpawnState state, float playerLong)
+        private void SpawnCluster(SpawnState state, float playerArc)
         {
             HazardSpawnConfig config = state.config;
-            float baseLongitudinal = playerLong + config.spawnAheadDistance;
+            float baseArc = playerArc + config.spawnAheadDistance;
             float baseLateral = PickLateral(config.zones);
 
             int count = Random.Range(config.clusterMin, config.clusterMax + 1);
@@ -136,35 +146,63 @@ namespace KenyaScooter.Hazards
             {
                 Hazard hazard = state.pool.Get();
                 hazard.definition = config; // stamp so the hit carries this config's scoring/warning data (SC4)
-                // Staggered laterally so a path through always exists (Req §6.1).
-                float lateral = baseLateral + (i == 0 ? 0f : (i % 2 == 0 ? 1f : -1f) * config.lateralStagger);
-                float longitudinal = baseLongitudinal + i * config.clusterSpacing;
-
-                hazard.transform.position = RoadDirection.Current * longitudinal + RoadDirection.SteerAxis * lateral;
-                hazard.transform.rotation = Quaternion.LookRotation(RoadDirection.Current);
+                // Both the arc (longitudinal) and the lateral are road-space, so a staggered cluster — which
+                // keeps a path through it (Req §6.1) — follows the bend instead of a straight line.
+                hazard.RoadLateral = baseLateral + (i == 0 ? 0f : (i % 2 == 0 ? 1f : -1f) * config.lateralStagger);
+                hazard.RoadArc = baseArc + i * config.clusterSpacing;
                 hazard.transform.localScale = hazard.baseScale * Random.Range(config.scaleRange.x, config.scaleRange.y);
                 hazard.gameObject.SetActive(true);
-                GroundOnRoad(hazard, config.spawnHeight);
+                PlaceAndGround(hazard, config.spawnHeight); // resolve its curved world pose and rest it on the surface
                 active.Add(hazard);
             }
         }
 
-        /// <summary>
-        /// Lifts the hazard so its lowest rendered point sits 'clearance' metres above the road
-        /// (y = 0), whatever the prefab's pivot is — so it rests on the surface instead of
-        /// sinking into / being hidden by it. The yaw-only spawn rotation keeps the vertical
-        /// extent exact. Falls back to a flat offset if the hazard has no renderer to measure.
-        /// </summary>
-        private static void GroundOnRoad(Hazard hazard, float clearance)
+        /// <summary>Re-derives a live hazard's world pose from its road-space point (arc + lateral) for this
+        /// frame, then applies the constant vertical lift measured at spawn — so it rides the curve with the road.</summary>
+        private static void PlaceOnRoad(Hazard hazard)
         {
-            Renderer renderer = hazard.GetComponentInChildren<Renderer>();
-            if (renderer == null)
-            {
-                hazard.transform.position += Vector3.up * clearance;
-                return;
-            }
-            hazard.transform.position += Vector3.up * (clearance - renderer.bounds.min.y);
+            ResolveWorldPose(hazard.RoadArc, hazard.RoadLateral, out Vector3 position, out Quaternion rotation);
+            position.y += hazard.GroundOffset;
+            hazard.transform.SetPositionAndRotation(position, rotation);
         }
+
+        /// <summary>
+        /// First placement of a freshly spawned hazard: resolve its curved world pose, measure how far to lift
+        /// it so its LOWEST rendered point sits 'clearance' metres above the flat road (y = 0) whatever the
+        /// prefab pivot is, cache that lift on the hazard, and apply it. The road is flat and the spawn
+        /// rotation is yaw-only, so the lift is constant — later frames reuse it via <see cref="PlaceOnRoad"/>
+        /// with no per-frame bounds query. Falls back to a flat offset if there is no renderer to measure.
+        /// </summary>
+        private static void PlaceAndGround(Hazard hazard, float clearance)
+        {
+            ResolveWorldPose(hazard.RoadArc, hazard.RoadLateral, out Vector3 position, out Quaternion rotation);
+            hazard.transform.SetPositionAndRotation(position, rotation); // on the centreline (y≈0) so bounds measure true
+            Renderer renderer = hazard.GetComponentInChildren<Renderer>();
+            hazard.GroundOffset = renderer != null ? clearance - renderer.bounds.min.y : clearance;
+            position.y += hazard.GroundOffset;
+            hazard.transform.position = position;
+        }
+
+        /// <summary>
+        /// World pose of a point on the road (arc-length + lateral) via RoadSequencer's player-anchored mapping,
+        /// so it follows the curve (M3). Falls back to the old straight +Z line only when there is no sequencer
+        /// or the road is not built yet, so the spawner still behaves in a bare test scene.
+        /// </summary>
+        private static void ResolveWorldPose(float arc, float lateral, out Vector3 position, out Quaternion rotation)
+        {
+            if (RoadSequencer.Instance != null
+                && RoadSequencer.Instance.TryGetRoadPose(arc, lateral, out position, out rotation))
+                return;
+
+            float ahead = arc - PlayerArc; // the player rides at the world origin, so a hazard's Z is its distance ahead
+            position = RoadDirection.Current * ahead + RoadDirection.SteerAxis * lateral;
+            rotation = Quaternion.LookRotation(RoadDirection.Current);
+        }
+
+        /// <summary>The player's progress along the road centreline (metres). Prefers RoadSequencer's rewound
+        /// odometer so placement and scheduling share the road's frame; falls back to the world odometer.</summary>
+        private static float PlayerArc =>
+            RoadSequencer.Instance != null ? RoadSequencer.Instance.PlayerArc : WorldSpeed.Instance.DistanceTravelled;
 
         /// <summary>Metres until the next cluster — shrinks over the session via the density curve (M21, D10).</summary>
         private static float IntervalFor(HazardSpawnConfig config)

@@ -21,9 +21,9 @@ namespace KenyaScooter.FX
     public sealed class SpeedLines : MonoBehaviour
     {
         [SerializeField] private float maxEmissionRate = 180f;
-        [Tooltip("Speed ratio (0–1 of max) to emission fraction. Flat zero up to base speed.")]
+        [Tooltip("Over-cruise fraction (0 = cruising speed, 1 = max) to emission fraction. Stays 0 at cruise; drag the middle key to change how soon streaks ramp in above it.")]
         [SerializeField] private AnimationCurve emissionBySpeed = new AnimationCurve(
-            new Keyframe(0f, 0f), new Keyframe(0.35f, 0f), new Keyframe(1f, 1f));
+            new Keyframe(0f, 0f), new Keyframe(0.12f, 0f), new Keyframe(1f, 1f));
 
         [Header("Auto-setup")]
         [Tooltip("Build a complete white speed-line effect at runtime. Turn off only if you want to author the ParticleSystem by hand in the editor (the safe material is still applied).")]
@@ -61,9 +61,15 @@ namespace KenyaScooter.FX
 
         private void Update()
         {
-            float rate = GameManager.State == GameState.Playing || GameManager.State == GameState.AtCheckpoint
-                ? emissionBySpeed.Evaluate(WorldSpeed.Instance.SpeedRatio) * maxEmissionRate
-                : 0f;
+            float rate = 0f;
+            if ((GameManager.State == GameState.Playing || GameManager.State == GameState.AtCheckpoint)
+                && WorldSpeed.Instance != null)
+            {
+                WorldSpeed ws = WorldSpeed.Instance;
+                // 0 at or below cruising (base) speed, 1 at max — so streaks only show when driving FASTER than cruise.
+                float overCruise = Mathf.InverseLerp(ws.BaseSpeed, ws.MaxSpeed, ws.Current);
+                rate = emissionBySpeed.Evaluate(overCruise) * maxEmissionRate;
+            }
             emission.rateOverTime = rate;
         }
 

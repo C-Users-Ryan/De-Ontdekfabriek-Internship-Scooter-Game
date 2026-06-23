@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using KenyaScooter.Core;
 
 namespace KenyaScooter.Scoring
 {
@@ -12,7 +13,21 @@ namespace KenyaScooter.Scoring
     /// </summary>
     public sealed class GroupScoreManager : MonoBehaviour
     {
-        public static GroupScoreManager Instance { get; private set; }
+        private static GroupScoreManager _instance;
+        /// <summary>Self-creates if it was never placed in the scene, so the team total always survives turns.</summary>
+        public static GroupScoreManager Instance
+        {
+            get
+            {
+                if (_instance == null)
+                {
+                    _instance = FindObjectOfType<GroupScoreManager>();
+                    if (_instance == null && Application.isPlaying)
+                        _instance = new GameObject("GroupScoreManager (auto)").AddComponent<GroupScoreManager>();
+                }
+                return _instance;
+            }
+        }
 
         public int GroupTotal { get; private set; }
         public int TurnCount { get; private set; }
@@ -20,7 +35,7 @@ namespace KenyaScooter.Scoring
         /// <summary>(group total, points the last turn added).</summary>
         public event Action<int, int> GroupChanged;
 
-        private void Awake() => Instance = this;
+        private void Awake() => _instance = this;
 
         /// <summary>Called once per turn by GameManager when the turn ends (checkpoint, finish or game over).</summary>
         public void CommitTurn(int turnScore)
@@ -36,6 +51,7 @@ namespace KenyaScooter.Scoring
             GroupTotal = 0;
             TurnCount = 0;
             GroupChanged?.Invoke(0, 0);
+            GameEvents.RaiseGroupReset(); // shared streak and any other group-scoped state wipe with the group
         }
     }
 }

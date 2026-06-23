@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using KenyaScooter.Config;
 using KenyaScooter.Core;
@@ -15,6 +16,9 @@ namespace KenyaScooter.Hazards
     [RequireComponent(typeof(Collider))]
     public sealed class Hazard : MonoBehaviour, IRewindable
     {
+        /// <summary>Every live hazard, so traffic can steer around them (the only lookup path, no scene scans).</summary>
+        public static readonly List<Hazard> Active = new List<Hazard>(32);
+
         /// <summary>The spawn-config that created this instance, stamped by HazardSpawner.
         /// Carries the hazard's scoring, warning and category data (data-driven, SC4).</summary>
         [System.NonSerialized] public HazardSpawnConfig definition;
@@ -24,6 +28,16 @@ namespace KenyaScooter.Hazards
         /// <summary>The prefab's authored scale, captured once so the spawner can vary the
         /// size around it without clobbering the intended proportions.</summary>
         [System.NonSerialized] public Vector3 baseScale = Vector3.one;
+
+        /// <summary>Where this hazard sits on the road, in road space: arc-length along the centreline plus a
+        /// lateral offset from it. HazardSpawner stamps these at spawn and re-derives the world position from
+        /// them every frame (via RoadSequencer) so the hazard rides the curve. They survive pooling, like SourcePool.</summary>
+        [System.NonSerialized] public float RoadArc;
+        [System.NonSerialized] public float RoadLateral;
+
+        /// <summary>World-space vertical lift that rests this hazard on the (flat) road surface, measured once at
+        /// spawn from its renderer and reused every frame — so the per-frame re-place stays allocation-free.</summary>
+        [System.NonSerialized] public float GroundOffset;
 
         private Collider hitCollider;
         private bool consumed;
@@ -38,7 +52,10 @@ namespace KenyaScooter.Hazards
         {
             consumed = false;
             hitCollider.enabled = true;
+            Active.Add(this);
         }
+
+        private void OnDisable() => Active.Remove(this);
 
         private void OnTriggerEnter(Collider other)
         {

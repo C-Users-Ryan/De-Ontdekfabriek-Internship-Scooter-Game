@@ -55,7 +55,10 @@ namespace KenyaScooter.Player
                 return;
 
             wrongLaneTime += Time.deltaTime;
-            if (wrongLaneTime < road.wrongLaneGraceSeconds)
+            // Hugging the far edge of the oncoming lane is egregious (not a normal overtake) — warn at once,
+            // bypassing the overtake grace. Anything closer to the centre line still gets the grace window.
+            bool deep = -ownSide > road.playerLateralLimit * 0.7f;
+            if (!deep && wrongLaneTime < road.wrongLaneGraceSeconds)
                 return;
 
             if (!overstayed)

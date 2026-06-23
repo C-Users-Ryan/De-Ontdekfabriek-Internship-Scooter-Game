@@ -50,7 +50,7 @@
 |---|----------|----------------|
 | M1 | World scroll | `WorldSpeed` (speed owner) + central scroll loops in `RoadSequencer`, `HazardSpawner`, `TrafficVehicle.Tick` |
 | M2 | Speed system | `WorldSpeed.ApplyThrottle` + `ScooterConfig` (10/30 m/s, 15/20/5 m/s²) |
-| M3 | Road turn | `TurnTrigger` → `RoadDirection.Turn` → `CameraRigController` (0.35 s), exit-anchor tile chaining in `RoadSequencer` |
+| M3 | Road turn | A tile's `RoadTile.curveAngle` bends the road in `RoadSequencer` (constant +Z/+X frame; the road curves around the stationary player); `CameraRigController` + `ScooterLean` bank into it from `RoadDirection.CurveRate` |
 | M4 | Gas/brake touch zones | `TouchZoneProvider` (right = gas, left = brake), combined in `ScooterInputRouter` |
 | M5 | Lateral steering | `GyroTiltProvider` (tilt → [-1,1]) + `PlayerController` (MoveTowards, 30 m/s², no instant reversal) |
 | M6 | Scooter lean | `ScooterLean` — reads **raw input**, so lean precedes position change |
@@ -89,7 +89,7 @@ Requirements-only systems with no MDA number: speeding tiers (`SpeedMonitor` + `
 | New Input System only | All input via `Keyboard.current` / `Gamepad.current` / `Touchscreen.current` / `GravitySensor` — zero legacy `Input.` calls |
 | Object pools only | `ObjectPool<T>` everywhere; the only runtime `Instantiate` calls are at `Awake`/`Start` (pool prewarm, UI pools, checkpoint instance) |
 | ScriptableObjects for all config | 10 config SO classes; no gameplay constant lives in a MonoBehaviour |
-| `RoadDirection` is the single axis source | All spatial code projects via `RoadDirection.Longitudinal`/`Lateral`; no hardcoded `Vector3.back`/`right` in world code |
+| `RoadDirection` is the single axis source | All spatial code projects via `RoadDirection.Longitudinal`/`Lateral`; no hardcoded `Vector3.back`/`right` in world code. The frame is a **constant** +Z/+X — turns bend the road around the player rather than rotating the frame, so nothing downstream desyncs |
 
 ---
 
@@ -132,9 +132,10 @@ Single static hub; each event has exactly one raiser.
 
 ## Known limitations and review list
 
-- **Traffic after a 90° turn** converges onto the new axis over ~1 s rather than tracing the old road geometry. Robust and axis-agnostic, but vehicles visible behind the player during a turn sweep slightly. Turn tiles should sit in low-traffic sequences.
-- **Rewind vs tile queue**: tiles spawned in the rewound 3.5 s window return to the pool, but their prefabs were already dequeued — the horizon may resume with the next prefabs in the sequence instead of replaying the identical ones. Cosmetic, at ~160 m distance.
-- **Swahili strings** marked `TODO: native review` in `SwahiliUI` reuse English rather than risk invented Swahili (SC4 — respectful representation beats fake localisation). Verified strings (ALAMA, MUDA, POLE POLE, REKODI MPYA, and the Requirements-specified INGEHAALD/KUUKUA/JULLIE STAAN OP PLEK) are in.
+- **Traffic through a curve**: traffic spawning still pauses while a bend sits within the spawn distance (cars are placed on the straight +Z line, which leaves a curved road), so traffic thins approaching a turn and resumes after — not yet fixed. *Hazards now follow the curved road path*: `HazardSpawner` parametrises each hazard by its point on the road (arc-length + lateral) and re-derives its world pose every frame through `RoadSequencer.TryGetRoadPose` — the same player-anchored mapping that places the tiles — so hazards keep populating the road through bends with no thinning. The same arc-based scheme could be applied to traffic.
+- **Two sharp turns close together**: guarded in-engine. `RoadSequencer.ResolveCurveAngle` rides a sharp curve (`|curveAngle|` ≥ `sharpCurveAngleThreshold`) flat whenever the previous sharp curve is less than `minSharpCurveSpacing` of road behind it, so at most one sharp bend is ever live within the draw distance and the road cannot fold over itself. Keep `minSharpCurveSpacing` ≥ `spawnHorizon`. The softened bend is held on `RoadTile.EffectiveCurveAngle` (the authored `curveAngle` is left as design intent); all road geometry, the camera bank/lean and the spawn gate read the effective value, so a softened tile is genuinely straight road in every system.
+- **Rewind vs tile queue**: fixed — the rewind now replays the identical road. `RoadSequencer` snapshots its on-screen tiles on `RewindStarted`; after the rewind lands, any snapshot tile the rewind switched off was one spawned during the rewound window (so its prefab had been dequeued), and `RequeueRewoundTiles` pushes those prefabs back to the front of `prefabQueue` in near-to-far order. The horizon therefore re-spawns the same tiles in the same order rather than jumping to the next prefabs. Any sequence the window happened to advance into is already physically carried in the surviving queue, so no sequence selection is re-run (and the softened-curve `EffectiveCurveAngle` is re-resolved on respawn from the surviving tiles, as the overlap guard already does). Pooling stays intact via `ObjectPool.ReconcileAvailability`. Instance→prefab mapping is the new `ObjectPool<T>.Prefab` getter.
+- **Swahili strings** marked `TODO: native review` in `SwahiliUI` reuse English rather than risk invented Swahili (SC3 — respectful representation beats fake localisation). Verified strings (ALAMA, MUDA, POLE POLE, REKODI MPYA, and the Requirements-specified INGEHAALD/KUUKUA/JULLIE STAAN OP PLEK) are in.
 - **Audio clips** are not imported yet (known backlog) — `AudioManager` is fully wired and null-safe, the game runs silent until clips land in `AudioConfig`.
 - **AnimalManager** (goat/cattle herds, elephant stop, warthog — Req §6.4) stays deferred per the Requirements' own out-of-scope list; `WildlifeCrossing` covers the MDA's flagship crossing moment.
 - **Compiled and running on PC; tablet/gyro not yet verified on-device.** The scene is wired and the core loop runs in the editor (requires **Input System**, **TextMeshPro** and **URP**). The gyro orientation math (`GyroTiltProvider.RollForOrientation`) still needs an on-device sign check — calibration absorbs constant error, `invertGyro` covers a sign error. Audio clips remain a backlog item (see above).

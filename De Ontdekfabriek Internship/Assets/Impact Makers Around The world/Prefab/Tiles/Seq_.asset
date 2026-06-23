@@ -15,11 +15,11 @@ MonoBehaviour:
   zoneName: HIGHLAND
   contextTags: []
   tiles:
-  - {fileID: 1817543908115721991, guid: f5282e07619d65144b38b27818b48046, type: 3}
-  - {fileID: 4646429838730487416, guid: 921013845bc04754589cbd7a43dd2914, type: 3}
   - {fileID: -775974317322565007, guid: 1cc2141db7d00224f84b506d8aa6b884, type: 3}
-  - {fileID: 7783795907584609438, guid: 121a62aefbaa30e4588593e20e76d361, type: 3}
-  shuffleTiles: 1
+  - {fileID: 4646429838730487416, guid: 921013845bc04754589cbd7a43dd2914, type: 3}
+  - {fileID: 1817543908115721991, guid: f5282e07619d65144b38b27818b48046, type: 3}
+  - {fileID: 8678437511983235021, guid: 6291a9ac7769dbb4f8f6c54f02739fe4, type: 3}
+  shuffleTiles: 0
   weight: 1
   cooldownTiles: 10
   unlockAtTime: 0

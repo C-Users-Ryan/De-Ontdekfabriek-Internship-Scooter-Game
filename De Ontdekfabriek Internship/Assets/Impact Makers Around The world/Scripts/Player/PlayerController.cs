@@ -74,14 +74,12 @@ namespace KenyaScooter.Player
         {
             GameEvents.SessionReset += HandleSessionReset;
             GameEvents.CollisionOccurred += HandleBump;
-            RoadDirection.DirectionChanged += HandleDirectionChanged;
         }
 
         private void OnDisable()
         {
             GameEvents.SessionReset -= HandleSessionReset;
             GameEvents.CollisionOccurred -= HandleBump;
-            RoadDirection.DirectionChanged -= HandleDirectionChanged;
         }
 
         private void Update()
@@ -151,20 +149,6 @@ namespace KenyaScooter.Player
             float contactLateral = RoadDirection.Lateral(contactPosition);
             float awaySign = LateralOffset >= contactLateral ? 1f : -1f;
             bumpVelocity = awaySign * (severity == CollisionSeverity.Hard ? hardBumpRepelSpeed : bumpRepelSpeed);
-        }
-
-        /// <summary>
-        /// Snap back to the lane centre when the road turns (M3). LateralOffset is a raw distance
-        /// along the steer axis, and that axis flips at a turn, so without re-centring the player
-        /// keeps an offset that now points at the kerb (or clean off the new road). Position is
-        /// rebuilt from this in the next FixedUpdate; the rig sweeps the heading round on its own.
-        /// </summary>
-        private void HandleDirectionChanged(Vector3 previous, Vector3 next)
-        {
-            if (RoadSideConfig.Active != null)
-                LateralOffset = RoadSideConfig.Active.OwnLaneCentre;
-            LateralVelocity = 0f;
-            bumpVelocity = 0f;
         }
 
         private void HandleSessionReset()

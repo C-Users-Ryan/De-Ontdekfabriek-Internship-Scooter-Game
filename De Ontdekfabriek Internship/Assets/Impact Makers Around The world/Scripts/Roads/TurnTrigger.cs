@@ -1,32 +1,17 @@
 using UnityEngine;
-using KenyaScooter.Core;
-using KenyaScooter.Player;
 
 namespace KenyaScooter.Roads
 {
     /// <summary>
-    /// Embedded in a turn tile (M3). When the player reaches the turn point, the
-    /// world axis changes: RoadDirection.Turn fires, the camera rig rotates over
-    /// 0.35 s, and every system that projects onto RoadDirection axes updates
-    /// automatically. One-shot per activation; pooling re-arms it via OnEnable.
+    /// OBSOLETE as of the 2026-06-17 turn rebuild. Turns are no longer a collider event that snaps a
+    /// global compass — a turn is now just a road tile with a non-zero <c>curveAngle</c>, and the road
+    /// bends around the player on its own (see RoadSequencer). This component is kept only so existing
+    /// turn-tile prefabs do not show a missing-script error; it does nothing. Safe to remove from any
+    /// prefab. Set the tile's RoadTile.curveAngle instead of using this.
     /// </summary>
-    [RequireComponent(typeof(Collider))]
     public sealed class TurnTrigger : MonoBehaviour
     {
-        [Tooltip("Signed turn in degrees: +90 = right, -90 = left. Should match the parent tile's curveAngle.")]
+        [Tooltip("Obsolete — set the tile's RoadTile.curveAngle instead. This field is no longer read.")]
         [SerializeField] private float turnDegrees = 90f;
-
-        private bool consumed;
-
-        private void OnEnable() => consumed = false;
-
-        private void OnTriggerEnter(Collider other)
-        {
-            if (consumed || other.GetComponentInParent<PlayerController>() == null)
-                return;
-
-            consumed = true;
-            RoadDirection.Turn(turnDegrees);
-        }
     }
 }

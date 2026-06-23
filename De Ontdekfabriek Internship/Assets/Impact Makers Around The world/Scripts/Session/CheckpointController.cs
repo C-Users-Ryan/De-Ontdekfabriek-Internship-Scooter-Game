@@ -1,39 +1,31 @@
 using UnityEngine;
 using KenyaScooter.Config;
 using KenyaScooter.Core;
+using KenyaScooter.Roads;
 
 namespace KenyaScooter.Session
 {
     /// <summary>
-    /// The relay checkpoint (Req §9.2): when the timer expires, a charge station
-    /// spawns ahead in the player's lane. The player drives to it; close to the
-    /// station a speed override brakes the world to a stop (start distance computed
-    /// from v²/2a, so it works from any speed), then CheckpointReached fires —
-    /// GameManager commits the turn and the checkpoint screen takes over.
-    /// Separate from GameManager by design (answer to open question Q1): session
-    /// states live in one place, checkpoint choreography in another.
+    /// The relay checkpoint (Req §9.2): when the timer expires, the road is capped with a
+    /// charge-station tile at the end of the chain (RoadSequencer.SpawnCheckpoint). The world keeps
+    /// scrolling normally, so the player coasts toward it as part of the road — no prefab teleports in.
+    /// Close to the tile's stop marker a speed override brakes the world to a stop (start distance from
+    /// v²/2a, so it works from any speed), then CheckpointReached fires — GameManager commits the turn
+    /// and the checkpoint screen takes over.
+    /// Separate from GameManager by design (Q1): session states live in one place, checkpoint
+    /// choreography in another.
     /// </summary>
     public sealed class CheckpointController : MonoBehaviour
     {
         [SerializeField] private SessionConfig config;
-        [SerializeField] private GameObject checkpointPrefab;
         [SerializeField] private Transform player;
 
-        public bool HasCheckpoint => instance != null;
+        /// <summary>True when a checkpoint tile is configured on the sequencer; otherwise the timer ends the session.</summary>
+        public bool HasCheckpoint =>
+            RoadSequencer.Instance != null && RoadSequencer.Instance.HasCheckpointTile;
 
-        private GameObject instance;
         private bool braking;
         private bool reached;
-
-        private void Start()
-        {
-            // Single instance, created once — never instantiated during play.
-            if (checkpointPrefab != null)
-            {
-                instance = Instantiate(checkpointPrefab, transform);
-                instance.SetActive(false);
-            }
-        }
 
         private void OnEnable() => GameEvents.SessionReset += HandleSessionReset;
         private void OnDisable() => GameEvents.SessionReset -= HandleSessionReset;
@@ -41,33 +33,31 @@ namespace KenyaScooter.Session
         /// <summary>Called by GameManager when the timer expires and the state becomes AtCheckpoint.</summary>
         public void Begin()
         {
-            if (instance == null)
-                return;
-
-            float playerLong = RoadDirection.Longitudinal(player.position);
-            instance.transform.SetPositionAndRotation(
-                RoadDirection.Current * (playerLong + config.checkpointDistance)
-                    + RoadDirection.SteerAxis * RoadSideConfig.Active.OwnLaneCentre,
-                Quaternion.LookRotation(RoadDirection.Current));
-            instance.SetActive(true);
             braking = false;
             reached = false;
+            if (RoadSequencer.Instance != null)
+                RoadSequencer.Instance.SpawnCheckpoint();
         }
 
         private void Update()
         {
-            if (GameManager.State != GameState.AtCheckpoint || instance == null || !instance.activeSelf || reached)
+            if (GameManager.State != GameState.AtCheckpoint || reached)
+                return;
+
+            RoadTile tile = RoadSequencer.Instance != null ? RoadSequencer.Instance.ActiveCheckpointTile : null;
+            if (tile == null)
                 return;
 
             float speed = WorldSpeed.Instance.Current;
-            instance.transform.position += -RoadDirection.Current * (speed * Time.deltaTime);
 
-            float ahead = RoadDirection.Longitudinal(instance.transform.position)
+            // Road length between the player and the tile's stop marker, along the direction of travel.
+            // The sequencer scrolls the tile with the rest of the world, so this shrinks on its own.
+            float ahead = RoadDirection.Longitudinal(tile.StopPosition)
                 - RoadDirection.Longitudinal(player.position);
 
             if (!braking)
             {
-                // Physical stopping distance from the current speed, plus a margin.
+                // Physical stopping distance from the current speed, plus a small margin.
                 float stopDistance = speed * speed / (2f * config.checkpointBrakeRate) + 2f;
                 if (ahead <= stopDistance)
                 {
@@ -77,7 +67,7 @@ namespace KenyaScooter.Session
                 return;
             }
 
-            if (speed <= config.checkpointStopSpeed)
+            if (speed <= config.checkpointStopSpeed || ahead <= 0f)
             {
                 reached = true;
                 WorldSpeed.Instance.SetCurrent(0f);
@@ -87,8 +77,6 @@ namespace KenyaScooter.Session
 
         private void HandleSessionReset()
         {
-            if (instance != null)
-                instance.SetActive(false);
             braking = false;
             reached = false;
         }

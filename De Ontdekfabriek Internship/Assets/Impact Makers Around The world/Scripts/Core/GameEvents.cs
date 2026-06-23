@@ -23,11 +23,15 @@ namespace KenyaScooter.Core
         public static event Action<GameState, GameState> StateChanged;
         /// <summary>The player has stopped at the relay checkpoint (Req §9.2).</summary>
         public static event Action CheckpointReached;
+        /// <summary>A new class group is starting — group-scoped state (group total, shared streak) resets. Raised by GroupScoreManager.</summary>
+        public static event Action GroupReset;
 
         // ---- Driving events ---------------------------------------------------------
 
-        /// <summary>Confirmed pass of a same-direction vehicle (M13). Raised by OvertakeDetector.</summary>
+        /// <summary>Confirmed pass of a same-direction vehicle on the correct side (M13). Raised by OvertakeDetector.</summary>
         public static event Action<TrafficVehicle> OvertakeCompleted;
+        /// <summary>A pass completed on the wrong (illegal) side — earns no points, only a corrective warning. Raised by OvertakeDetector.</summary>
+        public static event Action<TrafficVehicle> IllegalOvertake;
         /// <summary>Survived close pass with an oncoming vehicle (M18). Raised by NearMissDetector.</summary>
         public static event Action<TrafficVehicle> NearMiss;
         /// <summary>(severity, relative km/h, world position, absorbed by grace). Raised by PlayerCollisionHandler (M15).</summary>
@@ -72,8 +76,10 @@ namespace KenyaScooter.Core
         public static void RaiseSessionStarted() => SafeInvoke(SessionStarted);
         public static void RaiseStateChanged(GameState from, GameState to) => StateChanged?.Invoke(from, to);
         public static void RaiseCheckpointReached() => CheckpointReached?.Invoke();
+        public static void RaiseGroupReset() => GroupReset?.Invoke();
 
         public static void RaiseOvertakeCompleted(TrafficVehicle vehicle) => OvertakeCompleted?.Invoke(vehicle);
+        public static void RaiseIllegalOvertake(TrafficVehicle vehicle) => IllegalOvertake?.Invoke(vehicle);
         public static void RaiseNearMiss(TrafficVehicle vehicle) => NearMiss?.Invoke(vehicle);
         public static void RaiseCollisionOccurred(CollisionSeverity severity, float relativeKmh, Vector3 position, bool absorbed)
             => CollisionOccurred?.Invoke(severity, relativeKmh, position, absorbed);
@@ -120,8 +126,8 @@ namespace KenyaScooter.Core
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ClearAllSubscriptions()
         {
-            SessionReset = null; SessionStarted = null; StateChanged = null; CheckpointReached = null;
-            OvertakeCompleted = null; NearMiss = null; CollisionOccurred = null; HazardHit = null;
+            SessionReset = null; SessionStarted = null; StateChanged = null; CheckpointReached = null; GroupReset = null;
+            OvertakeCompleted = null; IllegalOvertake = null; NearMiss = null; CollisionOccurred = null; HazardHit = null;
             WrongLaneChanged = null; WrongLaneTick = null; SpeedingTierChanged = null; SpeedingTick = null;
             GraceAbsorbed = null; GraceRecharged = null; RewindStarted = null; RewindCompleted = null;
             ScoreChanged = null; StreakChanged = null; PopupRequested = null;
