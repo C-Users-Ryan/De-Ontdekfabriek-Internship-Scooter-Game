@@ -33,6 +33,15 @@ namespace KenyaScooter.Session
         private void HandleSequenceChanged(RoadSequence sequence)
             => CurrentLimitKmh = sequence != null ? sequence.speedLimitKmh : 0f;
 
-        private void HandleSessionReset() => CurrentLimitKmh = 0f;
+        // Seed the limit from the zone that is actually active at reset, instead of zeroing it. The opening zone is
+        // assigned on the sequencer at SessionReset but never broadcasts SequenceChanged (only later zones do), so
+        // without this the roundel read "--" for the whole first zone until the road built through it and advanced
+        // (~160 m of build cursor ahead of the player — "late into the game"). RoadSequencer runs first
+        // (DefaultExecutionOrder -50), so its CurrentSequence is already set when this handler runs.
+        private void HandleSessionReset()
+        {
+            RoadSequence opening = RoadSequencer.Instance != null ? RoadSequencer.Instance.CurrentSequence : null;
+            CurrentLimitKmh = opening != null ? opening.speedLimitKmh : 0f;
+        }
     }
 }

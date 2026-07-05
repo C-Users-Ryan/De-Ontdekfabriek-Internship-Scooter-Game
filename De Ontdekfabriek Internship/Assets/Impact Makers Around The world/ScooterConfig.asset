@@ -18,7 +18,7 @@ MonoBehaviour:
   acceleration: 10
   brakeDeceleration: 25
   naturalDeceleration: 5
-  lateralAcceleration: 8
+  lateralAcceleration: 18
   maxLateralSpeed: 6
   rideHeight: 0.5
   maxLeanAngle: 14

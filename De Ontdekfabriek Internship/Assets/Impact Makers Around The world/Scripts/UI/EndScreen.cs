@@ -66,8 +66,8 @@ namespace KenyaScooter.UI
             {
                 // The end screen is a mirror: here is exactly what you did (MDA A6).
                 breakdownText.text =
-                    $"INGEHAALD: {stats.Overtakes}   ×{stats.BestStreak} STREAK\n" +
-                    $"NEAR MISS: {stats.NearMisses}   GRACE: {stats.GracesUsed}   REWIND: {stats.RewindsUsed}\n" +
+                    $"INGEHAALD: {stats.Overtakes}   ×{stats.BestStreak} REEKS\n" +
+                    $"BIJNA RAAK: {stats.NearMisses}   REDDING: {stats.GracesUsed}   TERUGSPOELEN: {stats.RewindsUsed}\n" +
                     $"{stats.DistanceMetres / 1000f:0.0} KM";
             }
 

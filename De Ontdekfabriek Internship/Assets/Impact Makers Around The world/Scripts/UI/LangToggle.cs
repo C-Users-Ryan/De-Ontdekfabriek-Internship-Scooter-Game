@@ -23,8 +23,12 @@ namespace KenyaScooter.UI
 
         private void UpdateLabel()
         {
-            if (label != null)
-                label.text = SwahiliUI.Current == SwahiliUI.Language.English ? "SW" : "EN";
+            if (label == null)
+                return;
+            // Show the language the button switches TO (Dutch → Swahili → English → Dutch).
+            label.text = SwahiliUI.Current == SwahiliUI.Language.Dutch   ? "SW"
+                       : SwahiliUI.Current == SwahiliUI.Language.Swahili ? "EN"
+                       : "NL";
         }
     }
 }

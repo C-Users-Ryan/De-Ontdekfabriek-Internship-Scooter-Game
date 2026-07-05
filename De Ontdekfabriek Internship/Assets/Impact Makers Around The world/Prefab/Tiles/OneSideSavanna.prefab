@@ -141,10 +141,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 558afecf9ee3b144b993210f5a11a28c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::KenyaScooter.Roads.RoadTile
-  length: 200
+  length: 10
   difficulty: 3
-  curveAngle: 0
-  exitAnchor: {fileID: 0}
+  allowedHazards: []
+  beginPoint: {x: 0, y: 0, z: 5}
+  exitPoint: {x: 0, y: 0, z: -5}
+  turns: []
+  isCheckpoint: 0
+  stopAtMetres: 15
+  previousLength: 10
 --- !u!1001 &1718346206323021274
 PrefabInstance:
   m_ObjectHideFlags: 0

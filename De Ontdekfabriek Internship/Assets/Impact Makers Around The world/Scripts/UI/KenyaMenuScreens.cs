@@ -2,13 +2,17 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
 using KenyaScooter.Core;
+using KenyaScooter.Config;
 using KenyaScooter.Scoring;
+using KenyaScooter.Settings;
 
 namespace KenyaScooter.UI
 {
     /// <summary>
-    /// Builds and drives the framing screens (Title, Relay hand-off, Journey complete,
+    /// Builds and drives the framing screens (Title, Team select, Relay hand-off, Journey complete,
     /// Game over) in the warm Ugani landscape style, generated in code so they need no
     /// hand assembly. Call <see cref="Build"/> (or Tools → Kenya Scooter → Build Menu Screens).
     ///
@@ -20,34 +24,83 @@ namespace KenyaScooter.UI
     ///   GameManager / GroupScoreManager / LeaderboardManager.
     /// Set <see cref="teamName"/> from the team-setup flow when there is one.
     /// </summary>
+    // NOTE: this class is split across two files for readability (2026-06-27, no behaviour change):
+    //   KenyaMenuScreens.cs       — runtime: lifecycle, screen flow, data population, button actions.
+    //   KenyaMenuScreens.Build.cs — construction: Build() and the procedural layout/sprite helpers.
+    // UI v2 (2026-07-05, per "Kenya Game UI — Improved" / huisstijl spec): the Title is centred with
+    // one accent-filled action, team select is select-then-confirm cards, the relay turn reads as a
+    // gain joining the class total, the eindstand board carries rank medallions with a full accent
+    // row for this group, and game over hands the tablet on. Install BOTH v2 halves together.
     [DisallowMultipleComponent]
-    public sealed class KenyaMenuScreens : MonoBehaviour
+    public sealed partial class KenyaMenuScreens : MonoBehaviour
     {
         [Header("Team")]
         public string teamName = "TEAM SIMBA";
 
-        [Header("Palette")]
-        [SerializeField] private Color ink      = Hex("#F9E9D6");
-        [SerializeField] private Color kicker   = Hex("#F2A468");
-        [SerializeField] private Color accent   = Hex("#F2A055");
-        [SerializeField] private Color cream    = Hex("#FFF6EC");
-        [SerializeField] private Color success  = Hex("#9BE07C");
-        [SerializeField] private Color cardFill = new Color(0.10f, 0.05f, 0.03f, 0.55f);
+        // Palette: canonical Ugani tokens from UiKit, so every framing screen, the HUD and the settings menu
+        // share one source of truth instead of three near-but-not-equal hex sets. The token-derived roles are
+        // live properties (not serialized fields) reading UiKit, so a UITheme swap now recolours these screens
+        // too — the same fix SettingsMenu already carries — completing the keystone → screens path. Only the two
+        // genuinely-local colours (a subtitle lift with no UiKit token, and a translucent card fill) are kept
+        // baked, as static readonly, so the palette has one consistent story with no half-serialized values.
+        private static Color ink        => UiKit.Ink;                          // warm white #FFF6EC
+        private static readonly Color kicker = Hex("#F2A468");                 // lighter accent for the subtitle (local lift, no token)
+        private static Color accent     => UiKit.Accent;                       // signature #F19141
+        private static Color cream      => UiKit.Ink;                          // cream button face
+        private static Color success    => UiKit.Success;                      // #67B44E (in-system green)
+        private static Color muted      => UiKit.InkMuted;                     // captions / card subtitles #C9B7A6
+        private static readonly Color cardFill = new Color(0.07f, 0.04f, 0.03f, 0.62f); // translucent dark card (local)
+        private static Color inkOnLight => UiKit.InkOnLight;                   // dark warm-brown text on a cream button
 
         private bool built;
         private GameObject titleRoot, setupRoot, relayRoot, journeyRoot, gameOverRoot;
-        private TMP_Text relayScore, relayTotal, relayStat;
+        private TMP_Text relayScore, relayTotal, relayStat, relayJoin;
+        // ✓ pip discs ahead of the clean-overtake counts (sprite check marks — the font has no ✓ glyph).
+        private Image[] relayPips, goPips;
         private TMP_Text journeyTotal, journeyRank, journeyStat;
         private TMP_Text goScore, goStat;
         private TMP_Text relayKicker, journeyKicker, goKicker;
         private int cachedScore;
         private bool committedThisGroup;
         private Coroutine fade;
+        // Eindstand scoreboard rows (built once in BuildBoard, recoloured per show in PopulateJourney):
+        // name/score texts, the rank medallion (numeral + disc) and the full accent highlight for this group.
         private readonly List<TMP_Text> boardName = new();
         private readonly List<TMP_Text> boardScore = new();
+        private readonly List<TMP_Text> boardRank = new();
+        private readonly List<Image> boardRankBg = new();
+        private readonly List<Image> boardRowBg = new();
+        private readonly List<Image> boardStripe = new(); // zebra strips, hidden for empty rows (null on odd rows)
+        // The front-of-house Kenya/Dutch drive-side toggle (v2: one segmented pill, Title screen only).
+        private readonly List<(Image bg, TMP_Text label, bool leftMode)> modeButtons = new();
 
         // ---- lifecycle --------------------------------------------------------------
-        private void Awake() { if (!built) Build(); }
+        private void Awake()
+        {
+            if (Application.isPlaying) EnsureTouchUIEventSystem();
+            if (!built) Build();
+        }
+
+        // Make sure UI taps actually register on the tablet. With the New Input System an EventSystem must carry an
+        // InputSystemUIInputModule, or touches never reach the buttons/chips (a legacy StandaloneInputModule is
+        // mouse/keyboard only — which is exactly how a tablet build ends up where only the raw tap-to-start fires
+        // and the team chips seem dead). If the scene's EventSystem is missing or legacy-configured, fix it here.
+        private static void EnsureTouchUIEventSystem()
+        {
+            var es = Object.FindObjectOfType<EventSystem>();
+            if (es == null)
+            {
+                var go = new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
+                DontDestroyOnLoad(go);
+                return;
+            }
+            if (es.GetComponent<InputSystemUIInputModule>() == null)
+            {
+                foreach (var m in es.GetComponents<BaseInputModule>())
+                    m.enabled = false; // silence any legacy (Standalone) module so the two do not fight
+                es.gameObject.AddComponent<InputSystemUIInputModule>();
+            }
+        }
 
         private void OnEnable()
         {
@@ -73,23 +126,43 @@ namespace KenyaScooter.UI
         {
             switch (s)
             {
-                case GameState.Ready:
-                    if (FreshGroup()) { PopulateChips(); Show(setupRoot); } else Show(titleRoot); // name a fresh group first
-                    break;
+                case GameState.Ready:    Show(titleRoot); break; // the Title is the front door — always first
                 case GameState.Finished: PopulateRelay(); Show(relayRoot); break;
                 case GameState.GameOver: PopulateGameOver(); Show(gameOverRoot); break;
                 default:                 Show(null); break; // Playing / Rewinding / AtCheckpoint → HUD only
             }
         }
 
+        // The Title's ANZA button: a fresh group goes to the team select first;
+        // a running group heads straight into the next turn.
+        private void BeginFromTitle()
+        {
+            if (FreshGroup()) { PopulateChips(); Show(setupRoot); }
+            else StartGame();
+        }
+
         private void Show(GameObject only)
         {
+            // The global "tap anywhere to start" stays off while ANY framing screen is up: the Title only
+            // advances via its ANZA! CTA (which routes a fresh group through the team select), and on the team
+            // select a stray tap must never start the game with the default name.
+            GameManager.AllowTapToStart = only == null;
+
             SetActive(titleRoot, only == titleRoot);
             SetActive(setupRoot, only == setupRoot);
             SetActive(relayRoot, only == relayRoot);
             SetActive(journeyRoot, only == journeyRoot);
             SetActive(gameOverRoot, only == gameOverRoot);
+            // Keep the drive-side toggle in step with the live config (it may have been changed in the facilitator menu).
+            if (only == titleRoot) RefreshModeToggle();
             if (only != null) FadeIn(only);
+
+            // Tell the audio layer whether a framing screen is now covering the world: it cues the UI open sound and
+            // ducks the game-world beds (ambience, soundscape) so nothing from the game drones behind the menu. This
+            // is the single source of truth for menu visibility — it also fires for the relay hand-off reached via a
+            // checkpoint, where the GameState is still AtCheckpoint but a screen is up. (Edit-time Build() calls Show
+            // too; skip the signal there — there is no audio to drive and no listeners in the editor.)
+            if (Application.isPlaying) GameEvents.RaiseMenuScreenChanged(only != null);
         }
 
         // Soften the jump from gameplay into a screen with a short fade-in.
@@ -122,45 +195,101 @@ namespace KenyaScooter.UI
         private int GroupTotal() => GroupScoreManager.Instance != null ? GroupScoreManager.Instance.GroupTotal : TurnScore();
         private int TurnCount() => GroupScoreManager.Instance != null ? Mathf.Max(1, GroupScoreManager.Instance.TurnCount) : 1;
 
+        // ✓ pip discs ahead of the clean-overtake count — shape + colour, never colour alone (capped at 5
+        // so the line can't overflow on a big run; the number still tells the exact story). The pips are
+        // sprite check marks built hidden by the Build half; this shows N and shifts the text to make room.
+        private static void SetPips(Image[] pips, TMP_Text stat, float baseLeft, int n)
+        {
+            if (pips == null || stat == null) return;
+            int shown = Mathf.Clamp(n, 0, pips.Length);
+            for (int i = 0; i < pips.Length; i++)
+                if (pips[i] != null) pips[i].gameObject.SetActive(i < shown);
+            var rt = stat.rectTransform;
+            rt.offsetMin = new Vector2(baseLeft + (shown > 0 ? shown * 42f + 10f : 0f), rt.offsetMin.y); // 42 = the pip ring pitch
+        }
+
+        // "SIMBA" → "TEAM SIMBA" for the kickers, and "Team Simba" for the board — the mock's voice.
+        private string TeamLabel()
+        {
+            string s = (teamName ?? "").Trim();
+            return s.StartsWith("TEAM", System.StringComparison.OrdinalIgnoreCase) ? s.ToUpperInvariant() : "TEAM " + s.ToUpperInvariant();
+        }
+
+        private static string BoardLabel(string raw)
+        {
+            string s = (raw ?? "").Trim();
+            if (s.Length == 0) return "";
+            if (s.StartsWith("TEAM", System.StringComparison.OrdinalIgnoreCase)) s = s.Substring(4).Trim();
+            s = s.ToLowerInvariant();
+            return "Team " + char.ToUpperInvariant(s[0]) + s.Substring(1);
+        }
+
         private void PopulateRelay()
         {
-            if (relayKicker != null) relayKicker.text = "BEURT KLAAR  ·  " + teamName;
-            if (relayScore != null) relayScore.text = Group(TurnScore());
-            if (relayTotal != null) relayTotal.text = "KLAS TOTAAL  ·  " + Group(GroupTotal());
-            if (relayStat != null)  relayStat.text  = Overtakes() + " SCHONE INHAALACTIES";
+            int turn = TurnScore();
+            int o = Overtakes();
+            if (relayKicker != null) relayKicker.text = "BEURT KLAAR  ·  " + TeamLabel();
+            if (relayScore != null) relayScore.text = "+" + Group(turn); // the turn reads as a GAIN
+            if (relayTotal != null) relayTotal.text = Group(GroupTotal()); // the caption lives in the panel build (two-line layout)
+            if (relayJoin != null)  relayJoin.text  = "+" + Group(turn) + " ERBIJ";
+            if (relayStat != null)  relayStat.text  = o + " SCHONE INHAALACTIES";
+            SetPips(relayPips, relayStat, 0f, o);
         }
 
         private void PopulateJourney()
         {
             int total = GroupTotal();
             int rank = LeaderboardManager.Instance != null ? LeaderboardManager.Instance.RankOf(total) : 1;
-            if (journeyKicker != null) journeyKicker.text = "JOURNEY COMPLETE  ·  " + teamName;
+            if (journeyKicker != null) journeyKicker.text = "MWISHO WA SAFARI  ·  " + TeamLabel(); // Swahili accent in the kicker
             if (journeyTotal != null) journeyTotal.text = Group(total);
             if (journeyRank != null)  journeyRank.text  = "PLEK " + rank + " VAN DE KLAS";
-            if (journeyStat != null)  journeyStat.text  = TurnCount() + " SPELERS  ·  SAMEN GEREDEN";
+            if (journeyStat != null)  journeyStat.text  = TurnCount() + (TurnCount() == 1 ? " SPELER" : " SPELERS") + "  ·  SAMEN GEREDEN";
 
-            // The saved local leaderboard (this group was just committed into it), with this group highlighted.
+            // The saved local leaderboard (this group was just committed into it). This group's row gets the
+            // full accent highlight + a dark rank medallion, so it reads across the classroom; the others sit
+            // on the quiet zebra with a translucent medallion.
             var entries = LeaderboardManager.Instance != null ? LeaderboardManager.Instance.Entries : null;
             var last = LeaderboardManager.Instance != null ? LeaderboardManager.Instance.LastCommitted : null;
             for (int i = 0; i < boardName.Count; i++)
             {
-                if (entries != null && i < entries.Count)
+                bool has = entries != null && i < entries.Count;
+                bool mine = false;
+                if (has)
                 {
                     var e = entries[i];
-                    boardName[i].text = (i + 1) + "  ·  " + e.label.ToUpper();
+                    // "Mine" by reference when the commit happened this session, by NAME otherwise — after an
+                    // app restart the entries are re-read from disk and the reference match alone comes up
+                    // empty, which left the board with no accent row at all (play-test screenshot).
+                    mine = e == last || string.Equals(e.label, teamName, System.StringComparison.OrdinalIgnoreCase);
+                    boardName[i].text = BoardLabel(e.label); // "Team Simba", the mock's voice
                     boardScore[i].text = Group(e.score);
-                    Color c = e == last ? accent : ink;
+                    Color c = mine ? UiKit.InkOnAccent : ink;
                     boardName[i].color = c; boardScore[i].color = c;
                 }
                 else { boardName[i].text = ""; boardScore[i].text = ""; }
+
+                if (i < boardRowBg.Count && boardRowBg[i] != null) boardRowBg[i].enabled = mine;
+                if (i < boardStripe.Count && boardStripe[i] != null) boardStripe[i].enabled = has; // no ghost rows on a young board
+                if (i < boardRankBg.Count && boardRankBg[i] != null)
+                {
+                    boardRankBg[i].enabled = has;
+                    boardRankBg[i].color = mine ? UiKit.InkOnAccent : UiKit.WithAlpha(ink, 0.14f);
+                }
+                if (i < boardRank.Count && boardRank[i] != null)
+                {
+                    boardRank[i].text = has ? (i + 1).ToString() : "";
+                    boardRank[i].color = mine ? UiKit.AccentSoft : ink;
+                }
             }
         }
 
         private void PopulateGameOver()
         {
-            if (goKicker != null) goKicker.text = "OEPS  ·  " + teamName;
+            int o = Overtakes();
+            if (goKicker != null) goKicker.text = "OEPS  ·  " + TeamLabel();
             if (goScore != null) goScore.text = Group(TurnScore());
-            if (goStat != null)  goStat.text  = Overtakes() + " SCHONE INHAALACTIES";
+            if (goStat != null)  goStat.text  = o + " SCHONE INHAALACTIES";
+            SetPips(goPips, goStat, 26f, o);
         }
 
         // ---- button actions ---------------------------------------------------------
@@ -191,9 +320,26 @@ namespace KenyaScooter.UI
             if (GameManager.Instance != null) GameManager.Instance.PrepareNextTurn();
         }
 
-        private void PickTeam(string name) { teamName = name; StartGame(); }
         private bool FreshGroup() => GroupScoreManager.Instance == null || GroupScoreManager.Instance.TurnCount == 0;
 
+        // ---- drive-side toggle state (segments built in KenyaMenuScreens.Build.cs) ----
+        // Active segment = cream fill + warm-brown ink; inactive = no fill (the pill behind shows through),
+        // warm-white ink — the segmented-pill pattern the settings menu's BASIS|EXPERT switch established.
+        private void RefreshModeToggle()
+        {
+            bool left = CurrentDriveLeft();
+            foreach (var m in modeButtons)
+            {
+                bool active = m.leftMode == left;
+                m.bg.color = active ? cream : new Color(1f, 1f, 1f, 0f); // alpha 0 stays tappable
+                m.label.color = active ? inkOnLight : ink;
+            }
+        }
+
+        // ---- team select ----------------------------------------------------------------
+        // v2.1 (play-test): tapping a card STARTS THE GAME with that name — the confirm step was one tap
+        // too many for the relay pace. The cards keep the v2 look (roundel + Dutch animal) and got their
+        // "tap me" pulse wave back.
         private RectTransform chipRow;
         private const int ChipsShown = 6;
         // Swahili animal names. Easily extend for more uniqueness; pick from those not yet on the local board.
@@ -203,16 +349,28 @@ namespace KenyaScooter.UI
             "FISI","KOBE","TAI","KORONGO","POPO","NYANI","NGAMIA","SUNGURA","MAMBA","NYOKA"
         };
 
+        // The Dutch animal under each Swahili name — the design's "Swahili taught in passing".
+        private static readonly Dictionary<string, string> DutchAnimal = new()
+        {
+            { "SIMBA", "Leeuw" },     { "TWIGA", "Giraffe" },     { "CHUI", "Luipaard" },
+            { "TEMBO", "Olifant" },   { "FARU", "Neushoorn" },    { "KIBOKO", "Nijlpaard" },
+            { "NYATI", "Buffel" },    { "DUMA", "Jachtluipaard" },{ "SWALA", "Gazelle" },
+            { "NGIRI", "Wrattenzwijn" }, { "FISI", "Hyena" },     { "KOBE", "Schildpad" },
+            { "TAI", "Arend" },       { "KORONGO", "Kraanvogel" },{ "POPO", "Vleermuis" },
+            { "NYANI", "Baviaan" },   { "NGAMIA", "Kameel" },     { "SUNGURA", "Haas" },
+            { "MAMBA", "Krokodil" },  { "NYOKA", "Slang" }
+        };
+
+        // Card + selected-state colours (from the improved design): a translucent dark card with a faint
+        // hairline at rest; accent-tinted fill, accent border and an accent roundel once selected.
+        private static readonly Color CardRestFill = new Color(0.102f, 0.075f, 0.063f, 0.62f); // rgba(26,19,16,.62)
+
         // Fills the setup screen with a random subset of names NOT already on this iPad's local leaderboard, so two
         // groups never share a name (until the pool runs out). Re-run each time a fresh group reaches the setup screen.
         private void PopulateChips()
         {
             if (chipRow == null) return;
-            for (int i = chipRow.childCount - 1; i >= 0; i--)
-            {
-                var c = chipRow.GetChild(i).gameObject;
-                if (Application.isPlaying) Destroy(c); else DestroyImmediate(c);
-            }
+            ClearChildren(chipRow);
 
             var used = new HashSet<string>();
             var entries = LeaderboardManager.Instance != null ? LeaderboardManager.Instance.Entries : null;
@@ -227,283 +385,62 @@ namespace KenyaScooter.UI
 
             for (int i = pool.Count - 1; i > 0; i--) { int j = Random.Range(0, i + 1); (pool[i], pool[j]) = (pool[j], pool[i]); }
 
+            // 3×2 grid of big team cards (initial roundel + name + Dutch animal). Wider than the text column
+            // on purpose (play-test: the right of the screen sat empty), and each card pulses in a gentle
+            // wave — the "tap me" invitation the play-tests liked.
             int n = Mathf.Min(ChipsShown, pool.Count);
-            float x = 0f, w = 168f;
+            const float w = 500f, h = 130f, gapX = 20f, gapY = 16f;
             for (int i = 0; i < n; i++)
             {
                 string pick = pool[i];
-                RectTransform b = NewRect(chipRow, "Chip");
-                b.anchorMin = new Vector2(0f, 0.5f); b.anchorMax = new Vector2(0f, 0.5f); b.pivot = new Vector2(0f, 0.5f);
-                b.sizeDelta = new Vector2(w, 64f); b.anchoredPosition = new Vector2(x, 0f);
-                Image img = b.gameObject.AddComponent<Image>(); img.sprite = Rounded(28); img.type = Image.Type.Sliced; img.color = cream;
-                var btn = b.gameObject.AddComponent<Button>(); btn.targetGraphic = img; btn.onClick.AddListener(() => PickTeam(pick));
-                TMP_Text t = AddText(b, "Label", pick, 22, Hex("#9c3a12"), TextAlignmentOptions.Center); t.fontStyle = FontStyles.Bold; Stretch(t.rectTransform);
-                x += w + 16f;
+                int col = i % 3, rowIdx = i / 3;
+                RectTransform b = NewRect(chipRow, "Card");
+                b.anchorMin = new Vector2(0f, 1f); b.anchorMax = new Vector2(0f, 1f); b.pivot = new Vector2(0f, 1f);
+                b.sizeDelta = new Vector2(w, h);
+                b.anchoredPosition = new Vector2(col * (w + gapX), -rowIdx * (h + gapY));
+
+                // Hairline border with the translucent dark fill 3px inside it.
+                Image border = b.gameObject.AddComponent<Image>();
+                border.sprite = UiKit.Rounded(UiKit.RadiusM); border.type = Image.Type.Sliced;
+                border.color = UiKit.WithAlpha(ink, 0.12f);
+                Image fill = AddImage(b, "Fill", CardRestFill, UiKit.Rounded(UiKit.RadiusM));
+                fill.rectTransform.anchorMin = Vector2.zero; fill.rectTransform.anchorMax = Vector2.one;
+                fill.rectTransform.offsetMin = new Vector2(3f, 3f); fill.rectTransform.offsetMax = new Vector2(-3f, -3f);
+
+                var btn = b.gameObject.AddComponent<Button>(); btn.targetGraphic = border;
+                btn.onClick.AddListener(() => PickTeam(pick));
+                var cb = btn.colors; cb.fadeDuration = 0.08f; cb.pressedColor = new Color(0.85f, 0.85f, 0.85f, 1f); btn.colors = cb;
+
+                Image roundel = AddImage(b, "Roundel", UiKit.WithAlpha(ink, 0.14f), UiKit.Rounded(32));
+                Anchor(roundel.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(64f, 64f), new Vector2(58f, 0f));
+                TMP_Text initial = AddText(b, "Initial", pick.Substring(0, 1), 32, ink, TextAlignmentOptions.Center);
+                initial.fontStyle = FontStyles.Bold;
+                Anchor(initial.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(64f, 64f), new Vector2(58f, 0f));
+
+                TMP_Text name = AddText(b, "Name", pick, 31, ink, TextAlignmentOptions.Left);
+                name.fontStyle = FontStyles.Bold; UiKit.Caps(name, 0.03f);
+                name.rectTransform.anchorMin = new Vector2(0f, 0.5f); name.rectTransform.anchorMax = new Vector2(1f, 0.5f); name.rectTransform.pivot = new Vector2(0f, 0.5f);
+                name.rectTransform.offsetMin = new Vector2(108f, 4f); name.rectTransform.offsetMax = new Vector2(-16f, 46f);
+                TMP_Text animal = AddText(b, "Animal", DutchAnimal.TryGetValue(pick, out var nl) ? nl : "", 19, muted, TextAlignmentOptions.Left);
+                animal.rectTransform.anchorMin = new Vector2(0f, 0.5f); animal.rectTransform.anchorMax = new Vector2(1f, 0.5f); animal.rectTransform.pivot = new Vector2(0f, 0.5f);
+                animal.rectTransform.offsetMin = new Vector2(108f, -38f); animal.rectTransform.offsetMax = new Vector2(-16f, -6f);
+
+                // Gentle "tap me" wave (play-test: kids unsure what to tap) — a soft breath, not a bounce:
+                // the default amplitude read as aggressive on cards this size.
+                b.gameObject.AddComponent<UiPulse>().SetWave(i * 0.18f, 0.012f, 1.05f);
             }
         }
 
-        // ---- build ------------------------------------------------------------------
-        [ContextMenu("Rebuild now")]
-        public void Build()
+        private void PickTeam(string name) { teamName = name; StartGame(); }
+
+        private void ClearChildren(RectTransform rt)
         {
-            ClearGenerated();
-            boardName.Clear(); boardScore.Clear();
-            Stretch((RectTransform)transform);
-
-            titleRoot    = BuildTitle();
-            setupRoot    = BuildSetup();
-            relayRoot    = BuildRelay();
-            journeyRoot  = BuildJourney();
-            gameOverRoot = BuildGameOver();
-            built = true;
-
-            ShowFor(GameManager.State);
-        }
-
-        private GameObject BuildTitle()
-        {
-            RectTransform root = MakeScreen("Title", Hex("#a9421a"), Hex("#f6a949"));
-            BeginColumn(root, 250f);
-            KickerRow("IMPACT MAKERS AROUND THE WORLD");
-            Hero("Hero", "KENYA", 130f);
-            Spaced(Line("Tag", "RIJD DE A109 · NAIROBI → MOMBASA", 26f, kicker), 0.18f);
-            Gap(16f);
-            ButtonRow("ANZA!  ·  TIK OM TE STARTEN", StartGame);
-            return root.gameObject;
-        }
-
-        private GameObject BuildSetup()
-        {
-            RectTransform root = MakeScreen("TeamSetup", Hex("#a9421a"), Hex("#f6a949"));
-            BeginColumn(root, 235f);
-            KickerRow("IMPACT MAKERS AROUND THE WORLD");
-            Hero("Hero", "KIES JE TEAM", 92f);
-            Spaced(Line("Sub", "TIK OP EEN NAAM OM TE STARTEN", 24f, kicker), 0.18f);
-            Gap(18f);
-            chipRow = Place("Chips", 64f, 0f); // filled per show by PopulateChips with random, unused names
-            return root.gameObject;
-        }
-
-        private GameObject BuildRelay()
-        {
-            RectTransform root = MakeScreen("Relay", Hex("#5a2412"), Hex("#f3a046"));
-            BeginColumn(root, 225f);
-            relayKicker = KickerRow("BEURT KLAAR  ·  " + teamName);
-            relayScore = Hero("Score", "3 503", 118f);
-            relayTotal = Line("Total", "KLAS TOTAAL  ·  12 480", 28f, ink);
-            Gap(6f);
-            relayStat = Line("Stat", "0 SCHONE INHAALACTIES", 22f, success);
-            Gap(18f);
-            ButtonRow("VOLGENDE SPELER  →", NextPlayer,
-                      "LAATSTE SPELER · EINDSTAND", ShowStandings);
-            return root.gameObject;
-        }
-
-        private GameObject BuildJourney()
-        {
-            RectTransform root = MakeScreen("Journey", Hex("#5e2614"), Hex("#f6a949"));
-            BeginColumn(root, 235f);
-            journeyKicker = KickerRow("JOURNEY COMPLETE  ·  " + teamName);
-            journeyTotal = Hero("Total", "12 480", 118f);
-            journeyRank  = Line("Rank", "PLEK 1 VAN DE KLAS", 28f, ink);
-            Gap(6f);
-            journeyStat  = Line("Stat", "1 SPELERS · SAMEN GEREDEN", 22f, success);
-            Gap(18f);
-            ButtonRow("NIEUWE GROEP", NewGroup);
-            BuildBoard(root);
-            return root.gameObject;
-        }
-
-        // The class scoreboard: stored group totals plus this group, ranked, on the right of the Journey screen.
-        private void BuildBoard(RectTransform root)
-        {
-            RectTransform card = NewRect(root, "Scoreboard");
-            Anchor(card, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(760f, 660f), new Vector2(-430f, 0f));
-            Image bg = card.gameObject.AddComponent<Image>(); bg.sprite = Rounded(24); bg.type = Image.Type.Sliced; bg.color = cardFill; bg.raycastTarget = false;
-
-            TMP_Text head = AddText(card, "Head", "KLASSEMENT", 24, kicker, TextAlignmentOptions.Left);
-            head.rectTransform.anchorMin = new Vector2(0f, 1f); head.rectTransform.anchorMax = new Vector2(0f, 1f); head.rectTransform.pivot = new Vector2(0f, 1f);
-            head.rectTransform.sizeDelta = new Vector2(400f, 30f); head.rectTransform.anchoredPosition = new Vector2(48f, -44f); Spaced(head, 0.2f);
-
-            for (int i = 0; i < 6; i++)
+            if (rt == null) return;
+            for (int i = rt.childCount - 1; i >= 0; i--)
             {
-                float y = -110f - i * 84f;
-                TMP_Text n = AddText(card, "n" + i, "", 28, ink, TextAlignmentOptions.Left);
-                n.rectTransform.anchorMin = new Vector2(0f, 1f); n.rectTransform.anchorMax = new Vector2(0f, 1f); n.rectTransform.pivot = new Vector2(0f, 1f);
-                n.rectTransform.sizeDelta = new Vector2(480f, 36f); n.rectTransform.anchoredPosition = new Vector2(48f, y);
-                TMP_Text s = AddText(card, "s" + i, "", 28, ink, TextAlignmentOptions.Right); s.fontStyle = FontStyles.Bold;
-                s.rectTransform.anchorMin = new Vector2(1f, 1f); s.rectTransform.anchorMax = new Vector2(1f, 1f); s.rectTransform.pivot = new Vector2(1f, 1f);
-                s.rectTransform.sizeDelta = new Vector2(220f, 36f); s.rectTransform.anchoredPosition = new Vector2(-48f, y);
-                boardName.Add(n); boardScore.Add(s);
+                var c = rt.GetChild(i).gameObject;
+                if (Application.isPlaying) Destroy(c); else DestroyImmediate(c);
             }
         }
-
-        private GameObject BuildGameOver()
-        {
-            RectTransform root = MakeScreen("GameOver", Hex("#4a2414"), Hex("#d98a44"));
-            BeginColumn(root, 248f);
-            goKicker = KickerRow("OEPS  ·  " + teamName);
-            goScore = Hero("Score", "9 240", 118f);
-            Line("Line", "Zelfs de beste chauffeurs hebben een off-dag.", 24f, Hex("#F3BE92"));
-            Gap(6f);
-            goStat = Line("Stat", "0 SCHONE INHAALACTIES", 22f, success);
-            Gap(18f);
-            ButtonRow("NOG EEN KEER", StartGame);
-            return root.gameObject;
-        }
-
-        // ---- deterministic top-down layout ------------------------------------------
-        private RectTransform column;
-        private float cursor;
-
-        private void BeginColumn(RectTransform root, float topY)
-        {
-            column = NewRect(root, "Content");
-            column.anchorMin = new Vector2(0f, 0.5f); column.anchorMax = new Vector2(0f, 0.5f); column.pivot = new Vector2(0f, 1f);
-            column.sizeDelta = new Vector2(1180f, 760f); column.anchoredPosition = new Vector2(140f, topY);
-            cursor = 0f;
-        }
-
-        private RectTransform Place(string name, float height, float gapAfter)
-        {
-            RectTransform rt = NewRect(column, name);
-            rt.anchorMin = new Vector2(0f, 1f); rt.anchorMax = new Vector2(0f, 1f); rt.pivot = new Vector2(0f, 1f);
-            rt.sizeDelta = new Vector2(1180f, height); rt.anchoredPosition = new Vector2(0f, -cursor);
-            cursor += height + gapAfter;
-            return rt;
-        }
-
-        private void Gap(float px) => cursor += px;
-
-        private TMP_Text KickerRow(string text)
-        {
-            RectTransform row = Place("Kicker", 34f, 18f);
-            Image ring = AddImage(row, "Ring", accent, RingThin());
-            ring.rectTransform.anchorMin = new Vector2(0f, 0.5f); ring.rectTransform.anchorMax = new Vector2(0f, 0.5f);
-            ring.rectTransform.pivot = new Vector2(0f, 0.5f); ring.rectTransform.sizeDelta = new Vector2(30f, 30f); ring.rectTransform.anchoredPosition = Vector2.zero;
-            TMP_Text badge = AddText(row, "tatoe", "tatoe", 11, cream, TextAlignmentOptions.Center);
-            badge.rectTransform.anchorMin = new Vector2(0f, 0.5f); badge.rectTransform.anchorMax = new Vector2(0f, 0.5f);
-            badge.rectTransform.pivot = new Vector2(0f, 0.5f); badge.rectTransform.sizeDelta = new Vector2(30f, 16f); badge.rectTransform.anchoredPosition = Vector2.zero;
-            TMP_Text k = AddText(row, "Text", text, 22, kicker, TextAlignmentOptions.Left);
-            k.rectTransform.anchorMin = new Vector2(0f, 0.5f); k.rectTransform.anchorMax = new Vector2(0f, 0.5f);
-            k.rectTransform.pivot = new Vector2(0f, 0.5f); k.rectTransform.sizeDelta = new Vector2(1000f, 28f); k.rectTransform.anchoredPosition = new Vector2(46f, 0f);
-            Spaced(k, 0.16f);
-            return k;
-        }
-
-        private TMP_Text Hero(string name, string text, float size)
-        {
-            RectTransform rt = Place(name, size * 1.05f, 10f);
-            TMP_Text t = AddText(rt, "T", text, size, cream, TextAlignmentOptions.Left);
-            t.fontStyle = FontStyles.Bold; Stretch(t.rectTransform);
-            return t;
-        }
-
-        private TMP_Text Line(string name, string text, float size, Color col)
-        {
-            RectTransform rt = Place(name, size * 1.45f, 20f);
-            TMP_Text t = AddText(rt, "T", text, size, col, TextAlignmentOptions.Left);
-            Stretch(t.rectTransform);
-            return t;
-        }
-
-        private void ButtonRow(string label, UnityEngine.Events.UnityAction action)
-        {
-            RectTransform row = Place("Buttons", 64f, 0f);
-            AddButton(row, 0f, label, action, true);
-        }
-
-        private void ButtonRow(string l1, UnityEngine.Events.UnityAction a1, string l2, UnityEngine.Events.UnityAction a2)
-        {
-            RectTransform row = Place("Buttons", 64f, 0f);
-            float w1 = AddButton(row, 0f, l1, a1, true);
-            AddButton(row, w1 + 18f, l2, a2, false);
-        }
-
-        private float AddButton(RectTransform row, float x, string label, UnityEngine.Events.UnityAction action, bool primary)
-        {
-            float w = label.Length * 13.5f + 56f;
-            RectTransform b = NewRect(row, "Button");
-            b.anchorMin = new Vector2(0f, 0.5f); b.anchorMax = new Vector2(0f, 0.5f); b.pivot = new Vector2(0f, 0.5f);
-            b.sizeDelta = new Vector2(w, 64f); b.anchoredPosition = new Vector2(x, 0f);
-            Image img = b.gameObject.AddComponent<Image>(); img.sprite = Rounded(28); img.type = Image.Type.Sliced; img.color = primary ? cream : cardFill;
-            var btn = b.gameObject.AddComponent<Button>(); btn.targetGraphic = img; if (action != null) btn.onClick.AddListener(action);
-            TMP_Text t = AddText(b, "Label", label, 18, primary ? Hex("#9c3a12") : cream, TextAlignmentOptions.Center);
-            t.fontStyle = FontStyles.Bold; Stretch(t.rectTransform);
-            return w;
-        }
-
-        private RectTransform MakeScreen(string name, Color top, Color bottom)
-        {
-            RectTransform root = NewRect((RectTransform)transform, name);
-            Stretch(root);
-            root.gameObject.AddComponent<CanvasGroup>(); // drives the fade-in
-            Image bg = root.gameObject.AddComponent<Image>(); bg.sprite = GradientSprite(top, bottom); bg.color = Color.white; bg.raycastTarget = true;
-            Image ring = AddImage(root, "FocusRing", new Color(1f, 0.96f, 0.92f, 0.14f), Ring(0.9f));
-            Anchor(ring.rectTransform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(900f, 900f), new Vector2(120f, 0f));
-            return root;
-        }
-
-        // ---- generic UI + sprites ----------------------------------------------------
-        private static Color Hex(string h) { ColorUtility.TryParseHtmlString(h, out var c); return c; }
-
-        private RectTransform NewRect(RectTransform parent, string name)
-        { var go = new GameObject(name, typeof(RectTransform)); go.layer = parent.gameObject.layer; var rt = go.GetComponent<RectTransform>(); rt.SetParent(parent, false); return rt; }
-
-        private Image AddImage(RectTransform parent, string name, Color colour, Sprite sprite)
-        { var rt = NewRect(parent, name); var img = rt.gameObject.AddComponent<Image>(); img.color = colour; img.sprite = sprite; img.type = (sprite != null && sprite.border != Vector4.zero) ? Image.Type.Sliced : Image.Type.Simple; img.raycastTarget = false; return img; }
-
-        private TMP_Text AddText(RectTransform parent, string name, string text, float size, Color colour, TextAlignmentOptions align)
-        { var rt = NewRect(parent, name); var t = rt.gameObject.AddComponent<TextMeshProUGUI>(); t.text = text; t.fontSize = size; t.color = colour; t.alignment = align; t.raycastTarget = false; return t; }
-
-        private void Spaced(TMP_Text t, float em) => t.characterSpacing = em * 100f;
-
-        private static void Stretch(RectTransform rt) { rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one; rt.pivot = new Vector2(0.5f, 0.5f); rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero; }
-        private static void Anchor(RectTransform rt, Vector2 aMin, Vector2 aMax, Vector2 size, Vector2 pos) { rt.anchorMin = aMin; rt.anchorMax = aMax; rt.pivot = new Vector2(0.5f, 0.5f); rt.sizeDelta = size; rt.anchoredPosition = pos; }
-
-        private void ClearGenerated()
-        { var rt = (RectTransform)transform; for (int i = rt.childCount - 1; i >= 0; i--) { var c = rt.GetChild(i).gameObject; if (Application.isPlaying) Destroy(c); else DestroyImmediate(c); } }
-
-        private static string Group(int n)
-        {
-            string s = Mathf.Abs(n).ToString();
-            var sb = new System.Text.StringBuilder();
-            int c = 0;
-            for (int i = s.Length - 1; i >= 0; i--) { sb.Insert(0, s[i]); if (++c % 3 == 0 && i > 0) sb.Insert(0, ' '); }
-            return (n < 0 ? "-" : "") + sb.ToString();
-        }
-
-        private readonly System.Collections.Generic.Dictionary<int, Sprite> _rounded = new();
-        private readonly System.Collections.Generic.Dictionary<float, Sprite> _ring = new();
-        private Sprite _ringThin;
-
-        private Sprite GradientSprite(Color top, Color bottom)
-        {
-            int h = 256; var tex = new Texture2D(2, h, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear };
-            for (int y = 0; y < h; y++) { Color c = Color.Lerp(bottom, top, y / (float)(h - 1)); tex.SetPixel(0, y, c); tex.SetPixel(1, y, c); }
-            tex.Apply();
-            return Sprite.Create(tex, new Rect(0, 0, 2, h), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect, new Vector4(0, 4, 0, 4));
-        }
-
-        private Sprite Rounded(int radius)
-        {
-            if (_rounded.TryGetValue(radius, out var c)) return c;
-            int s = radius * 2 + 4; var tex = new Texture2D(s, s, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
-            for (int y = 0; y < s; y++) for (int x = 0; x < s; x++)
-            { float dx = Mathf.Max(radius - x, x - (s - radius), 0f); float dy = Mathf.Max(radius - y, y - (s - radius), 0f); tex.SetPixel(x, y, new Color(1, 1, 1, Mathf.Clamp01(radius - Mathf.Sqrt(dx * dx + dy * dy) + 0.5f))); }
-            tex.Apply(); var sp = Sprite.Create(tex, new Rect(0, 0, s, s), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect, new Vector4(radius, radius, radius, radius)); _rounded[radius] = sp; return sp;
-        }
-
-        private Sprite Ring(float innerFrac)
-        {
-            if (_ring.TryGetValue(innerFrac, out var c)) return c;
-            int s = 256; var tex = new Texture2D(s, s, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
-            float r = s * 0.5f, cx = r, cy = r, inner = r * innerFrac;
-            for (int y = 0; y < s; y++) for (int x = 0; x < s; x++)
-            { float d = Mathf.Sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy)); tex.SetPixel(x, y, new Color(1, 1, 1, Mathf.Clamp01(r - d) * Mathf.Clamp01(d - inner))); }
-            tex.Apply(); var sp = Sprite.Create(tex, new Rect(0, 0, s, s), new Vector2(0.5f, 0.5f), 100f); _ring[innerFrac] = sp; return sp;
-        }
-
-        private Sprite RingThin() { if (_ringThin == null) _ringThin = Ring(0.82f); return _ringThin; }
     }
 }

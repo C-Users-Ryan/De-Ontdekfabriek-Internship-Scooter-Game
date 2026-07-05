@@ -71,7 +71,13 @@ namespace KenyaScooter.Session
             {
                 reached = true;
                 WorldSpeed.Instance.SetCurrent(0f);
-                GameEvents.RaiseCheckpointReached();
+                // Cinematic relay: hand the stop to the charge-station sequence, which pulls the bike into the bay,
+                // plays the short charge, then raises CheckpointReached itself (so the hand-off screen lands after
+                // the charge, not over it). Falls back to the instant relay if disabled or the sequence is absent.
+                if (config != null && config.cinematicRelay && ChargeStationSequence.Instance != null)
+                    ChargeStationSequence.Instance.PlayArrival();
+                else
+                    GameEvents.RaiseCheckpointReached();
             }
         }
 

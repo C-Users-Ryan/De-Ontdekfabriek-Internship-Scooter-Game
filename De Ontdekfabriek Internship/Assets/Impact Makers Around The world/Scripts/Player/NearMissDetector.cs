@@ -1,6 +1,7 @@
 using UnityEngine;
 using KenyaScooter.Config;
 using KenyaScooter.Core;
+using KenyaScooter.Roads;
 using KenyaScooter.Traffic;
 
 namespace KenyaScooter.Player
@@ -21,7 +22,10 @@ namespace KenyaScooter.Player
                 return;
 
             Vector3 playerPosition = transform.position;
-            float playerLong = RoadDirection.Longitudinal(playerPosition);
+            // Road space, so "the vehicle crossing the player's plane" is measured along the road through a bend.
+            float playerArc = RoadSequencer.Instance != null
+                ? RoadSequencer.Instance.PlayerArc
+                : RoadDirection.Longitudinal(playerPosition);
             float playerLat = RoadDirection.Lateral(playerPosition);
 
             var vehicles = TrafficVehicle.Active;
@@ -31,11 +35,11 @@ namespace KenyaScooter.Player
                 if (vehicle.Direction != LaneDirection.Oncoming || vehicle.NearMissDone || vehicle.WasHitByPlayer)
                     continue;
 
-                float delta = RoadDirection.Longitudinal(vehicle.transform.position) - playerLong;
+                float delta = vehicle.RoadArc - playerArc;
 
                 // Crossing the player's plane this frame, from ahead to behind.
                 if (vehicle.NearMissPrevDelta != float.MaxValue && vehicle.NearMissPrevDelta > 0f && delta <= 0f
-                    && Mathf.Abs(RoadDirection.Lateral(vehicle.transform.position) - playerLat) < config.nearMissDistance)
+                    && Mathf.Abs(vehicle.RoadLateral - playerLat) < config.nearMissDistance)
                 {
                     vehicle.NearMissDone = true;
                     vehicle.FlashHighlight();

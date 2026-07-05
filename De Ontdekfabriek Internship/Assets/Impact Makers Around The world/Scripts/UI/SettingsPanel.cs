@@ -29,7 +29,7 @@ namespace KenyaScooter.UI
             nextReadoutUpdate = Time.unscaledTime + 0.1f;
             ScooterInputRouter input = ScooterInputRouter.Instance;
             if (tiltReadout != null && input != null)
-                tiltReadout.text = $"{input.TiltDegrees:0.0}°  ({(input.GyroActive ? "GYRO" : "KEYS")})";
+                tiltReadout.text = $"{input.TiltDegrees:0.0}°  ({(input.GyroActive ? "GYRO" : "TOETSEN")})";
         }
 
         public void TogglePanel()
@@ -66,9 +66,9 @@ namespace KenyaScooter.UI
         private void RefreshLabels()
         {
             if (gyroStateLabel != null && ScooterInputRouter.Instance != null)
-                gyroStateLabel.text = ScooterInputRouter.Instance.GyroEnabled ? "GYRO: ON" : "GYRO: OFF";
+                gyroStateLabel.text = ScooterInputRouter.Instance.GyroEnabled ? "GYRO: AAN" : "GYRO: UIT";
             if (realRiderStateLabel != null && realRider != null)
-                realRiderStateLabel.text = realRider.RealRiderEnabled ? "REAL RIDER: ON" : "REAL RIDER: OFF";
+                realRiderStateLabel.text = realRider.RealRiderEnabled ? "REAL RIDER: AAN" : "REAL RIDER: UIT";
         }
     }
 }

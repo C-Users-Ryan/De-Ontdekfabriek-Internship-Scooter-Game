@@ -20,8 +20,10 @@ namespace KenyaScooter.Config
         public float naturalDeceleration = 5f;
 
         [Header("Lateral movement (M5)")]
-        [Tooltip("How quickly the scooter builds up sideways speed when you steer. Lower = eases into the move like a real scooter; higher = snappier.")]
-        public float lateralAcceleration = 8f;
+        [Tooltip("How quickly the scooter builds up (and sheds) sideways speed when you steer, in m/s². Lower = " +
+                 "eases into the move like a heavy scooter but feels laggy; higher = snappier and stops drifting " +
+                 "sooner when you level off. Time to full lean ≈ maxLateralSpeed / this (18 & 6 ≈ 0.33 s).")]
+        public float lateralAcceleration = 18f;
         [Tooltip("Top sideways speed (m/s).")]
         public float maxLateralSpeed = 6f;
         [Tooltip("Constant ride height of the scooter above the road.")]

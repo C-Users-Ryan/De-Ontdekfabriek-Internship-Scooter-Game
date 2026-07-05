@@ -7,14 +7,14 @@ using KenyaScooter.UI;
 namespace KenyaScooter.UIEditor
 {
     /// <summary>
-    /// One-click HUD builder. Tools → Kenya Scooter → Build HUD Cluster creates (or finds)
+    /// One-click HUD builder. Tools → Kenya Scooter → UI Builders → Build HUD Cluster creates (or finds)
     /// a screen-space Canvas + a DiegeticHud and generates the whole instrument cluster,
     /// so you never have to hand-place the panel, reels, gauge, battery, limit and LEDs.
     /// Run it again any time to rebuild after tweaking the DiegeticHud's fields.
     /// </summary>
     public static class KenyaHudBuilderMenu
     {
-        [MenuItem("Tools/Kenya Scooter/Build HUD Cluster")]
+        [MenuItem("Tools/Kenya Scooter/UI Builders/Build HUD Cluster", false, 220)]
         public static void BuildHud()
         {
             DiegeticHud hud = Object.FindObjectOfType<DiegeticHud>();
@@ -47,17 +47,17 @@ namespace KenyaScooter.UIEditor
                       "(score, speed, timer, limit, warnings). Tweak the DiegeticHud fields and run this again to rebuild.");
         }
 
-        [MenuItem("Tools/Kenya Scooter/Rebuild HUD Cluster", true)]
+        [MenuItem("Tools/Kenya Scooter/UI Builders/Rebuild HUD Cluster", true)]
         private static bool ValidateRebuild() => Object.FindObjectOfType<DiegeticHud>() != null;
 
-        [MenuItem("Tools/Kenya Scooter/Rebuild HUD Cluster")]
+        [MenuItem("Tools/Kenya Scooter/UI Builders/Rebuild HUD Cluster", false, 221)]
         public static void Rebuild()
         {
             var hud = Object.FindObjectOfType<DiegeticHud>();
             if (hud != null) { hud.Build(); EditorSceneManager.MarkSceneDirty(hud.gameObject.scene); }
         }
 
-        [MenuItem("Tools/Kenya Scooter/Build Menu Screens")]
+        [MenuItem("Tools/Kenya Scooter/UI Builders/Build Menu Screens", false, 222)]
         public static void BuildMenuScreens()
         {
             KenyaMenuScreens screens = Object.FindObjectOfType<KenyaMenuScreens>();

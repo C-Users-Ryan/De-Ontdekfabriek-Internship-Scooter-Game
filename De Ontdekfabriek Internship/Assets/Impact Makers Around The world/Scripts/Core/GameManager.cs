@@ -28,6 +28,15 @@ namespace KenyaScooter.Core
         /// <summary>The scooter — for systems that need a distance to the player without a serialized reference.</summary>
         public static Transform Player => Instance != null ? Instance.player : null;
 
+        /// <summary>Gate for the legacy "tap anywhere to start" affordance. Now DEFAULTS FALSE (2026-07-05): the
+        /// title screen has an explicit ANZA! button, so tapping anywhere else must NOT start the game. The menu's
+        /// Show() only ever enables it for the null (in-game) case, where the Ready guard makes it moot — so
+        /// tap-to-start is effectively retired while the framing screens are up. Defaulting false also closes the
+        /// boot-window race where <see cref="StartPressed"/> (raw touch, not a UI button) could fire before the
+        /// menu's first Show() ran. (Earlier fix 2026-06-24 stopped a stray tap starting the game as TEAM SIMBA;
+        /// this removes the last path where a background tap advanced the title.)</summary>
+        public static bool AllowTapToStart { get; set; } = false;
+
         [SerializeField] private RoadSideConfig roadSideConfig;
         [SerializeField] private Transform player;
         [SerializeField] private TimerManager timer;
@@ -37,6 +46,10 @@ namespace KenyaScooter.Core
         [Header("Workshop configuration (Req §16)")]
         [Tooltip("OFF (default): hard crashes without a rewind recover in place — every student finishes. ON: they end the session.")]
         public bool gameOverOnCollision = false;
+
+        /// <summary>PlayerPrefs key the facilitator "Stoppen bij zware botsing" setting writes; read on Awake so the
+        /// choice applies on startup with no scene wiring (the settings menu cannot edit a scene component at boot).</summary>
+        public const string GameOverPrefKey = "ksg.gameOverOnCollision";
 
         public SessionStats Stats { get; } = new SessionStats();
 
@@ -48,7 +61,12 @@ namespace KenyaScooter.Core
             Instance = this;
             State = GameState.Ready;
             RoadSideConfig.Active = roadSideConfig;
+            // Apply the facilitator's saved "stop on a hard crash" choice (defaults to the inspector value).
+            gameOverOnCollision = PlayerPrefs.GetInt(GameOverPrefKey, gameOverOnCollision ? 1 : 0) == 1;
             Application.targetFrameRate = 60; // iPad target (Req §17)
+            // Kiosk: the tablet must never dim or sleep mid-workshop — Android's screen timeout would
+            // otherwise blank the attract/title screen whenever nobody touches it for a few minutes (Req §16).
+            Screen.sleepTimeout = SleepTimeout.NeverSleep;
         }
 
         private void OnEnable()
@@ -83,7 +101,7 @@ namespace KenyaScooter.Core
 
         private void Update()
         {
-            if (State == GameState.Ready && StartPressed())
+            if (State == GameState.Ready && AllowTapToStart && StartPressed())
                 StartSession();
 
             CheckFacilitatorGesture();
@@ -192,7 +210,10 @@ namespace KenyaScooter.Core
 
         private static bool StartPressed()
         {
-            if (Keyboard.current != null && Keyboard.current.anyKey.wasPressedThisFrame)
+            // Exclude Escape: Android delivers the hardware BACK button as Escape, so a BACK press on an unpinned
+            // tablet would otherwise start a game from the title screen (the interaction documented in KioskLock.cs).
+            if (Keyboard.current != null && Keyboard.current.anyKey.wasPressedThisFrame
+                && !Keyboard.current.escapeKey.wasPressedThisFrame)
                 return true;
             if (Touchscreen.current != null && Touchscreen.current.primaryTouch.press.wasPressedThisFrame)
                 return true;

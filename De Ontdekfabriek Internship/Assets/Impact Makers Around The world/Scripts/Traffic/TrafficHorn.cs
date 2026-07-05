@@ -18,6 +18,13 @@ namespace KenyaScooter.Traffic
         [Range(0f, 1f)]
         [Tooltip("Not every driver honks every time.")]
         [SerializeField] private float hornChance = 0.5f;
+        [Range(0f, 1f)]
+        [Tooltip("Volume for this vehicle's horn one-shots (on top of the AudioSource's 3D rolloff).")]
+        [SerializeField] private float hornVolume = 1f;
+
+        /// <summary>Per-driver multiplier on the honk chance, set by TrafficVehicle from the personality
+        /// (aggressive lean on the horn, cautious rarely use it). 1 = exactly the authored hornChance.</summary>
+        [System.NonSerialized] public float eagerness = 1f;
 
         private AudioSource source;
         private bool armed = true;
@@ -48,11 +55,11 @@ namespace KenyaScooter.Traffic
                 armed = false;
                 cooldownUntil = Time.time + cooldownSeconds;
 
-                if (Random.value < hornChance && hornClips != null && hornClips.Length > 0)
+                if (Random.value < hornChance * eagerness && hornClips != null && hornClips.Length > 0)
                 {
                     AudioClip clip = hornClips[Random.Range(0, hornClips.Length)];
                     if (clip != null)
-                        source.PlayOneShot(clip);
+                        source.PlayOneShot(clip, hornVolume);
                 }
             }
         }

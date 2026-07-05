@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 649616c514e16a84bb1e065f231fd80d, type: 3}
   m_Name: RoadSideConfig_Kenya
   m_EditorClassIdentifier: Assembly-CSharp::KenyaScooter.Config.RoadSideConfig
-  driveOnLeft: 1
+  driveOnLeft: 0
   laneWidth: 3.25
   shoulderWidth: 1.5
   playerLateralLimit: 4.2

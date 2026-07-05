@@ -14,6 +14,14 @@ namespace KenyaScooter.Traffic
     [Serializable]
     public sealed class PersonalitySettings
     {
+        [Tooltip("Display name for this driver archetype (e.g. \"Matatu tout\"). Cosmetic — used in tooling/debug.")]
+        public string label = "";
+
+        [Tooltip("Relative spawn chance of this archetype within its profile. To add a NEW archetype: add an element to " +
+                 "the profile's Personalities list, give it a weight and its trait values — it appears in traffic, no code needed.")]
+        public float weight = 1f;
+
+        [Tooltip("Legacy category tag — behaviour now comes from the values below, not this enum. Leave as-is for the four built-ins.")]
         public DriverPersonality personality = DriverPersonality.Normal;
 
         [Tooltip("Multiplies the vehicle's base speed. Aggressive > 1, Cautious < 1.")]
@@ -33,5 +41,20 @@ namespace KenyaScooter.Traffic
 
         [Tooltip("± m/s slow speed oscillation. Distracted drivers vary speed unpredictably.")]
         public float speedJitter = 0f;
+
+        [Tooltip("Scales how hard this driver changes speed, on top of the vehicle's own acceleration (TrafficVehicle.acceleration). Aggressive > 1, Cautious < 1.")]
+        public float accelerationMult = 1f;
+
+        [Tooltip("Scales the car-following distance and minimum gap. Aggressive < 1 (tailgates), Cautious > 1 (hangs well back).")]
+        public float followGapMult = 1f;
+
+        [Tooltip("How quickly the driver corrects their lane position (scales lateral convergence). Distracted < 1 (sluggish, wanders); alert drivers >= 1.")]
+        public float reactionMult = 1f;
+
+        [Tooltip("Preferred position within the lane, in metres: + sits toward the centre line (assertive), - hugs the verge (cautious). Kept small so the car stays in its own lane.")]
+        public float laneBias = 0f;
+
+        [Tooltip("How readily this driver leans on the horn (scales the TrafficHorn chance). Aggressive > 1, Cautious < 1.")]
+        public float hornEagerness = 1f;
     }
 }

@@ -2,7 +2,6 @@ using UnityEngine;
 using KenyaScooter.Config;
 using KenyaScooter.Core;
 using KenyaScooter.Hazards;
-using KenyaScooter.Roads;
 using KenyaScooter.SafetyNet;
 using KenyaScooter.Traffic;
 
@@ -64,10 +63,6 @@ namespace KenyaScooter.Player
                 relativeKmh = vehicle.isStaticObstacle ? playerKmh
                     : vehicle.Direction == LaneDirection.Oncoming ? playerKmh + vehicleKmh
                     : Mathf.Abs(playerKmh - vehicleKmh);
-            }
-            else if (other.GetComponentInParent<WildlifeAnimal>() != null)
-            {
-                relativeKmh = playerKmh;
             }
             else
             {

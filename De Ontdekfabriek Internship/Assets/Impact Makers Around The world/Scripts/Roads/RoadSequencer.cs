@@ -7,15 +7,16 @@ using KenyaScooter.Session;
 namespace KenyaScooter.Roads
 {
     /// <summary>
-    /// Builds and rides the endless road (M1, M3, M23, M24). Rebuilt 2026-06-17 around a
-    /// constant travel frame: instead of rotating the world's compass on a turn, the road is
-    /// laid out head-to-tail in a stable "road space" (each tile bends the road by its
-    /// curveAngle), and every frame the chain is re-placed so the player's current point on the
-    /// road sits at the world origin facing +Z. So the player always rides "forward" while the
-    /// world curves around them — a turn is just a curve tile, no axis snap, no re-centring, and
-    /// nothing for the rest of the game (which projects onto the now-constant RoadDirection axes)
-    /// to desync against. Sequences are still chosen through the weighted tag grammar; all tiles
-    /// come from per-prefab pools built at Start.
+    /// Builds and rides the endless road (M1, M3, M23, M24). Rebuilt clean 2026-07-04: a tile IS its
+    /// <see cref="RoadTile"/> — length, begin/exit points and a list of turns — and this sequencer does
+    /// exactly one job with it: lay tiles head-to-tail (each tile's BEGIN point attached to the previous
+    /// tile's EXIT point) in a stable "road space", then re-place the chain every frame so the player's
+    /// current point on the road sits at the world origin facing +Z. The world bends around the stationary
+    /// player — that is the turn. No turn components, no schedulers, no junction gates, no silent curve
+    /// softening: what is authored on the tiles is what is ridden.
+    ///
+    /// Sequences are chosen through the weighted tag grammar; all tiles come from per-prefab pools built
+    /// at Start. The player's arc-length is the one number the rewind restores.
     /// </summary>
     [DefaultExecutionOrder(-50)]
     public sealed class RoadSequencer : MonoBehaviour, IRewindable
@@ -32,15 +33,12 @@ namespace KenyaScooter.Roads
         [SerializeField] private float despawnBehind = 35f;
         [SerializeField] private int poolSizePerTile = 4;
 
-        [Header("Sharp-curve overlap guard")]
-        [Tooltip("A tile whose |curveAngle| reaches this many degrees counts as a \"sharp\" curve for the overlap " +
-                 "guard. Gentle bends below this are always laid out as authored.")]
-        [SerializeField] private float sharpCurveAngleThreshold = 45f;
-        [Tooltip("Minimum metres of road kept between two sharp curves. While a sharp curve sits closer than this " +
-                 "behind the build cursor, the next sharp curve is laid out flat (softened to straight) so two sharp " +
-                 "bends can never be live within one draw distance and fold the road over itself. " +
-                 "Keep this >= Spawn Horizon (the draw distance).")]
-        [SerializeField] private float minSharpCurveSpacing = 160f;
+        [Header("Facilitator zone bias (2026-06-28)")]
+        [Tooltip("How strongly a zone chosen in the settings menu (OMGEVING > Omgeving kiezen) is preferred. It " +
+                 "MULTIPLIES that zone's selection weight rather than hard-locking it, so the Journey Arc still " +
+                 "surfaces other zones now and then. Higher = the chosen zone dominates more. Has no effect while the " +
+                 "menu choice is AUTOMATISCH (the default).")]
+        [SerializeField] private float zoneBiasMultiplier = 8f;
 
         public RoadSequence CurrentSequence { get; private set; }
 
@@ -50,16 +48,43 @@ namespace KenyaScooter.Roads
         /// <summary>True when a checkpoint tile is configured, so timer expiry can route to the checkpoint instead of finishing.</summary>
         public bool HasCheckpointTile => checkpointTile != null;
 
-        /// <summary>Signed degrees the road bends across the tile under the player right now (for hazard/traffic spawn gating).</summary>
-        public float CurrentTileCurveAngle { get; private set; }
-
-        /// <summary>Largest signed curveAngle of any tile within the spawn horizon ahead — lets spawners pause through a bend.</summary>
-        public float UpcomingCurveAngle { get; private set; }
-
         /// <summary>How far the player has travelled along the road centreline this turn, in metres of road. This is
         /// the road's own odometer (it is rewound, unlike WorldSpeed.DistanceTravelled). Spawners place objects
         /// relative to this so placement shares the road's frame and stays consistent across a rewind.</summary>
         public float PlayerArc => playerArc;
+
+        // ---- Facilitator zone bias (2026-06-28) --------------------------------------
+        // A scalar bridge between the settings menu and the weighted grammar: the menu writes a chosen zone index
+        // here, EligibleWeight reads it live and weights that zone up.
+
+        /// <summary>PlayerPrefs key for the facilitator's chosen zone bias: 0 = AUTOMATISCH (pure grammar),
+        /// 1..N = strongly prefer the Nth serialized sequence. Written by SettingsCatalog "env.zone", read by EligibleWeight.</summary>
+        public const string ZoneBiasPrefKey = "ksg.zoneBias";
+
+        /// <summary>PlayerPrefs key under which the count of selectable zones is published each run, so the settings
+        /// menu (built before this scene loads) can size its zone picker from the previous run's count.</summary>
+        public const string ZoneCountPrefKey = "ksg.zoneCount";
+
+        /// <summary>PlayerPrefs key for the REGIO-REIS mode (2026-07-05, Ryan's design): 1 = the serialized
+        /// sequences array is ridden as an ORDERED ROUTE of regions (1 → 2 → 3 → …, wrapping), so the world
+        /// visibly changes as the ride progresses and every region keeps its own tiles. 0 (default) = the
+        /// weighted random Journey-Arc grammar. Authoring the route = ordering the sequences on this
+        /// component. Written by SettingsCatalog "env.regionJourney".</summary>
+        public const string RegionJourneyPrefKey = "ksg.regionJourney";
+
+        /// <summary>How many zones a facilitator can bias towards — the serialized grammar pool. The opening
+        /// sequence is excluded: it is forced at the start of every run (Req §4.3), so it is not a pickable zone.</summary>
+        public int SelectableZoneCount => sequences != null ? sequences.Length : 0;
+
+        /// <summary>Display name of the 1-based selectable zone for the settings-menu label (its zoneName, falling
+        /// back to the asset name); empty string if the index is out of range.</summary>
+        public string SelectableZoneName(int oneBasedIndex)
+        {
+            int i = oneBasedIndex - 1;
+            if (sequences == null || i < 0 || i >= sequences.Length || sequences[i] == null)
+                return "";
+            return string.IsNullOrEmpty(sequences[i].zoneName) ? sequences[i].name : sequences[i].zoneName;
+        }
 
         private readonly Dictionary<RoadTile, ObjectPool<RoadTile>> pools =
             new Dictionary<RoadTile, ObjectPool<RoadTile>>();
@@ -89,15 +114,9 @@ namespace KenyaScooter.Roads
         private Quaternion anchorRoadInverse = Quaternion.identity; // inverse of that point's heading (road space → world)
         private bool chainRendered;                                 // false until RenderChain has placed the chain at least once
 
-        // Arc-length (StartArc) of the last tile actually ridden as a sharp curve. The overlap guard keeps
-        // the next sharp curve at least minSharpCurveSpacing of road past this, so two sharp bends are never
-        // live within one draw distance. NegativeInfinity = none placed yet, so the first sharp curve is free.
-        private float lastSharpCurveArc = float.NegativeInfinity;
-
         // Hard cap on tiles built in one pass — a backstop if a tile ever fails to add road length
         // (a zero-length tile) so the build loop can never freeze the game.
         private const int MaxTilesPerFill = 128;
-        private const float StraightEpsilon = 0.01f; // |curveAngle| below this is treated as a straight tile
 
         private void Awake() => Instance = this;
 
@@ -114,6 +133,15 @@ namespace KenyaScooter.Roads
             // compass to restore — just this one number).
             if (RewindSystem.Instance != null)
                 RewindSystem.Instance.Register(this);
+
+            // Publish how many zones the menu's "Omgeving kiezen" picker may offer. The settings catalog is built
+            // before this scene loads, so it sizes the picker from the value written here on the PREVIOUS run; the
+            // first ever run falls back to a small default. Write only when it actually changed.
+            if (PlayerPrefs.GetInt(ZoneCountPrefKey, -1) != SelectableZoneCount)
+            {
+                PlayerPrefs.SetInt(ZoneCountPrefKey, SelectableZoneCount);
+                PlayerPrefs.Save();
+            }
         }
 
         private void OnEnable()
@@ -147,29 +175,15 @@ namespace KenyaScooter.Roads
         // ---- Road-space geometry -----------------------------------------------------
 
         /// <summary>
-        /// Pose at arc-length <paramref name="u"/> into a tile, in road space. A straight tile runs
-        /// along its heading; a curve tile follows a circular arc of total turn <c>curveAngle</c> over
-        /// its length, so the heading and position bend smoothly (no exit anchor needed — the shape is
-        /// fully defined by length + curveAngle).
+        /// Pose at arc-length <paramref name="u"/> into a tile, in road space: the tile's own driven line
+        /// (<see cref="RoadTile.EvaluateRun"/>) chained off the road-space pose its begin point was stamped
+        /// with at spawn.
         /// </summary>
         private static void EvaluatePose(RoadTile tile, float u, out Vector3 position, out Quaternion rotation)
         {
-            // EffectiveCurveAngle, not the authored curveAngle: a curve softened by the overlap guard
-            // must lay out (and therefore chain) as a straight, or the geometry would disagree with the guard.
-            if (Mathf.Abs(tile.EffectiveCurveAngle) < StraightEpsilon || tile.length <= 0.0001f)
-            {
-                position = tile.RoadPosition + tile.RoadRotation * new Vector3(0f, 0f, u);
-                rotation = tile.RoadRotation;
-                return;
-            }
-
-            float phi = tile.EffectiveCurveAngle * Mathf.Deg2Rad;   // total signed turn across the tile
-            float theta = (u / tile.length) * phi;          // turn taken so far
-            float radius = tile.length / phi;               // signed radius (sign carries left/right)
-            float localX = radius * (1f - Mathf.Cos(theta));
-            float localZ = radius * Mathf.Sin(theta);
-            position = tile.RoadPosition + tile.RoadRotation * new Vector3(localX, 0f, localZ);
-            rotation = tile.RoadRotation * Quaternion.AngleAxis(theta * Mathf.Rad2Deg, Vector3.up);
+            tile.EvaluateRun(u, out Vector3 runPos, out Quaternion runRot);
+            position = tile.RoadPosition + tile.RoadRotation * runPos;
+            rotation = tile.RoadRotation * runRot;
         }
 
         /// <summary>The active tile whose span contains <paramref name="arc"/>, clamped to the ends of the chain.</summary>
@@ -202,10 +216,20 @@ namespace KenyaScooter.Roads
             return last;
         }
 
+        /// <summary>The active tile under road-metre <paramref name="arc"/>, or null before the road exists.
+        /// HazardSpawner asks this so a tile's own allowed-hazards list decides what may spawn on it.</summary>
+        public RoadTile TileAt(float arc)
+        {
+            if (activeTiles.Count == 0)
+                return null;
+            return TileAtArc(arc, out _);
+        }
+
         /// <summary>
         /// Places every active tile so the player's current point on the road is at the world origin
-        /// facing +Z. As the player rides through a curve tile, that anchor pose rotates, swinging the
-        /// whole world around the stationary player — which is the turn.
+        /// facing +Z. Each tile is positioned by its BEGIN point (the point the chain attached), so tiles
+        /// always seam begin-to-exit. As the player rides through a turn, the anchor pose rotates, swinging
+        /// the whole world around the stationary player — which is the turn.
         /// </summary>
         private void RenderChain()
         {
@@ -224,26 +248,28 @@ namespace KenyaScooter.Roads
             for (int i = 0; i < activeTiles.Count; i++)
             {
                 RoadTile tile = activeTiles[i];
-                tile.transform.SetPositionAndRotation(
-                    inverse * (tile.RoadPosition - anchorPos),
-                    inverse * tile.RoadRotation);
+                // The tile transform maps its LOCAL space to the world such that its begin point lands on the
+                // stamped road pose and its driven line lies along the road (RoadTile.ArtFacing). The begin
+                // point is taken in real METRES (the authored point scaled by the root), so scaled tile art
+                // (the ×20 ground tiles) anchors correctly.
+                Quaternion rot = inverse * tile.RoadRotation * Quaternion.Inverse(tile.ArtFacing);
+                Vector3 pos = inverse * (tile.RoadPosition - anchorPos) - rot * tile.BeginPointMetres;
+                tile.transform.SetPositionAndRotation(pos, rot);
             }
 
-            // Publish the live bend so the camera bank, the scooter lean and the collision grace can read it.
-            // Effective, not authored — a softened curve is ridden straight, so nothing should bank into it.
-            CurrentTileCurveAngle = anchorTile.EffectiveCurveAngle;
-            float degPerMetre = anchorTile.length > 0.0001f ? anchorTile.EffectiveCurveAngle / anchorTile.length : 0f;
-            RoadDirection.SetCurveRate(degPerMetre * WorldSpeed.Instance.Current);
+            // Publish the live bend so the camera bank and the scooter lean can read it: the per-metre bend
+            // at the player's exact point — non-zero only between a turn's green and red ball.
+            RoadDirection.SetCurveRate(anchorTile.CurveDegreesPerMetreAt(anchorU) * WorldSpeed.Instance.Current);
 
-            UpcomingCurveAngle = SharpestCurveWithin(spawnHorizon);
+            // Publish the surface under the tyres the same way, so the dirt-road feel (DirtRumble, the dust
+            // boost) eases in and out with the tile actually being ridden.
+            RoadSurfaceFeel.Publish(anchorTile.surface, Time.deltaTime);
         }
 
         /// <summary>
-        /// The sharpest signed curveAngle of any tile within <paramref name="metresAhead"/> of the player
-        /// (including the tile under them). TrafficSpawner calls this to pause placing traffic through a
-        /// bend — on a curve the road leaves the straight +Z spawn line, so a car placed there would float
-        /// off the road. (Hazards instead ride the curve via <see cref="TryGetRoadPose"/>, so they no longer
-        /// pause.) Returns 0 on a clear straight stretch.
+        /// The sharpest signed turn (degrees) on any tile within <paramref name="metresAhead"/> of the player
+        /// (including the tile under them). Spawners call this to pause placing objects through a bend.
+        /// Returns 0 on a clear straight stretch.
         /// </summary>
         public float SharpestCurveWithin(float metresAhead)
         {
@@ -254,11 +280,46 @@ namespace KenyaScooter.Roads
                 RoadTile tile = activeTiles[i];
                 if (tile.StartArc + tile.length < playerArc || tile.StartArc > limit)
                     continue;
-                // Effective, not authored: a softened curve is straight road, so spawners may resume on it.
-                if (Mathf.Abs(tile.EffectiveCurveAngle) > Mathf.Abs(sharpest))
-                    sharpest = tile.EffectiveCurveAngle;
+                float tileCurve = tile.SharpestBendDegrees;
+                if (Mathf.Abs(tileCurve) > Mathf.Abs(sharpest))
+                    sharpest = tileCurve;
             }
             return sharpest;
+        }
+
+        /// <summary>
+        /// The nearest authored turn that BEGINS ahead of the player within <paramref name="metresAhead"/> and
+        /// bends at least <paramref name="minSwingDegrees"/>: its distance from the player (out) and signed
+        /// swing (out; + = the road bends right, − = left). Gentle kinks below the threshold are ignored so the
+        /// telegraph only fires for turns a player actually has to read. Returns false on clear straight road.
+        /// TurnTelegraph calls this each frame to warn the player before a bend arrives.
+        /// </summary>
+        public bool TryGetTurnAhead(float metresAhead, float minSwingDegrees, out float distance, out float swingDegrees)
+        {
+            distance = 0f;
+            swingDegrees = 0f;
+            float limit = playerArc + metresAhead;
+            float nearestArc = float.MaxValue;
+            for (int i = 0; i < activeTiles.Count; i++)
+            {
+                RoadTile tile = activeTiles[i];
+                if (tile.StartArc > limit || tile.StartArc + tile.length < playerArc)
+                    continue; // tile is wholly beyond the window, or wholly behind the player
+
+                // Only consider turns starting at or after the player's own point on this tile.
+                float fromU = Mathf.Max(0f, playerArc - tile.StartArc);
+                if (!tile.TryGetNextTurn(fromU, minSwingDegrees, out float startMetre, out float swing))
+                    continue;
+
+                float turnArc = tile.StartArc + startMetre;
+                if (turnArc < playerArc || turnArc > limit || turnArc >= nearestArc)
+                    continue;
+
+                nearestArc = turnArc;
+                distance = turnArc - playerArc;
+                swingDegrees = swing;
+            }
+            return nearestArc < float.MaxValue;
         }
 
         /// <summary>
@@ -320,19 +381,28 @@ namespace KenyaScooter.Roads
                 AdvanceSequence();
             if (prefabQueue.Count == 0)
                 return; // no eligible sequence yielded tiles — never Dequeue an empty queue
-
             RoadTile prefab = prefabQueue.Dequeue();
+
+            if (!pools.ContainsKey(prefab))
+                EnsurePool(prefab);
             RoadTile tile = pools[prefab].Get();
 
-            // Stamp the tile's place in road space, then advance the build cursor to this tile's exit.
+            // Stamp the tile's place in road space: its BEGIN point sits at the build cursor, then the
+            // cursor advances to its driven end — which is its EXIT point. Tiles line up by construction.
             tile.RoadPosition = buildRoadPosition;
             tile.RoadRotation = buildRoadRotation;
             tile.StartArc = buildArc;
-            tile.EffectiveCurveAngle = ResolveCurveAngle(tile);
+
+            // If the tile generates its road surface (CurvedRoadMesh), rebuild it so the painted road is the
+            // exact line the tile drives. Tiles with hand-modelled road meshes are untouched.
+            CurvedRoadMesh curvedMesh = tile.GetComponent<CurvedRoadMesh>();
+            if (curvedMesh != null)
+                curvedMesh.BuildFromTile(tile);
+
             tile.gameObject.SetActive(true);
             activeTiles.Add(tile);
 
-            if (tile.IsCheckpoint)
+            if (tile.isCheckpoint)
                 ActiveCheckpointTile = tile;
 
             EvaluatePose(tile, tile.length, out buildRoadPosition, out buildRoadRotation);
@@ -340,36 +410,40 @@ namespace KenyaScooter.Roads
             tilesSpawnedTotal++;
         }
 
-        /// <summary>
-        /// The bend this tile should actually be laid out with — the sharp-curve overlap guard
-        /// (README "Known limitations"). Two sharp bends inside one draw distance can fold the road
-        /// over itself, and there is no other in-engine guard. A "sharp" tile (|curveAngle| at or above
-        /// <see cref="sharpCurveAngleThreshold"/>) is ridden flat whenever the last sharp curve sits less
-        /// than <see cref="minSharpCurveSpacing"/> of road behind the build cursor, so at most one sharp
-        /// bend is ever live within the draw distance. The first sharp curve, gentle bends and straights
-        /// always pass through unchanged. Spacing is measured start-to-start in arc length, which is
-        /// robust to tiles of differing length.
-        /// </summary>
-        private float ResolveCurveAngle(RoadTile tile)
-        {
-            bool isSharp = Mathf.Abs(tile.curveAngle) >= sharpCurveAngleThreshold;
-            if (isSharp && buildArc - lastSharpCurveArc < minSharpCurveSpacing)
-                return 0f; // soften to straight: a sharp bend is already too close behind
-
-            if (isSharp)
-                lastSharpCurveArc = buildArc; // this one rides as a curve; the next must clear the spacing
-            return tile.curveAngle;
-        }
-
         private void AdvanceSequence()
         {
-            RoadSequence next = PickNextSequence();
+            RoadSequence next = RegionJourneyEnabled ? PickNextRegion() : PickNextSequence();
             CurrentSequence = next;
             lastUsedAtTile[next] = tilesSpawnedTotal;
 
             EnqueueTiles(next);
 
             GameEvents.RaiseSequenceChanged(next);
+        }
+
+        // ---- Regio-reis: the sequences array as an ordered route (2026-07-05) ---------
+        // Instead of the weighted random mix, the player TRAVERSES the regions in the order they are
+        // listed on this component — region 1, then 2, then 3 … wrapping at the end — so the environment
+        // genuinely changes along the ride and each region contributes its own tiles. A region that wants
+        // to last longer simply lists more tiles. Every turn starts back at region 1 (predictable for the
+        // relay: every student gets the same journey). The facilitator zone bias is ignored in this mode —
+        // the authored order IS the choice.
+
+        private int regionIndex; // next region to ride in Regio-reis mode (index into sequences, pre-wrap)
+
+        private bool RegionJourneyEnabled =>
+            PlayerPrefs.GetInt(RegionJourneyPrefKey, 0) == 1 && sequences != null && sequences.Length > 0;
+
+        private RoadSequence PickNextRegion()
+        {
+            for (int step = 0; step < sequences.Length; step++) // skip null/empty entries defensively
+            {
+                RoadSequence candidate = sequences[regionIndex % sequences.Length];
+                regionIndex++;
+                if (candidate != null && candidate.tiles != null && candidate.tiles.Length > 0)
+                    return candidate;
+            }
+            return CurrentSequence != null ? CurrentSequence : openingSequence; // no usable region at all
         }
 
         /// <summary>
@@ -387,13 +461,15 @@ namespace KenyaScooter.Roads
             if (!sequence.shuffleTiles)
             {
                 for (int i = 0; i < tiles.Length; i++)
-                    prefabQueue.Enqueue(tiles[i]);
+                    if (tiles[i] != null) // a sequence slot whose prefab was deleted must never reach the pools
+                        prefabQueue.Enqueue(tiles[i]);
                 return;
             }
 
             tileEnqueueBuffer.Clear();
             for (int i = 0; i < tiles.Length; i++)
-                tileEnqueueBuffer.Add(tiles[i]);
+                if (tiles[i] != null)
+                    tileEnqueueBuffer.Add(tiles[i]);
 
             // Fisher-Yates — unbiased in-place shuffle.
             for (int i = tileEnqueueBuffer.Count - 1; i > 0; i--)
@@ -456,6 +532,15 @@ namespace KenyaScooter.Roads
             float weight = candidate.weight;
             if (previous != null && previous.HasAnyTag(candidate.preferredPrevTags))
                 weight *= 2f;
+
+            // Facilitator soft zone bias: a zone chosen in the settings menu is weighted up rather than hard-locked,
+            // so the Journey Arc still surfaces other zones occasionally. Read live so a menu change applies at the
+            // next sequence pick; 0 / out of range = AUTOMATISCH (no bias). The cooldown above still applies, so even
+            // a biased zone never repeats back-to-back — it dominates the rotation without becoming the only zone.
+            int biasedZone = PlayerPrefs.GetInt(ZoneBiasPrefKey, 0);
+            if (biasedZone >= 1 && biasedZone <= sequences.Length && sequences[biasedZone - 1] == candidate)
+                weight *= zoneBiasMultiplier;
+
             return weight;
         }
 
@@ -464,7 +549,7 @@ namespace KenyaScooter.Roads
         /// <summary>
         /// Caps the road with the checkpoint tile (Req §9.2): clears any pending tiles, appends the
         /// checkpoint at the current chain end, and halts further building so nothing spawns past it.
-        /// The player keeps riding into it; CheckpointController brakes to a stop at the tile's marker.
+        /// The player keeps riding into it; CheckpointController brakes to a stop at the tile's stop point.
         /// Called once by CheckpointController when the timer expires.
         /// </summary>
         public void SpawnCheckpoint()
@@ -496,15 +581,14 @@ namespace KenyaScooter.Roads
             buildRoadPosition = new Vector3(0f, 0f, buildArc);
             buildRoadRotation = Quaternion.identity;
             buildHalted = false;
-            lastSharpCurveArc = float.NegativeInfinity; // first sharp curve of the run is unguarded
             ActiveCheckpointTile = null;
-            CurrentTileCurveAngle = 0f;
-            UpcomingCurveAngle = 0f;
             RoadDirection.SetCurveRate(0f);
+            RoadSurfaceFeel.Reset(); // a new group's turn starts on tarmac, not the previous run's blend
 
             // Opening is forced, never weighted (Req §4.3).
             CurrentSequence = openingSequence;
             lastUsedAtTile[openingSequence] = 0;
+            regionIndex = 0; // Regio-reis: every turn rides the route from region 1 — same journey for every student
             EnqueueTiles(openingSequence);
 
             BuildAhead();
@@ -536,15 +620,6 @@ namespace KenyaScooter.Roads
                         activeTiles.Add(pool.AllInstances[i]);
 
             activeTiles.Sort((a, b) => a.StartArc.CompareTo(b.StartArc));
-
-            // Re-derive the overlap-guard cursor from the tiles that survived the rewind. Rewinding
-            // backward shrinks buildArc, so a lastSharpCurveArc recorded further ahead would be stale;
-            // the surviving tiles keep their (pooling-stable) EffectiveCurveAngle, so the last sharp
-            // one among them — they are now sorted, so the highest StartArc wins — is the truth.
-            lastSharpCurveArc = float.NegativeInfinity;
-            for (int i = 0; i < activeTiles.Count; i++)
-                if (Mathf.Abs(activeTiles[i].EffectiveCurveAngle) >= sharpCurveAngleThreshold)
-                    lastSharpCurveArc = activeTiles[i].StartArc;
 
             if (activeTiles.Count > 0)
             {
@@ -603,7 +678,31 @@ namespace KenyaScooter.Roads
             sample.Active = true;
         }
 
-        public void ApplySample(in RewindSample sample) => playerArc = sample.Aux;
+        public void ApplySample(in RewindSample sample)
+        {
+            playerArc = sample.Aux;
+            // Keep the player-anchored curve mapping live as the road rewinds. RenderChain (which normally caches
+            // it) does not run while the game is Rewinding, so without this the anchor would stay frozen at the
+            // crash point and anything that re-derives its pose from road space during the rewind — the traffic —
+            // would drift off the rewinding road. The tiles' own road-space data is stable through pooling, so the
+            // mapping is well-defined for any restored arc. RoadSequencer registers before the vehicles (execution
+            // order -50), so this runs first in the rewind apply pass and they read the fresh anchor.
+            CacheAnchorAtPlayer();
+        }
+
+        /// <summary>Recomputes the cached player-anchor mapping (road space → world) from the current playerArc,
+        /// without moving any tile. Shared by the rewind apply path; RenderChain computes the same values inline
+        /// while it also re-places the tiles.</summary>
+        private void CacheAnchorAtPlayer()
+        {
+            RoadTile anchorTile = TileAtArc(playerArc, out float anchorU);
+            if (anchorTile == null)
+                return;
+            EvaluatePose(anchorTile, anchorU, out Vector3 anchorPos, out Quaternion anchorRot);
+            anchorRoadPosition = anchorPos;
+            anchorRoadInverse = Quaternion.Inverse(anchorRot);
+            chainRendered = true;
+        }
 
         // ---- Pools -------------------------------------------------------------------
 

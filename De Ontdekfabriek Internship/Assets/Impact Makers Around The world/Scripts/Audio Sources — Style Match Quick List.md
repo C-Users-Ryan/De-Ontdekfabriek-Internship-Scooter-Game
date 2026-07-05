@@ -17,6 +17,7 @@ A fast, scannable companion to **`Audio Sourcing — Ready to Download.md`** (fu
 | Field | Clip (author) | Find it | Licence | Match | Why |
 |---|---|---|---|---|---|
 | `motorLoop` | "Electric Scooter" (IENBA) | freesound 697379 | CC0 | ★★★★★ ⚡ | Actually an electric scooter free-wheel — exactly the right vehicle, not a petrol fake. |
+| `motorStart` / `motorStop` | head & tail off-cuts of the same IENBA clip | freesound 697379 | CC0 | ★★★★★ ⚡ | Same real e-scooter recording — the wind-up/down match the loop perfectly. Now wired (plays on run start / end). |
 | `windLoop` | "Soft Wind" (florianreichelt) | freesound 459977 | CC0 | ★★★★ | Clean, universal wind. Fits any open road; not location-specific (it doesn't need to be). |
 | `surfaceLoop` (tarmac) | "Car rolling on asphalt" (orlandorizo) | freesound 591079 | CC0 | ★★★★ | Neutral tyre-on-tarmac. Right texture for the highway; nothing distinctly Kenyan needed here. |
 | murram variant *(not wired)* | "Bike tire on dirt road" (SpliceSound) | freesound 218301 | CC0 | ★★★★ | Good dirt/murram texture for the rough stretches — just needs code to swap it in. |

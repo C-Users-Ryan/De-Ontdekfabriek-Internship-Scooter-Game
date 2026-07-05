@@ -43,6 +43,17 @@
 
 > **Correction vs old doc:** the page now shows **CC0**, not CC BY 4.0 — so no credit line is needed for the engine.
 
+### `motorStart` / `motorStop` — engine spin-up & spin-down *(new — now wired)*
+| | |
+|---|---|
+| **Recommended** | the **same IENBA clip** (697379) — no new download |
+| **Find it** | freesound 697379 (CC0) |
+| **Processing** | When you trim `motorLoop` to its steady middle, you cut off a **spin-up** at the head and a **spin-down** at the tail. **Save those two off-cuts** as separate clips: head → `motorStart`, tail → `motorStop`. Keep each short (~0.4–1.0 s) and matched to the loop's level so they blend. |
+| **Plays when** | `motorStart` on run start; `motorStop` when a run ends (game over / finished). Both **optional** — leave empty and the engine just fades in/out as before. |
+| **Backup** | any electric-motor start/stop one-shot, e.g. trim "Electric Motor Whir" by jasonLON (freesound 125401, confirm licence) |
+
+> **Now wired in code** (`AudioConfig.motorStart` / `motorStop`, played from `AudioManager` on `SessionStarted` and on the transition into `GameOver`/`Finished`). This is the "spin-up/spin-down polish" — it gives the electric whine a wind-up at the start of a run and a wind-down at the end, layered over the loop's fade.
+
 ### `windLoop` — wind rush
 | | |
 |---|---|
@@ -291,7 +302,8 @@ If you want these in the game, that's a **code change** (new `AudioConfig` field
 Tarmac engine + ambience + SFX, in priority order. Tick as you go.
 
 **Engine / loops**
-- [ ] `motorLoop` — IENBA "Electric Scooter" (CC0) → trim spin-up, loop
+- [ ] `motorLoop` — IENBA "Electric Scooter" (CC0) → trim to steady middle, loop
+- [ ] `motorStart` / `motorStop` — the head & tail off-cuts of that same IENBA clip (CC0) → save as two short one-shots *(optional, now wired)*
 - [ ] `windLoop` — florianreichelt "Soft Wind" (CC0) → loop
 - [ ] `surfaceLoop` — orlandorizo "Car rolling on asphalt" (CC0) → loop
 - [ ] *(standby)* murram — SpliceSound "Bike tire on dirt road" (CC0)

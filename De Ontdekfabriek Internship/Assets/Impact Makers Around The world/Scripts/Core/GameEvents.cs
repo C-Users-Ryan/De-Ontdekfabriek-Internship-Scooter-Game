@@ -23,8 +23,20 @@ namespace KenyaScooter.Core
         public static event Action<GameState, GameState> StateChanged;
         /// <summary>The player has stopped at the relay checkpoint (Req §9.2).</summary>
         public static event Action CheckpointReached;
+        /// <summary>The bike has pulled into the charge station and started charging (cinematic relay) — for the charge visuals (battery refill, glow). Raised by ChargeStationSequence before CheckpointReached.</summary>
+        public static event Action ChargingStarted;
         /// <summary>A new class group is starting — group-scoped state (group total, shared streak) resets. Raised by GroupScoreManager.</summary>
         public static event Action GroupReset;
+
+        /// <summary>A full-screen framing/menu screen became visible (true) or was dismissed back to the HUD (false).
+        /// Raised by KenyaMenuScreens as the single source of truth for "a UI screen is covering the world". The
+        /// audio layer uses it two ways: the UI sound plays an open cue on it, and the game-world beds (ambience,
+        /// soundscape) duck to silence while it is up so nothing leaks from the game behind a menu.</summary>
+        public static event Action<bool> MenuScreenChanged;
+        /// <summary>Live convenience mirror of the last <see cref="MenuScreenChanged"/> value, so a system can gate on
+        /// "is a menu screen up?" without subscribing. True while any framing screen (title/setup/relay/eindstand/
+        /// game-over) is visible.</summary>
+        public static bool MenuScreenVisible { get; private set; }
 
         // ---- Driving events ---------------------------------------------------------
 
@@ -46,6 +58,28 @@ namespace KenyaScooter.Core
         public static event Action<int> SpeedingTierChanged;
         /// <summary>One full second spent in speeding tier 2 or 3 (parameter = tier).</summary>
         public static event Action<int> SpeedingTick;
+
+        // ---- Pedestrian crossing (M28 — yield to vulnerable road users) -------------
+        // Pedestrian HITS reuse the HazardHit event above (the crosser carries a HazardSpawnConfig),
+        // so the deduction, streak reset, speed scrub, wobble, shake, haptics and warning all fire
+        // through the existing hazard pipeline — no new wiring. These two events add only what the
+        // hazard model has no notion of: telegraphing a crossing ahead, and REWARDING a clean yield.
+
+        /// <summary>A pedestrian crossing is coming up — telegraph it so yielding is a fair, anticipated choice.
+        /// (SwahiliUI warn key, metres ahead). Raised by PedestrianCrossingSpawner; the HUD shows a calm caution banner.</summary>
+        public static event Action<string, float> CrossingAhead;
+        /// <summary>The player slowed for a pedestrian and let them pass cleanly — the core teaching reward
+        /// (base points before the streak multiplier, SwahiliUI popup key, world position). Raised by Pedestrian;
+        /// ScoreManager awards it with the current multiplier, like an overtake.</summary>
+        public static event Action<int, string, Vector3> PedestrianYielded;
+
+        // ---- Road-shape telegraph (2026-07-05 play-test: a bend took a first-time player by surprise) ----
+        /// <summary>A bend is coming up — telegraph it so the turn is anticipated, not a gotcha (design:
+        /// anticipation, not punishment — the same principle as the crossing telegraph above). (SwahiliUI warn
+        /// key encoding the direction, WARN_TURN_LEFT / WARN_TURN_RIGHT; metres ahead of the turn's start).
+        /// Raised by TurnTelegraph; the HUD shows a calm caution banner on the very channel the crossing
+        /// telegraph uses, so nothing new has to be wired to display it.</summary>
+        public static event Action<string, float> TurnAhead;
 
         // ---- Grace and rewind (M16, M17) --------------------------------------------
 
@@ -76,7 +110,13 @@ namespace KenyaScooter.Core
         public static void RaiseSessionStarted() => SafeInvoke(SessionStarted);
         public static void RaiseStateChanged(GameState from, GameState to) => StateChanged?.Invoke(from, to);
         public static void RaiseCheckpointReached() => CheckpointReached?.Invoke();
+        public static void RaiseChargingStarted() => SafeInvoke(ChargingStarted);
         public static void RaiseGroupReset() => GroupReset?.Invoke();
+        public static void RaiseMenuScreenChanged(bool visible)
+        {
+            MenuScreenVisible = visible;
+            MenuScreenChanged?.Invoke(visible);
+        }
 
         public static void RaiseOvertakeCompleted(TrafficVehicle vehicle) => OvertakeCompleted?.Invoke(vehicle);
         public static void RaiseIllegalOvertake(TrafficVehicle vehicle) => IllegalOvertake?.Invoke(vehicle);
@@ -86,6 +126,10 @@ namespace KenyaScooter.Core
         public static void RaiseHazardHit(HazardSpawnConfig definition, float playerKmh, Vector3 position)
             => HazardHit?.Invoke(definition, playerKmh, position);
         public static void RaiseWrongLaneChanged(bool inWrongLane) => WrongLaneChanged?.Invoke(inWrongLane);
+        public static void RaiseCrossingAhead(string warnKey, float metresAhead) => CrossingAhead?.Invoke(warnKey, metresAhead);
+        public static void RaisePedestrianYielded(int basePoints, string popupKey, Vector3 position)
+            => PedestrianYielded?.Invoke(basePoints, popupKey, position);
+        public static void RaiseTurnAhead(string warnKey, float metresAhead) => TurnAhead?.Invoke(warnKey, metresAhead);
         public static void RaiseWrongLaneTick() => WrongLaneTick?.Invoke();
         public static void RaiseSpeedingTierChanged(int tier) => SpeedingTierChanged?.Invoke(tier);
         public static void RaiseSpeedingTick(int tier) => SpeedingTick?.Invoke(tier);
@@ -126,9 +170,11 @@ namespace KenyaScooter.Core
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ClearAllSubscriptions()
         {
-            SessionReset = null; SessionStarted = null; StateChanged = null; CheckpointReached = null; GroupReset = null;
+            SessionReset = null; SessionStarted = null; StateChanged = null; CheckpointReached = null; ChargingStarted = null; GroupReset = null;
+            MenuScreenChanged = null; MenuScreenVisible = false;
             OvertakeCompleted = null; IllegalOvertake = null; NearMiss = null; CollisionOccurred = null; HazardHit = null;
             WrongLaneChanged = null; WrongLaneTick = null; SpeedingTierChanged = null; SpeedingTick = null;
+            CrossingAhead = null; PedestrianYielded = null; TurnAhead = null;
             GraceAbsorbed = null; GraceRecharged = null; RewindStarted = null; RewindCompleted = null;
             ScoreChanged = null; StreakChanged = null; PopupRequested = null;
             SequenceChanged = null; DayPhaseChanged = null;

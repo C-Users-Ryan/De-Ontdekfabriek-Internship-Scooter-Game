@@ -18,11 +18,11 @@ namespace KenyaScooter.UI
     {
         [SerializeField] private UITheme theme;
 
-        [Header("Copy (set to your verified SwahiliUI strings)")]
+        [Header("Copy — Swahili headers (Kenya flavour) with a Dutch subtitle + button")]
         [SerializeField] private string headerFinished = "MWISHO WA SAFARI";
         [SerializeField] private string headerGameOver = "MWISHO";
-        [SerializeField] private string subtitle = "journey complete";
-        [SerializeField] private string nextLabel = "NEXT PLAYER";
+        [SerializeField] private string subtitle = "reis voltooid";
+        [SerializeField] private string nextLabel = "VOLGENDE SPELER";
 
         [Tooltip("Show the screen on Start with sample numbers, to preview the design without finishing a run.")]
         [SerializeField] private bool previewOnStart = false;
@@ -76,7 +76,7 @@ namespace KenyaScooter.UI
         {
             scoreText.text = score.ToString("N0");
             string ok = theme != null ? ColorUtility.ToHtmlStringRGB(theme.success) : "67B44E";
-            breakdownText.text = $"<color=#{ok}>INGEHAALD ×{overtakes}</color>    ·    {km:0.0} km    ·    streak ×{streak}";
+            breakdownText.text = $"<color=#{ok}>INGEHAALD ×{overtakes}</color>    ·    {km:0.0} km    ·    reeks ×{streak}";
         }
 
         private void OnNext()

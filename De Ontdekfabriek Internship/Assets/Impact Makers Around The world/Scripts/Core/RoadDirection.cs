@@ -31,7 +31,7 @@ namespace KenyaScooter.Core
         /// hit mid-turn would be unfair. Driven by the live CurveRate, not a fixed timer.</summary>
         public static bool IsTurning => Mathf.Abs(CurveRate) > TurnCurveThreshold;
 
-        // deg/s. A real curve tile produces CurveRate = (curveAngle/length)*speed, so a 90° tile over 200 m at
+        // deg/s. A turn produces CurveRate = (degrees / turn span)*speed, so a 90° turn over 200 m at
         // 10-20 m/s is only ~4.5-9 deg/s — the old 15 threshold never tripped on the authored geometry, so the
         // mid-turn collision grace never fired. 4 trips for a genuine bend at cruise speed but stays clear of a
         // gentle sub-45° bend or steering noise.

@@ -26,6 +26,22 @@ namespace KenyaScooter.Config
         [Tooltip("Game-over / finish screens advance automatically after this many seconds.")]
         public float endScreenAutoAdvanceSeconds = 20f;
 
+        [Header("Charge-station relay choreography")]
+        [Tooltip("ON: reaching the charge station plays the diegetic pull-in, a short charge, then a pull-out when the next player starts. OFF: the proven instant relay (stop, then the score screen). Toggleable so the liked build is never at risk.")]
+        public bool cinematicRelay = true;
+        [Tooltip("Seconds for the bike to ease off the road into the charging bay.")]
+        public float pullInSeconds = 1.0f;
+        [Tooltip("Seconds the bike visibly charges (battery refills) before the hand-off screen appears. Kept short and positive on purpose (green top-up, not 'the battery died again').")]
+        public float chargeSeconds = 2.0f;
+        [Tooltip("Seconds for the bike to ease back onto the road when the next player starts.")]
+        public float pullOutSeconds = 1.1f;
+        [Tooltip("How far onto the shoulder the bike pulls to charge (metres from lane centre; the side follows the driving side, so it pulls to the near shoulder).")]
+        public float bayLateral = 3.0f;
+        [Tooltip("How far the bike angles toward the bay while parked (degrees toward the near shoulder).")]
+        public float bayYaw = 32f;
+        [Tooltip("How fast the world ramps back up to cruising speed as the bike pulls out (m/s^2).")]
+        public float pullOutAccel = 7f;
+
         [Header("Speeding (Req §7.3)")]
         [Tooltip("Seconds over the limit before tier 2/3 deductions start.")]
         public float speedingGraceSeconds = 3f;

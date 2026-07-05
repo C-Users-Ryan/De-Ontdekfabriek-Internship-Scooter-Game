@@ -274,7 +274,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 249691cc7a89b0e4eaf13aed3a8d4882, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::KenyaScooter.Traffic.TrafficHorn
-  hornClips: []
+  hornClips:
+  - {fileID: 0}
   triggerDistance: 12
   maxLateralGap: 4
   cooldownSeconds: 6

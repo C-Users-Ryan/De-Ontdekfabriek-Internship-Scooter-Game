@@ -4986,6 +4986,7 @@ MonoBehaviour:
   muted: {r: 0.60784316, g: 0.5411765, b: 0.47058824, a: 1}
   ledOff: {r: 0.22745098, g: 0.19607843, b: 0.17254902, a: 1}
   trackDim: {r: 0.22745098, g: 0.19607843, b: 0.17254902, a: 1}
+  chargeVisualSeconds: 1.6
 --- !u!213 &342303420
 Sprite:
   m_ObjectHideFlags: 0
@@ -9615,6 +9616,12 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   autoConfigure: 1
+  wiiRadialPreset: 1
+  streakSpeed: 36
+  streakLength: 2.6
+  streakDensity: 90
+  tunnelDepth: 30
+  tunnelAngle: 16
   overrideMaterial: {fileID: 0}
   lineColor: {r: 1, g: 1, b: 1, a: 1}
   lengthScale: 1.5
@@ -19233,13 +19240,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::KenyaScooter.Roads.RoadSequencer
   openingSequence: {fileID: 11400000, guid: 5cd39b66b7974d34597e747832276aa5, type: 2}
   sequences:
+  - {fileID: 11400000, guid: a3365a0a0f2307a4782f5a973f85ec14, type: 2}
   - {fileID: 11400000, guid: 5cd39b66b7974d34597e747832276aa5, type: 2}
   checkpointTile: {fileID: 0}
   spawnHorizon: 350
   despawnBehind: 35
   poolSizePerTile: 4
-  sharpCurveAngleThreshold: 45
-  minSharpCurveSpacing: 160
+  zoneBiasMultiplier: 8
 --- !u!1 &881460712
 GameObject:
   m_ObjectHideFlags: 0
@@ -20442,7 +20449,7 @@ Transform:
   m_GameObject: {fileID: 971037621}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -3.554, y: -1.172, z: 0.163}
+  m_LocalPosition: {x: 0, y: -1.172, z: 0.163}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -24780,12 +24787,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::KenyaScooter.UI.KenyaMenuScreens
   teamName: TEAM SIMBA
-  ink: {r: 0.9764706, g: 0.9137255, b: 0.8392157, a: 1}
-  kicker: {r: 0.9490196, g: 0.6431373, b: 0.40784314, a: 1}
-  accent: {r: 0.9490196, g: 0.627451, b: 0.33333334, a: 1}
-  cream: {r: 1, g: 0.9647059, b: 0.9254902, a: 1}
-  success: {r: 0.60784316, g: 0.8784314, b: 0.4862745, a: 1}
-  cardFill: {r: 0.11, g: 0.05, b: 0.03, a: 0.46}
 --- !u!1 &1234656429
 GameObject:
   m_ObjectHideFlags: 0
@@ -29464,6 +29465,8 @@ MonoBehaviour:
   curveBankGain: 0.8
   maxCurveBank: 6
   curveFeelLerp: 4
+  player: {fileID: 1896502485}
+  scriptedFollowLerp: 5
 --- !u!1 &1459031919
 GameObject:
   m_ObjectHideFlags: 0
@@ -31857,6 +31860,69 @@ RectTransform:
   m_AnchoredPosition: {x: 360, y: -4}
   m_SizeDelta: {x: 70, y: 150}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!1 &1592818797
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1592818798}
+  - component: {fileID: 1592818799}
+  m_Layer: 0
+  m_Name: Headlight
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1592818798
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1592818797}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0.078459114, y: 0, z: 0, w: 0.99691737}
+  m_LocalPosition: {x: 3.547, y: 0.893, z: 0.5795}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1706488117}
+  m_LocalEulerAnglesHint: {x: 9, y: 0, z: 0}
+--- !u!114 &1592818799
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1592818797}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b4bf8a0d56ac7fd478ae34a3e1433e7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::KenyaScooter.FX.ScooterHeadlight
+  maxIntensity: 6
+  range: 100
+  spotAngle: 62
+  colour: {r: 1, g: 0.95, b: 0.82, a: 1}
+  aimAhead: 7
+  aimDrop: 2.1
+  localOffset: {x: 0, y: 0.72, z: 1.35}
+  glowSize: 0.28
+  glowStrength: 1.3
+  beamColour: {r: 1, g: 0.95, b: 0.8, a: 1}
+  beamLength: 10
+  beamStartRadius: 0
+  beamEndRadius: 2.6
+  beamAlpha: 0.22
+  beamIntensity: 1.2
+  beamFadePower: 1.4
+  beamPitchDeg: 6
+  fadeSpeed: 2.2
+  onThreshold: 0.18
 --- !u!1 &1596345224
 GameObject:
   m_ObjectHideFlags: 0
@@ -33895,7 +33961,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8933922456644759442, guid: e43eccbe0f37f8c45be39ab35a2eb057, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0
+      value: -3.53
       objectReference: {fileID: 0}
     - target: {fileID: 8933922456644759442, guid: e43eccbe0f37f8c45be39ab35a2eb057, type: 3}
       propertyPath: m_LocalPosition.y
@@ -33935,7 +34001,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
-    m_AddedGameObjects: []
+    m_AddedGameObjects:
+    - targetCorrespondingSourceObject: {fileID: 8933922456644759442, guid: e43eccbe0f37f8c45be39ab35a2eb057, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1592818798}
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: e43eccbe0f37f8c45be39ab35a2eb057, type: 3}
 --- !u!4 &1706488117 stripped
@@ -37447,10 +37516,10 @@ CapsuleCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_Radius: 0.5
-  m_Height: 2
+  m_Radius: 0.13887905
+  m_Height: 1.6113164
   m_Direction: 1
-  m_Center: {x: 0, y: 0, z: 0}
+  m_Center: {x: -0.03407921, y: 0, z: 0}
 --- !u!23 &1896502477
 MeshRenderer:
   m_ObjectHideFlags: 0

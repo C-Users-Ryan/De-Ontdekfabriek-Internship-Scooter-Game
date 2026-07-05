@@ -15,7 +15,12 @@ namespace KenyaScooter.Cameras
         [SerializeField] private bool realRiderEnabled = true;
         [Tooltip("Degrees per second the roll follows the tilt.")]
         [SerializeField] private float rollResponse = 160f;
-        [SerializeField] private float maxRoll = 30f;
+        [Tooltip("Hard cap on the horizon roll. Kept modest — a big roll disorients some players; clamped at runtime too.")]
+        [SerializeField] private float maxRoll = 15f;
+
+        /// <summary>PlayerPrefs key the facilitator "Meekantelen (Real Rider)" setting writes; read on Awake so the
+        /// choice (e.g. off for a motion-sensitive group) applies on startup with no scene wiring.</summary>
+        public const string PrefKey = "ksg.realRider";
 
         public float CurrentRoll { get; private set; }
 
@@ -23,6 +28,12 @@ namespace KenyaScooter.Cameras
         {
             get => realRiderEnabled;
             set => realRiderEnabled = value;
+        }
+
+        private void Awake()
+        {
+            realRiderEnabled = PlayerPrefs.GetInt(PrefKey, realRiderEnabled ? 1 : 0) == 1;
+            maxRoll = Mathf.Min(maxRoll, 15f); // cap even if an older scene serialized a bigger, disorienting value
         }
 
         private void Update()

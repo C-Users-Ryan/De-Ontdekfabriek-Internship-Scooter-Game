@@ -40,6 +40,51 @@ namespace KenyaScooter.Player
         private float baseHeight;
         private float bumpVelocity;
 
+        // Scripted-pose mode: the charge-station sequence takes the bike over to pull it into / out of the bay,
+        // ignoring player input. Purely additive; when off the controller behaves exactly as before.
+        private bool scripted;
+        private float scriptedLateralTarget;
+        private float scriptedYawDeg;
+        private float scriptedLateralRate;
+        private float scriptedYawRate;
+
+        /// <summary>True while the charge-station sequence is driving the pose.</summary>
+        public bool Scripted => scripted;
+        /// <summary>Current signed lateral offset, so the sequence can ease from wherever the bike actually is.</summary>
+        public float CurrentLateral => LateralOffset;
+        /// <summary>True once a scripted pose has essentially settled (lateral within a few cm of its target).</summary>
+        public bool ScriptedPoseReached => scripted && Mathf.Abs(LateralOffset - scriptedLateralTarget) < 0.04f;
+
+        /// <summary>Hand the bike to the charge-station sequence: ease the lateral offset and a yaw (degrees off the
+        /// travel heading, around up) toward a parked pose, at the given rates (m/s and deg/s). Input is ignored
+        /// until <see cref="EndScriptedPose"/>.</summary>
+        public void BeginScriptedPose(float lateralTarget, float yawDegrees, float lateralRate, float yawRate)
+        {
+            scripted = true;
+            scriptedLateralTarget = lateralTarget;
+            scriptedYawDeg = yawDegrees;
+            scriptedLateralRate = Mathf.Max(0.01f, lateralRate);
+            scriptedYawRate = Mathf.Max(1f, yawRate);
+        }
+
+        /// <summary>Return control to the player (end of the pull-out).</summary>
+        public void EndScriptedPose() => scripted = false;
+
+        /// <summary>Instantly place the bike in a scripted pose and hold it. Used to start a session already
+        /// parked at the charge bay: in the Ready state Update does not run, so the pose cannot ease in — it has
+        /// to simply BE there. Marks the pose scripted, so the session reset keeps it (same as the relay park).</summary>
+        public void SnapScriptedPose(float lateralTarget, float yawDegrees)
+        {
+            BeginScriptedPose(lateralTarget, yawDegrees, 999f, 999f);
+            LateralOffset = lateralTarget;
+            LateralVelocity = 0f;
+            bumpVelocity = 0f;
+            transform.SetPositionAndRotation(
+                ComposePosition(),
+                Quaternion.LookRotation(RoadDirection.Current) * Quaternion.AngleAxis(yawDegrees, Vector3.up));
+            body.position = transform.position;
+        }
+
         private void Awake()
         {
             body = GetComponent<Rigidbody>();
@@ -50,16 +95,47 @@ namespace KenyaScooter.Player
             // ScooterConfig.rideHeight for the vertical position.)
             baseHeight = transform.position.y;
 
+            // The bike model holder (and the camera rig) must sit laterally ON the root: the collider, the
+            // camera and every lane/hazard system live on the root, so any sideways offset on a direct child
+            // makes the visible bike ride beside the player. A stray editor drag once left the model holder
+            // at x = -3.554 (found 2026-07-05) — snap any such offset back at boot so no saved scene can
+            // ever bring that tear back. Height/forward grounding offsets are left untouched.
+            for (int i = 0; i < transform.childCount; i++)
+            {
+                Transform child = transform.GetChild(i);
+                if (Mathf.Abs(child.localPosition.x) > 0.001f)
+                {
+                    Debug.LogWarning(
+                        $"[PlayerController] '{child.name}' sat {child.localPosition.x:0.###} m sideways off the " +
+                        "player root — snapped to 0 so the bike rides where the player actually is.", child);
+                    Vector3 p = child.localPosition;
+                    p.x = 0f;
+                    child.localPosition = p;
+                }
+            }
+
             // The visual lean is a separate component (M6). Add it automatically if it is not
             // already on the scooter, so the model leans into steering with no manual wiring.
             if (GetComponent<ScooterLean>() == null)
                 gameObject.AddComponent<ScooterLean>();
+
+            // The dirt-road shake source (2026-07-05) is auto-added the same way; ScooterLean composes its
+            // roll + bob onto the model. It idles at zero until a tile's Surface is set to Dirt.
+            if (GetComponent<DirtRumble>() == null)
+                gameObject.AddComponent<DirtRumble>();
         }
 
         private void Start()
         {
             if (RewindSystem.Instance != null)
                 RewindSystem.Instance.Register(this);
+
+            // If the charge-station relay already parked the bike at the bay (its Start runs TryParkAtReady, which
+            // snaps a scripted pose in the Ready state), that park OWNS the pose — do not overwrite it with the lane
+            // placement below. Same guard as at the top of HandleSessionReset: while scripted, leave the pose alone.
+            // (Start order between this and ChargeStationSequence is undefined, so this must hold whichever ran first.)
+            if (scripted)
+                return;
 
             // Place the scooter on its own driving lane at ride height from the start, so it
             // sits correctly during the Ready state instead of in the middle of the road.
@@ -88,8 +164,10 @@ namespace KenyaScooter.Player
             if (state != GameState.Playing && state != GameState.AtCheckpoint)
                 return;
 
-            ScooterInputRouter input = ScooterInputRouter.Instance;
             float dt = Time.deltaTime;
+            if (scripted) { DriveScripted(dt); return; }
+
+            ScooterInputRouter input = ScooterInputRouter.Instance;
 
             // Throttle still runs at the checkpoint — WorldSpeed's override pipeline
             // takes over braking there without breaking this call path (Req §3.2).
@@ -109,6 +187,19 @@ namespace KenyaScooter.Player
             // does its own 0.35 s rotation (M3).
             Quaternion face = Quaternion.LookRotation(RoadDirection.Current);
             transform.rotation = Quaternion.RotateTowards(transform.rotation, face, turnFaceRate * dt);
+        }
+
+        // The charge-station sequence owns the pose here. Keep the WorldSpeed override pipeline ticking (the
+        // sequence sets the target: 0 while parked/charging, cruise while pulling out) but ignore the player's
+        // input, and ease the bike toward the parked/centred pose and its yaw.
+        private void DriveScripted(float dt)
+        {
+            WorldSpeed.Instance.ApplyThrottle(0f, 0f, dt);
+            LateralOffset = Mathf.MoveTowards(LateralOffset, scriptedLateralTarget, scriptedLateralRate * dt);
+            LateralVelocity = 0f;
+            bumpVelocity = 0f;
+            Quaternion target = Quaternion.LookRotation(RoadDirection.Current) * Quaternion.AngleAxis(scriptedYawDeg, Vector3.up);
+            transform.rotation = Quaternion.RotateTowards(transform.rotation, target, scriptedYawRate * dt);
         }
 
         private void FixedUpdate()
@@ -153,6 +244,10 @@ namespace KenyaScooter.Player
 
         private void HandleSessionReset()
         {
+            // A charge-station pull-out keeps the bike at the bay across the session reset (the sequence eases it
+            // back to the lane), so do not snap it to centre here while scripted.
+            if (scripted)
+                return;
             LateralOffset = RoadSideConfig.Active.OwnLaneCentre;
             LateralVelocity = 0f;
             bumpVelocity = 0f;

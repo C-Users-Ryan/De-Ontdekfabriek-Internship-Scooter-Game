@@ -2,17 +2,17 @@ using UnityEngine;
 using KenyaScooter.Config;
 using KenyaScooter.Core;
 using KenyaScooter.Player;
+using KenyaScooter.Roads;
 
 namespace KenyaScooter.Traffic
 {
     /// <summary>
-    /// Overtake detection (M13, Req §7.1). Pure dot-product comparison along
-    /// RoadDirection.Current — correct after 90° turns. A pass goes through three
-    /// stages stored on the vehicle: PassStarted (player was behind), PassPending
-    /// (player is ahead), PassDone (player returned to their own lane — the
-    /// confirmation Requirements §7.1 adds on top of the MDA threshold). A collision
-    /// with the vehicle invalidates the pass (PlayerCollisionHandler sets the flag).
-    /// Iterates TrafficVehicle.Active only — no scene scans (Req §17).
+    /// Overtake detection (M13, Req §7.1). Compares the player's and the vehicle's arc-length along the road
+    /// centreline, so it stays correct through a bend (the vehicle and player both carry a road-space position).
+    /// A pass goes through three stages stored on the vehicle: PassStarted (player was behind), PassPending
+    /// (player is ahead), PassDone (player returned to their own lane — the confirmation Requirements §7.1 adds
+    /// on top of the MDA threshold). A collision with the vehicle invalidates the pass (PlayerCollisionHandler
+    /// sets the flag). Iterates TrafficVehicle.Active only — no scene scans (Req §17).
     /// </summary>
     public sealed class OvertakeDetector : MonoBehaviour
     {
@@ -25,7 +25,9 @@ namespace KenyaScooter.Traffic
             if (GameManager.State != GameState.Playing)
                 return;
 
-            float playerLong = RoadDirection.Longitudinal(player.position);
+            float playerArc = RoadSequencer.Instance != null
+                ? RoadSequencer.Instance.PlayerArc
+                : RoadDirection.Longitudinal(player.position);
             bool inOwnLane = WrongLaneDetector.Instance == null || WrongLaneDetector.Instance.IsInOwnLane;
 
             var vehicles = TrafficVehicle.Active;
@@ -36,22 +38,22 @@ namespace KenyaScooter.Traffic
                     continue;
 
                 float threshold = vehicle.length * 0.5f + passMargin;
-                float vehicleLong = RoadDirection.Longitudinal(vehicle.transform.position);
+                float vehicleArc = vehicle.RoadArc;
 
                 if (!vehicle.PassStarted)
                 {
-                    if (playerLong < vehicleLong - threshold)
+                    if (playerArc < vehicleArc - threshold)
                         vehicle.PassStarted = true;
                     continue;
                 }
 
-                if (!vehicle.PassPending && playerLong > vehicleLong + threshold)
+                if (!vehicle.PassPending && playerArc > vehicleArc + threshold)
                 {
                     vehicle.PassPending = true;
                     // A legal overtake is made toward the oncoming side (the opposite of the
                     // country's own side): for Kenya (drive-on-left) that means passing on the right.
                     float playerLat = RoadDirection.Lateral(player.position);
-                    float vehicleLat = RoadDirection.Lateral(vehicle.transform.position);
+                    float vehicleLat = vehicle.RoadLateral;
                     float ownSide = RoadSideConfig.Active != null ? RoadSideConfig.Active.OwnSide : -1f;
                     vehicle.PassOnCorrectSide = (playerLat - vehicleLat) * (-ownSide) > 0f;
                 }

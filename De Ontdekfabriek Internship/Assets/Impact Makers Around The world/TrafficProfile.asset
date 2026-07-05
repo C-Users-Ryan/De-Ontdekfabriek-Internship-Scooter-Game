@@ -22,31 +22,59 @@ MonoBehaviour:
   oncomingSpeedMult: 1
   jamMode: 0
   personalities:
-  - personality: 0
+  - label: Normaal
+    weight: 0.5
+    personality: 0
     speedMultiplierRange: {x: 0.95, y: 1.05}
-    yieldShift: 0
+    yieldShift: 0.45
     swerveShift: 0.35
     driftAmplitude: 0.08
     driftFrequency: 0.3
     speedJitter: 0
-  - personality: 1
-    speedMultiplierRange: {x: 1.1, y: 1.25}
-    yieldShift: 0
-    swerveShift: 0.15
-    driftAmplitude: 0.05
+    accelerationMult: 1
+    followGapMult: 1
+    reactionMult: 1
+    laneBias: 0
+    hornEagerness: 1
+  - label: Agressief
+    weight: 0.15
+    personality: 1
+    speedMultiplierRange: {x: 1.12, y: 1.32}
+    yieldShift: 0.08
+    swerveShift: 0.12
+    driftAmplitude: 0.04
     driftFrequency: 0.2
     speedJitter: 0
-  - personality: 2
-    speedMultiplierRange: {x: 0.8, y: 0.95}
-    yieldShift: 0
-    swerveShift: 0.6
-    driftAmplitude: 0.06
-    driftFrequency: 0.25
+    accelerationMult: 1.5
+    followGapMult: 0.5
+    reactionMult: 1.2
+    laneBias: 0.45
+    hornEagerness: 2.2
+  - label: Voorzichtig
+    weight: 0.25
+    personality: 2
+    speedMultiplierRange: {x: 0.72, y: 0.9}
+    yieldShift: 1
+    swerveShift: 0.65
+    driftAmplitude: 0.05
+    driftFrequency: 0.22
     speedJitter: 0
-  - personality: 3
-    speedMultiplierRange: {x: 0.85, y: 1.1}
-    yieldShift: 0
-    swerveShift: 0.25
-    driftAmplitude: 0.5
-    driftFrequency: 0.55
-    speedJitter: 1.5
+    accelerationMult: 0.7
+    followGapMult: 1.8
+    reactionMult: 1.05
+    laneBias: -0.4
+    hornEagerness: 0.3
+  - label: Afgeleid
+    weight: 0.1
+    personality: 3
+    speedMultiplierRange: {x: 0.82, y: 1.12}
+    yieldShift: 0.3
+    swerveShift: 0.22
+    driftAmplitude: 0.7
+    driftFrequency: 0.6
+    speedJitter: 1.9
+    accelerationMult: 1
+    followGapMult: 1.15
+    reactionMult: 0.45
+    laneBias: 0.1
+    hornEagerness: 0.7

@@ -28,6 +28,8 @@ namespace KenyaScooter.UI
         {
             GameEvents.CollisionOccurred += HandleCollision;
             GameEvents.HazardHit += HandleHazard;
+            GameEvents.CrossingAhead += HandleCrossingAhead;
+            GameEvents.TurnAhead += HandleTurnAhead;
             GameEvents.WrongLaneChanged += HandleWrongLane;
             GameEvents.SpeedingTierChanged += HandleSpeedingTier;
             GameEvents.SessionReset += HandleSessionReset;
@@ -37,6 +39,8 @@ namespace KenyaScooter.UI
         {
             GameEvents.CollisionOccurred -= HandleCollision;
             GameEvents.HazardHit -= HandleHazard;
+            GameEvents.CrossingAhead -= HandleCrossingAhead;
+            GameEvents.TurnAhead -= HandleTurnAhead;
             GameEvents.WrongLaneChanged -= HandleWrongLane;
             GameEvents.SpeedingTierChanged -= HandleSpeedingTier;
             GameEvents.SessionReset -= HandleSessionReset;
@@ -76,6 +80,22 @@ namespace KenyaScooter.UI
         {
             if (definition != null && !string.IsNullOrEmpty(definition.warnKey))
                 ShowOneShot(definition.warnKey);
+        }
+
+        // Telegraph a pedestrian crossing ahead (M28). A one-shot, like a hazard warning, so the player is
+        // told to slow before the crossing arrives — yielding stays a fair, anticipated choice.
+        private void HandleCrossingAhead(string warnKey, float metresAhead)
+        {
+            if (!string.IsNullOrEmpty(warnKey))
+                ShowOneShot(warnKey);
+        }
+
+        // Telegraph an upcoming bend (2026-07-05 play-test: a turn surprised a first-time player). A one-shot,
+        // like the crossing warning — the direction lives in the warn key (WARN_TURN_LEFT / WARN_TURN_RIGHT).
+        private void HandleTurnAhead(string warnKey, float metresAhead)
+        {
+            if (!string.IsNullOrEmpty(warnKey))
+                ShowOneShot(warnKey);
         }
 
         private void HandleWrongLane(bool inWrongLane) => wrongLaneActive = inWrongLane;

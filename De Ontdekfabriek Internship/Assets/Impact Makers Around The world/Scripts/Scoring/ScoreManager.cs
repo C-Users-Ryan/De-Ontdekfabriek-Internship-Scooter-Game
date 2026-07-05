@@ -44,6 +44,7 @@ namespace KenyaScooter.Scoring
         {
             GameEvents.SessionReset += HandleSessionReset;
             GameEvents.OvertakeCompleted += HandleOvertake;
+            GameEvents.PedestrianYielded += HandlePedestrianYield;
             GameEvents.CollisionOccurred += HandleCollision;
             GameEvents.HazardHit += HandleHazard;
             GameEvents.WrongLaneTick += HandleWrongLaneTick;
@@ -56,6 +57,7 @@ namespace KenyaScooter.Scoring
         {
             GameEvents.SessionReset -= HandleSessionReset;
             GameEvents.OvertakeCompleted -= HandleOvertake;
+            GameEvents.PedestrianYielded -= HandlePedestrianYield;
             GameEvents.CollisionOccurred -= HandleCollision;
             GameEvents.HazardHit -= HandleHazard;
             GameEvents.WrongLaneTick -= HandleWrongLaneTick;
@@ -100,11 +102,26 @@ namespace KenyaScooter.Scoring
                 return;
 
             // Award with the CURRENT multiplier, then climb — the new tier applies
-            // to the next overtake (M20).
-            int points = Mathf.RoundToInt(vehicle.overtakeScore * (streak != null ? streak.Multiplier : 1f));
+            // to the next overtake (M20). The facilitator scales overtake worth via config.overtakeMultiplier
+            // and can switch the streak off entirely (config.streakEnabled) for workshop setups.
+            float streakMultiplier = config.streakEnabled && streak != null ? streak.Multiplier : 1f;
+            int points = Mathf.RoundToInt(vehicle.overtakeScore * config.overtakeMultiplier * streakMultiplier);
             Add(points, "POPUP_OVERTAKE", vehicle.transform.position, true);
             if (streak != null)
                 streak.RegisterCleanOvertake();
+        }
+
+        /// <summary>
+        /// The pedestrian-yield reward (M28) — the core teaching reward for letting a vulnerable road user pass.
+        /// Awarded with the CURRENT streak multiplier (a careful run is worth more, like an overtake), but it does
+        /// NOT itself climb the streak: the streak stays the pure clean-overtake mechanic (SC3). The emphasis is the
+        /// positive reward + popup, in line with the design rule to reward safe behaviour rather than over-punish.
+        /// </summary>
+        private void HandlePedestrianYield(int basePoints, string popupKey, Vector3 position)
+        {
+            float streakMultiplier = config.streakEnabled && streak != null ? streak.Multiplier : 1f;
+            int points = Mathf.RoundToInt(basePoints * streakMultiplier);
+            Add(points, popupKey, position, true);
         }
 
         private void HandleCollision(CollisionSeverity severity, float relativeKmh, Vector3 position, bool absorbed)

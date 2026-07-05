@@ -94,6 +94,10 @@ namespace KenyaScooter.UI
                 : $"{(delta > 0 ? "+" : "-")}{Mathf.Abs(delta)} {SwahiliUI.Get(labelKey)}";
             popup.color = delta > 0 ? positiveColour : delta < 0 ? negativeColour : neutralColour;
             popup.rectTransform.position = screenPosition;
+            // v2 (screen 06): the celebration reads bigger and lands with a slight hand-painted tilt,
+            // so "+150 Ingehaald!" can't be missed mid-overtake.
+            popup.rectTransform.localScale = Vector3.one * 1.2f;
+            popup.rectTransform.localRotation = Quaternion.Euler(0f, 0f, delta >= 0 ? -3f : -2f);
             popup.alpha = 1f;
             popup.gameObject.SetActive(true);
 

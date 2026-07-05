@@ -14,7 +14,7 @@ namespace KenyaScooter.ScoringEditor
     /// </summary>
     public static class KenyaScoringWiringMenu
     {
-        [MenuItem("Tools/Kenya Scooter/Wire Scoring Managers")]
+        [MenuItem("Tools/Kenya Scooter/Game Setup/Wire Scoring Managers", false, 222)]
         public static void Wire()
         {
             ScoreManager score = Object.FindObjectOfType<ScoreManager>();

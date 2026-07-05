@@ -14,6 +14,11 @@ namespace KenyaScooter.Player
     /// </summary>
     public sealed class ScooterLean : MonoBehaviour
     {
+        /// <summary>The smoothed steering lean, normalised -1..1 (sign matches the visual roll: + leans left).
+        /// Exposed statically, mirroring SpeedFeel, so FX (the tyre-scrape dust) can read "how hard is the bike
+        /// leaning" without a scene reference. 0 when no lean system is active.</summary>
+        public static float Current01 { get; private set; }
+
         [SerializeField] private ScooterConfig config;
         [Tooltip("The scooter model child this script rotates. The root stays upright for physics.")]
         [SerializeField] private Transform visual;
@@ -38,6 +43,11 @@ namespace KenyaScooter.Player
         private Quaternion baseRotation = Quaternion.identity;
         private Vector3 basePosition;
         private Vector3 pivotLocal;
+
+        // The dirt-road shake source (2026-07-05). Resolved lazily in LateUpdate rather than Awake because
+        // PlayerController auto-adds both components and the Awake order between them is not guaranteed.
+        private DirtRumble rumble;
+        private bool rumbleSearched;
 
         private void Awake()
         {
@@ -109,6 +119,7 @@ namespace KenyaScooter.Player
 
             float target = -ScooterInputRouter.Instance.Lateral * config.maxLeanAngle;
             steerRoll = Mathf.SmoothDampAngle(steerRoll, target, ref rollVelocity, Mathf.Max(0.0001f, leanSmoothTime));
+            Current01 = config.maxLeanAngle > 0.01f ? Mathf.Clamp(steerRoll / config.maxLeanAngle, -1f, 1f) : 0f;
 
             // Turn lean (M3): lean into the road's live bend. CurveRate is signed deg/s (+ bends right),
             // so the bike dips into the corner while the road curves and rights itself on the straight —
@@ -116,12 +127,23 @@ namespace KenyaScooter.Player
             float curveLeanTarget = -Mathf.Clamp(RoadDirection.CurveRate / Mathf.Max(1f, turnLeanReferenceRate), -1f, 1f) * turnLeanAngle;
             turnLean = Mathf.SmoothDampAngle(turnLean, curveLeanTarget, ref turnLeanVelocity, 0.12f);
 
-            float roll = steerRoll + turnLean + (wobble != null ? wobble.CurrentRoll : 0f);
+            if (!rumbleSearched)
+            {
+                rumble = GetComponentInParent<DirtRumble>();
+                rumbleSearched = true;
+            }
+
+            // Dirt-road shake (2026-07-05): added like the hazard wobble — un-smoothed, on top — so the
+            // murram chatter stays sharp instead of being damped into the steering lean.
+            float rumbleRoll = rumble != null ? rumble.CurrentRoll : 0f;
+            float rumbleBob = rumble != null ? rumble.CurrentBob : 0f;
+
+            float roll = steerRoll + turnLean + (wobble != null ? wobble.CurrentRoll : 0f) + rumbleRoll;
 
             // Roll around the contact pivot: rotate the model, then shift it so the pivot stays put.
             Quaternion lean = Quaternion.Euler(0f, 0f, roll);
             visual.localRotation = lean * baseRotation;
-            visual.localPosition = pivotLocal + lean * (basePosition - pivotLocal);
+            visual.localPosition = pivotLocal + lean * (basePosition - pivotLocal) + new Vector3(0f, rumbleBob, 0f);
         }
     }
 }

@@ -39,6 +39,8 @@ namespace KenyaScooter.Config
         public bool correctLaneBonusEnabled = false;
         [Tooltip("Bonus when a road sequence ends without a speeding violation. Off by default (D17).")]
         public bool cleanZoneBonusEnabled = false;
+        [Tooltip("Whether the clean-overtake streak multiplies rewards (M20). Off = every reward counts single.")]
+        public bool streakEnabled = true;
 
         [Header("Deductions")]
         public int collisionDeduction = 60;
@@ -52,6 +54,9 @@ namespace KenyaScooter.Config
         public int speedingPerSecond = 15;
 
         [Header("Rewards")]
+        [Tooltip("Scales every overtake's base points (which live per vehicle prefab, Req §7.1). ×1 = as " +
+                 "authored; the facilitator knob for how much overtaking is worth.")]
+        public float overtakeMultiplier = 1f;
         public int tricklePerSecond = 2;
         public int correctLaneBonus = 10;
         public float correctLaneBonusInterval = 5f;

@@ -20,12 +20,25 @@ namespace KenyaScooter.Cameras
 
         public Vector3 CurrentOffset { get; private set; }
 
+        /// <summary>The scene's shake (there is one, on the camera rig). Lets world events without a reference —
+        /// the truck-wash rumble — ask for a small Impulse without new wiring; null-safe via <see cref="Rumble"/>.</summary>
+        public static CameraShake Instance { get; private set; }
+
+        /// <summary>A small static convenience for one-off world rumbles (e.g. a heavy vehicle's dust wash).
+        /// Callers should keep the strength well under the collision shake and scale by the motion dial.</summary>
+        public static void Rumble(float strength, float duration)
+        {
+            if (Instance != null)
+                Instance.Impulse(strength, duration);
+        }
+
         private float strength;
         private float duration;
         private float elapsed;
 
         private void OnEnable()
         {
+            Instance = this;
             GameEvents.CollisionOccurred += HandleCollision;
             GameEvents.NearMiss += HandleNearMiss;
             GameEvents.HazardHit += HandleHazard;

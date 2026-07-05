@@ -1,0 +1,150 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f215475ba47155340b6dca9ca9cea619, type: 3}
+  m_Name: AudioConfig
+  m_EditorClassIdentifier: Assembly-CSharp::KenyaScooter.Config.AudioConfig
+  engineVolume: 0.1
+  motorLoop: {fileID: 8300000, guid: 87f2686fea5136d4eaa67a665fe0357b, type: 3}
+  motorVolume:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0.25
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 0.9
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  motorPitch:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0.85
+      inSlope: 0
+      outSlope: 0.75
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1.6
+      inSlope: 0.75
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  motorStart: {fileID: 0}
+  motorStop: {fileID: 0}
+  windLoop: {fileID: 8300000, guid: eade3530441e93641936fc34def5c2a5, type: 3}
+  windVolume:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 0.4
+      value: 0.1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 0.8
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  surfaceLoop: {fileID: 0}
+  surfaceVolume:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0.05
+      inSlope: 0
+      outSlope: 0.55
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 0.6
+      inSlope: 0.55
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  ambientVariants:
+  - contextTag: 
+    clip: {fileID: 8300000, guid: 0769c78f67cf8b8428b4afc96c930b55, type: 3}
+  - contextTag: City
+    clip: {fileID: 8300000, guid: d766aaee04a069a45add8ce2d08c00c0, type: 3}
+  - contextTag: 
+    clip: {fileID: 8300000, guid: de6593399443a724ca802aea30c0b312, type: 3}
+  ambientCrossfadeSeconds: 2.5
+  ambientVolume: 0.85
+  musicLoop: {fileID: 0}
+  musicVolume: 0.5
+  duckLevel: 0.35
+  duckRecoverSeconds: 2
+  sfxVolume: 0.1
+  sfxPoolSize: 8
+  overtakeSting: {fileID: 8300000, guid: 2d87f17ee3e562e4a93a7348106d1b34, type: 3}
+  nearMissScreech: {fileID: 0}
+  crashHard: {fileID: 8300000, guid: 69005b78d1fde9a4aa3869176101ee87, type: 3}
+  crashLight: {fileID: 8300000, guid: 0a4a9f09e34db5142b651ba4881497e6, type: 3}
+  potholeBump: {fileID: 8300000, guid: 0a4a9f09e34db5142b651ba4881497e6, type: 3}
+  wrongLaneBuzz: {fileID: 8300000, guid: 247ea1e673fac26429dffe1907e15300, type: 3}
+  graceSaved: {fileID: 0}
+  rewindWhoosh: {fileID: 8300000, guid: 9950fe740a3fa9c4a97471f7afbd5eb9, type: 3}
+  checkpointArrive: {fileID: 0}
+  hadadaIbis: {fileID: 0}

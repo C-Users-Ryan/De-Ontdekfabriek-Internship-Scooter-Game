@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using KenyaScooter.Core;
 using KenyaScooter.Config;
+using KenyaScooter.FX;
 using KenyaScooter.Scoring;
 using KenyaScooter.Session;
 using KenyaScooter.Traffic;
@@ -24,11 +25,17 @@ namespace KenyaScooter.UI
     /// route progress), WrongLane/Speeding/Collision (LEDs), Grace + DayPhase events.
     /// Tweak the fields below and press the context-menu "Rebuild" to re-generate.
     /// </summary>
+    // NOTE: this class is split across two files for readability (2026-06-27, no behaviour change):
+    //   DiegeticHud.cs       — runtime: fields, lifecycle, the per-frame Drive*/reel/LED drivers, event handlers.
+    //   DiegeticHud.Build.cs — construction: Build() and the procedural panel/sprite helpers.
     [DisallowMultipleComponent]
-    public sealed class DiegeticHud : MonoBehaviour
+    public sealed partial class DiegeticHud : MonoBehaviour
     {
         [Header("Panel")]
-        [SerializeField] private Vector2 panelSize = new Vector2(1500f, 270f);
+        // UI v2 (2026-07-05, "Kenya Game UI — Improved"): the cluster lost ~22% height and gained ~11% width,
+        // so more tarmac stays in view mid-overtake. Scenes that serialized the old 1500×270 keep it until the
+        // HUD is rebuilt with a reset component (or the value is updated by hand).
+        [SerializeField] private Vector2 panelSize = new Vector2(1660f, 210f);
         [SerializeField] private float bottomMargin = 0f;
 
         [Header("Odometer")]
@@ -53,27 +60,61 @@ namespace KenyaScooter.UI
         private readonly List<TMP_Text[]> reelCells = new();
         private float[] reelCellPos;       // current vertical position, in "cells"
         private int[] reelTargetCell;      // target cell index
+        private float[] reelSettle;        // settle-spring offset per reel, in cells (the overshoot bounce)
+        private float[] reelSettleVel;     // settle-spring velocity per reel
         private float cellHeight;
         private float flashTimer;
+        private float flashDuration = PosFlashSeconds;
         private Color reelColour;
+        // Play-test: the green "doing well" wash faded too fast to feel like a state — gains now glow for
+        // over a second (and chained gains keep re-arming it), while a loss stays a short red sting.
+        private const float PosFlashSeconds = 1.15f;
+        private const float NegFlashSeconds = 0.5f;
+
+        // Streak tier-up celebration (Animation Playbook, 2026-07-05): the ×-badge thumps, throws a ring
+        // and a small spark burst when the shared multiplier climbs a tier. Everything scales with the
+        // motion-sensitivity dial; at the Prikkelarm preset (0.5) the ring/burst stay off entirely.
+        private Image tierRing;
+        private Image[] tierSparks;
+        private Vector2[] tierSparkDirs;
+        private float tierFxTimer;
+        private float lastMultiplier = -1f; // -1 = no streak event seen yet, so a mid-run rebuild never celebrates
+        private const float TierFxSeconds = 0.55f;
+        private const float CalmCutoff = 0.55f;
 
         private Image speedFill, needle, ledLeft, ledRight, limitRing, routeFill;
         private TMP_Text kmhText, limitText, dayLabel, streakText;
         private Image[] batterySegments;
+        [SerializeField] private float chargeVisualSeconds = 1.6f; // how long the battery takes to refill at the charge station
+        private bool charging;
+        private float chargeT;
         private RectTransform streakBadge;
         private int currentScore;
         private int speedingTier;
         private float ledLeftTimer, ledRightTimer, collisionFlashTimer;
         private bool wrongLaneOverstay;
         private GameObject warningRoot;
-        private Image warningBg;
-        private TMP_Text warningText;
+        private Image warningRing;      // the pulsing danger ring around the banner pill (v2 warnpulse)
+        private Image warningIcon;      // the filled icon block leading the banner (shape + colour, never colour alone)
+        private TMP_Text warningText;   // line 1: the rule that is being broken
+        private TMP_Text warningSub;    // line 2: the fix ("← BLIJF LINKS")
         private Image routeMarker;
         private float routeBarWidth, routePenalty;
         private float alertTimer;       // momentary alert banner (hazard hit, illegal overtake)
         private string alertMsg;
+        private float cautionTimer;     // calm caution banner, lower priority than alert (crossing-ahead telegraph)
+        private string cautionMsg;
         private Image streakBg, vignette;
         private float vignetteTimer;
+        // Cluster danger agreement (v2, screen 07): when a rule is actively broken the whole console shifts —
+        // lip, hairline, readout, needle and the limit-sign glow all move to alert red together.
+        private Image clusterLip, clusterLipGlow, clusterHair, limitGlow;
+        private bool dangerState;
+
+        // Per-frame text guards (same pattern as HUDController/Speedometer): only touch a TMP_Text when its
+        // value actually changes, so the HUD does not allocate a string and rebuild a text mesh every frame.
+        private int lastLimitShown = int.MinValue;
+        private string lastWarningMsg, lastWarningSub;
 
         // ---- lifecycle ---------------------------------------------------------------
         private void Awake()
@@ -92,8 +133,12 @@ namespace KenyaScooter.UI
             GameEvents.CollisionOccurred += OnCollision;
             GameEvents.HazardHit += OnHazardHit;
             GameEvents.IllegalOvertake += OnIllegalOvertake;
+            GameEvents.CrossingAhead += OnCrossingAhead;
+            GameEvents.TurnAhead += OnTurnAhead;
+            GameEvents.PedestrianYielded += OnPedestrianYielded;
             GameEvents.DayPhaseChanged += OnDayPhase;
             GameEvents.RewindStarted += OnRewindStarted;
+            GameEvents.ChargingStarted += OnChargingStarted;
             GameEvents.SessionReset += OnSessionReset;
         }
 
@@ -107,8 +152,12 @@ namespace KenyaScooter.UI
             GameEvents.CollisionOccurred -= OnCollision;
             GameEvents.HazardHit -= OnHazardHit;
             GameEvents.IllegalOvertake -= OnIllegalOvertake;
+            GameEvents.CrossingAhead -= OnCrossingAhead;
+            GameEvents.TurnAhead -= OnTurnAhead;
+            GameEvents.PedestrianYielded -= OnPedestrianYielded;
             GameEvents.DayPhaseChanged -= OnDayPhase;
             GameEvents.RewindStarted -= OnRewindStarted;
+            GameEvents.ChargingStarted -= OnChargingStarted;
             GameEvents.SessionReset -= OnSessionReset;
         }
 
@@ -120,8 +169,10 @@ namespace KenyaScooter.UI
             DriveRoute();
             DriveLimit();
             DriveWarning();
+            DriveDangerState();
             DriveVignette();
             AnimateReels();
+            DriveTierFx();
             TickLeds();
         }
 
@@ -151,6 +202,20 @@ namespace KenyaScooter.UI
         private void DriveBattery()
         {
             if (batterySegments == null) return;
+
+            // Charge-station beat: the battery visibly refills (green, with a charging shimmer) so the stop reads
+            // as a positive top-up. Runs from the ChargingStarted event for a fixed visual duration.
+            if (charging)
+            {
+                chargeT += Time.unscaledDeltaTime;
+                float fill = Mathf.Clamp01(chargeT / Mathf.Max(0.1f, chargeVisualSeconds));
+                int litUp = Mathf.CeilToInt(fill * batterySegments.Length);
+                float shimmer = 0.7f + 0.3f * Mathf.Abs(Mathf.Sin(Time.unscaledTime * 6f));
+                for (int i = 0; i < batterySegments.Length; i++)
+                    batterySegments[i].color = i < litUp ? success * new Color(shimmer, shimmer, shimmer, 1f) : ledOff;
+                return;
+            }
+
             float remaining = TimerManager.Instance != null ? 1f - TimerManager.Instance.Normalized01 : 1f;
             int lit = Mathf.CeilToInt(remaining * batterySegments.Length);
             bool low = lit <= 3;
@@ -183,48 +248,104 @@ namespace KenyaScooter.UI
         private void DriveLimit()
         {
             float limit = SpeedZoneManager.Instance != null ? SpeedZoneManager.Instance.CurrentLimitKmh : 0f;
-            if (limitText != null) limitText.text = limit > 0f ? Mathf.RoundToInt(limit).ToString() : "--";
-            if (limitRing != null)
+            if (limitText != null)
             {
-                float kmh = WorldSpeed.Instance != null ? WorldSpeed.Instance.CurrentKmh : 0f;
-                limitRing.color = (limit > 0f && kmh > limit) ? danger : danger; // ring stays red; could tint on over
+                int shown = limit > 0f ? Mathf.RoundToInt(limit) : int.MinValue; // sentinel == "no limit" ("--")
+                if (shown != lastLimitShown)
+                {
+                    lastLimitShown = shown;
+                    limitText.text = shown != int.MinValue ? shown.ToString() : "--";
+                }
             }
+            if (limitRing != null)
+                limitRing.color = danger; // ring stays red (the old "tint on over" ternary returned danger on both sides)
         }
 
         // Which side is correct comes from the road config, so the messages match whatever side the game drives on.
         private bool DriveLeft => RoadSideConfig.Active == null || RoadSideConfig.Active.driveOnLeft;
 
         // The "you are breaking a rule" banner above the speedometer (the calm, named-rule layer).
+        // v2 (screen 07): two lines — the rule on top, the fix underneath — behind a filled icon block,
+        // with a pulsing danger ring instead of a full-pill colour wash.
         private void DriveWarning()
         {
             if (warningRoot == null) return;
             if (alertTimer > 0f) alertTimer -= Time.deltaTime;
+            if (cautionTimer > 0f) cautionTimer -= Time.deltaTime;
 
-            string msg = null; Color col = caution;
+            string msg = null, sub = null; Color col = caution;
             if (alertTimer > 0f)
             {
-                msg = alertMsg; col = danger;
+                SplitWarning(alertMsg, out msg, out sub); col = danger;
+            }
+            else if (cautionTimer > 0f)
+            {
+                // The calm telegraph layer: a crossing is coming up. Caution colour, not danger — this is an
+                // anticipation cue, not a violation. It yields to any real red alert above.
+                SplitWarning(cautionMsg, out msg, out sub); col = caution;
             }
             else if (speedingTier >= 1)
             {
                 float limit = SpeedZoneManager.Instance != null ? SpeedZoneManager.Instance.CurrentLimitKmh : 0f;
-                msg = limit > 0f ? "TE SNEL  ·  MAX " + Mathf.RoundToInt(limit) : "TE SNEL  ·  REM AF";
+                msg = "TE SNEL";
+                sub = limit > 0f ? "MAX " + Mathf.RoundToInt(limit) : "REM AF";
                 col = speedingTier >= 2 ? danger : caution;
             }
             else if (wrongLaneOverstay)
             {
-                msg = "VERKEERDE WEGHELFT  ·  " + (DriveLeft ? "BLIJF LINKS" : "BLIJF RECHTS");
+                msg = "VERKEERDE WEGHELFT";
+                sub = DriveLeft ? "← BLIJF LINKS" : "BLIJF RECHTS →";
                 col = danger;
             }
 
             bool show = msg != null;
             if (show != warningRoot.activeSelf) warningRoot.SetActive(show);
-            if (!show) return;
+            if (!show) { lastWarningMsg = null; lastWarningSub = null; return; }
 
-            warningText.text = msg;
-            float pulse = 0.55f + 0.45f * Mathf.Abs(Mathf.Sin(Time.time * 5f));
-            warningBg.color = new Color(col.r, col.g, col.b, 0.14f + 0.16f * pulse);
-            warningText.color = Color.Lerp(ink, col, 0.3f);
+            if (msg != lastWarningMsg || sub != lastWarningSub) // only rebuild the text mesh when the message actually changes
+            {
+                lastWarningMsg = msg; lastWarningSub = sub;
+                warningText.text = msg;
+                if (warningSub != null) warningSub.text = sub ?? "";
+                // The pill hugs its content (play-test: a fixed width left "PAS OP · KUIL" swimming in dead
+                // space). 96 = icon block zone, 26 = right padding; the ring/backing stretch along.
+                float textW = warningText.GetPreferredValues(msg).x;
+                if (warningSub != null && !string.IsNullOrEmpty(sub))
+                    textW = Mathf.Max(textW, warningSub.GetPreferredValues(sub).x);
+                var bannerRt = (RectTransform)warningRoot.transform;
+                bannerRt.sizeDelta = new Vector2(Mathf.Clamp(96f + textW + 26f, 300f, 720f), bannerRt.sizeDelta.y);
+            }
+            float pulse = 0.55f + 0.45f * Mathf.Abs(Mathf.Sin(Time.time * 5f)); // colour throb stays per-frame (struct, no GC)
+            if (warningRing != null) warningRing.color = new Color(col.r, col.g, col.b, 0.30f + 0.35f * pulse);
+            if (warningIcon != null) warningIcon.color = col;
+            if (warningSub != null) warningSub.color = Color.Lerp(ink, col, 0.45f);
+        }
+
+        // Split the existing "RULE  ·  FIX" message format into the banner's two lines (no separator → one line).
+        private static void SplitWarning(string full, out string msg, out string sub)
+        {
+            msg = full; sub = null;
+            if (string.IsNullOrEmpty(full)) return;
+            int i = full.IndexOf("  ·  ", StringComparison.Ordinal);
+            if (i < 0) return;
+            msg = full.Substring(0, i);
+            sub = full.Substring(i + 5);
+        }
+
+        // v2 (screen 07): the whole cluster agrees with the warning — lip, hairline, score readout, needle,
+        // km/h numeral and the limit-sign glow shift to alert red while a rule is actively broken, and shift
+        // back together when it clears. Colours are only touched on the state edge, not every frame.
+        private void DriveDangerState()
+        {
+            bool dangerNow = alertTimer > 0f || wrongLaneOverstay || speedingTier >= 2;
+            if (dangerNow == dangerState) return;
+            dangerState = dangerNow;
+            if (clusterLip != null) clusterLip.color = dangerNow ? danger : accent;
+            if (clusterLipGlow != null) clusterLipGlow.color = UiKit.WithAlpha(dangerNow ? danger : accent, 0.35f);
+            if (clusterHair != null) clusterHair.color = dangerNow ? UiKit.WithAlpha(danger, 0.45f) : UiKit.WithAlpha(UiKit.Rust, 0.55f);
+            if (limitGlow != null) limitGlow.color = dangerNow ? UiKit.WithAlpha(danger, 0.65f) : new Color(0f, 0f, 0f, 0.4f);
+            if (needle != null) needle.color = dangerNow ? danger : ink;
+            if (kmhText != null) kmhText.color = dangerNow ? danger : ink;
         }
 
         // Red screen-edge flash on a crash — edge-only, so the centre of the screen stays clear.
@@ -243,33 +364,81 @@ namespace KenyaScooter.UI
             int groupBase = GroupScoreManager.Instance != null ? GroupScoreManager.Instance.GroupTotal : 0;
             SetScore(groupBase + total, delta);
             reelColour = delta >= 0 ? success : danger;
-            flashTimer = 0.45f;
+            flashDuration = delta >= 0 ? PosFlashSeconds : NegFlashSeconds;
+            flashTimer = flashDuration;
         }
 
         private void OnStreak(int streak, float multiplier)
         {
-            // The team multiplier is always on screen (×1 minimum) and brightens as the streak climbs.
+            // The team multiplier is always on screen (×1 minimum). Tiers (play-test 2026-07-05): a starting
+            // streak wears brand GOLD, a HIGH streak (×3+) goes success GREEN — "the team is doing great"
+            // should read green, not another shade of yellow.
             if (streakText != null) streakText.text = "×" + multiplier.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
             if (streakBg != null)
-                streakBg.color = multiplier >= 3f ? success : (multiplier >= 2f ? accent : (multiplier > 1f ? gold : muted));
+                streakBg.color = multiplier >= 3f ? success : (multiplier > 1f ? gold : muted);
+
+            // Celebrate only a CLIMB — never the session-reset refresh (same value) or a violation reset (drop),
+            // and never the first event after a rebuild (lastMultiplier sentinel), so mid-run rejoins stay quiet.
+            bool tierUp = lastMultiplier > 0f && multiplier > lastMultiplier + 0.01f;
+            lastMultiplier = multiplier;
+            if (tierUp) FireTierUp();
         }
 
         // Entering the oncoming lane is fine (it's how you overtake); only an OVERSTAY warns — so this just clears on return.
         private void OnWrongLane(bool inWrong) { if (!inWrong) { wrongLaneOverstay = false; ledLeftTimer = 0f; } }
         private void OnWrongLaneTick() { wrongLaneOverstay = true; ledLeftTimer = 9999f; } // fires only after the grace window closes
         private void OnSpeedingTier(int tier) { speedingTier = tier; ledRightTimer = tier > 0 ? 9999f : 0f; }
-        private void OnCollision(CollisionSeverity sev, float kmh, Vector3 pos, bool absorbed) { collisionFlashTimer = 0.5f; if (!absorbed) vignetteTimer = 0.6f; }
+        // A real crash gets the banner too (play-test 2026-07-05: potholes and lane warnings spoke, but
+        // driving into a car said nothing) — rule on top, the coaching fix underneath.
+        private void OnCollision(CollisionSeverity sev, float kmh, Vector3 pos, bool absorbed)
+        {
+            collisionFlashTimer = 0.5f;
+            if (absorbed) return;
+            vignetteTimer = 0.6f;
+            alertTimer = 1.6f;
+            alertMsg = "BOTSING  ·  KIJK VERDER VOORUIT";
+            cautionTimer = 0f; // a crash outranks any lingering "crossing ahead" caution
+        }
 
         private void OnHazardHit(HazardSpawnConfig def, float kmh, Vector3 pos)
         {
             alertTimer = 1.3f;
-            alertMsg = def == null ? "PAS OP!" : def.response switch
-            {
-                HazardResponse.SurfaceDefect  => "PAS OP  ·  KUIL",
-                HazardResponse.StaticObstacle => "PAS OP  ·  OBSTAKEL",
-                _                             => "PAS OP  ·  DREMPEL",
-            };
+            // A pedestrian hit comes through the hazard pipeline carrying the WARN_PEDESTRIAN key — show the
+            // corrective lesson ("let pedestrians go first") rather than a generic obstacle warning.
+            alertMsg = def != null && def.warnKey == "WARN_PEDESTRIAN" ? "VOETGANGER  ·  LAAT VOORGAAN"
+                : def == null ? "PAS OP!" : def.response switch
+                {
+                    HazardResponse.SurfaceDefect  => "PAS OP  ·  KUIL",
+                    HazardResponse.StaticObstacle => "PAS OP  ·  OBSTAKEL",
+                    _                             => "PAS OP  ·  DREMPEL",
+                };
+            cautionTimer = 0f;          // a real hit cancels any lingering "crossing ahead" caution
             collisionFlashTimer = 0.5f; // blink the warning LEDs as well
+        }
+
+        // Telegraph: a pedestrian crossing is coming up. Calm caution banner so yielding is anticipated, not a gotcha.
+        private void OnCrossingAhead(string warnKey, float metresAhead)
+        {
+            cautionMsg = "VOETGANGERS  ·  REM AF";
+            cautionTimer = 2.2f;
+        }
+
+        // Telegraph: a bend is coming up (2026-07-05 play-test — a turn took a first-time player by surprise).
+        // Same calm caution channel as the crossing, showing which way the road bends ("BOCHT  ·  ← LINKS").
+        // A live crossing telegraph (safety-critical yield) outranks it, so a bend never stomps a crossing.
+        private void OnTurnAhead(string warnKey, float metresAhead)
+        {
+            if (cautionTimer > 0f) return; // a crossing (or a just-shown bend) is still up — leave it be
+            cautionMsg = SwahiliUI.Get(warnKey);
+            cautionTimer = 2f;
+        }
+
+        // A clean yield — flash the score reel green (positive), no alert. The popup carries the points.
+        private void OnPedestrianYielded(int basePoints, string popupKey, Vector3 pos)
+        {
+            reelColour = success;
+            flashDuration = PosFlashSeconds;
+            flashTimer = flashDuration;
         }
 
         private void OnIllegalOvertake(TrafficVehicle v)
@@ -280,8 +449,9 @@ namespace KenyaScooter.UI
         }
         private void OnDayPhase(int index, string label) { if (dayLabel != null) dayLabel.text = string.IsNullOrEmpty(label) ? "ASUBUHI" : label; }
         private void OnRewindStarted() { routePenalty = Mathf.Min(routePenalty + 0.05f, 0.12f); } // route + rider dip back on a rewind
+        private void OnChargingStarted() { charging = true; chargeT = 0f; } // charge-station beat: refill the battery
         // Score (group total) and the team multiplier carry across players, so this turn-reset leaves them alone.
-        private void OnSessionReset() { wrongLaneOverstay = false; speedingTier = 0; routePenalty = 0f; alertTimer = 0f; vignetteTimer = 0f; if (warningRoot != null) warningRoot.SetActive(false); }
+        private void OnSessionReset() { wrongLaneOverstay = false; speedingTier = 0; routePenalty = 0f; alertTimer = 0f; cautionTimer = 0f; vignetteTimer = 0f; charging = false; chargeT = 0f; if (warningRoot != null) warningRoot.SetActive(false); }
 
         private void TickLeds()
         {
@@ -314,385 +484,110 @@ namespace KenyaScooter.UI
             }
         }
 
+        // Score reel roll (Animation Playbook, 2026-07-05): the reels keep their linear spin, but on hitting
+        // the detent each one overshoots a fraction of a cell and springs back, so points land with mechanical
+        // weight. The colour wash now fades back to accent instead of snapping. Both temper with the
+        // motion-sensitivity dial; at/below the Prikkelarm cutoff the roll is straight (no overshoot).
         private void AnimateReels()
         {
             if (flashTimer > 0f) flashTimer -= Time.deltaTime;
-            Color c = flashTimer > 0f ? reelColour : accent;
+            float motion = SpeedFeel.MotionScale;
+            float wash = Mathf.Clamp01(flashTimer / flashDuration) * Mathf.Lerp(0.45f, 1f, motion);
+            Color c = Color.Lerp(dangerState ? danger : accent, reelColour, wash); // readout joins the cluster's danger shift
+
             float speed = 26f; // cells per second
+            float dt = Time.deltaTime;
             for (int i = 0; i < reelStrips.Count; i++)
             {
-                reelCellPos[i] = Mathf.MoveTowards(reelCellPos[i], reelTargetCell[i], speed * Time.deltaTime);
-                reelStrips[i].anchoredPosition = new Vector2(0f, reelCellPos[i] * cellHeight);
+                float before = reelCellPos[i];
+                reelCellPos[i] = Mathf.MoveTowards(reelCellPos[i], reelTargetCell[i], speed * dt);
                 if (Mathf.Approximately(reelCellPos[i], reelTargetCell[i]))
                 {
+                    // Arrival frame only (the reel actually moved): hand the roll's momentum to the settle
+                    // spring so the digits click past the notch and bounce back once.
+                    if (!Mathf.Approximately(before, reelTargetCell[i]) && motion > CalmCutoff)
+                        reelSettleVel[i] += Mathf.Sign(reelTargetCell[i] - before) * speed * 0.18f * motion;
                     int p = reelTargetCell[i];
-                    if (p < 10 || p > 19) { int np = 10 + (((p % 10) + 10) % 10); reelCellPos[i] = np; reelTargetCell[i] = np; reelStrips[i].anchoredPosition = new Vector2(0f, np * cellHeight); }
+                    if (p < 10 || p > 19) { int np = 10 + (((p % 10) + 10) % 10); reelCellPos[i] = np; reelTargetCell[i] = np; }
                 }
+                // Under-damped settle spring, in cell units — one visible bounce (~0.25 cells), dead in ~0.5s.
+                reelSettleVel[i] += (-160f * reelSettle[i] - 11f * reelSettleVel[i]) * dt;
+                reelSettle[i] += reelSettleVel[i] * dt;
+                reelStrips[i].anchoredPosition = new Vector2(0f, (reelCellPos[i] + reelSettle[i]) * cellHeight);
                 foreach (var cell in reelCells[i]) if (cell != null) cell.color = c;
             }
         }
 
-        // ---- build ------------------------------------------------------------------
-        [ContextMenu("Rebuild now")]
-        public void Build()
+        // ---- streak tier-up celebration ------------------------------------------------
+        private void FireTierUp()
         {
-            ClearGenerated();
-            reelStrips.Clear(); reelCells.Clear();
-
-            RectTransform root = (RectTransform)transform;
-            Stretch(root); // full-screen container: cluster sits at the bottom, route strip at the top
-
-            // cluster panel — flush against the bottom edge of the screen
-            RectTransform panel = NewRect(root, "Cluster");
-            panel.anchorMin = new Vector2(0.5f, 0f); panel.anchorMax = new Vector2(0.5f, 0f); panel.pivot = new Vector2(0.5f, 0f);
-            panel.sizeDelta = panelSize; panel.anchoredPosition = new Vector2(0f, Mathf.Min(bottomMargin, 0f)); // never floats above the bottom edge
-            Image pimg = panel.gameObject.AddComponent<Image>();
-            pimg.color = panelColour; pimg.sprite = RoundedTopSprite(28); pimg.type = Image.Type.Sliced; pimg.raycastTarget = false;
-
-            // Inset, rounded accent stripe — clears the panel's rounded corners instead of cutting across them.
-            Image lip = AddImage(panel, "AccentLip", accent, PillSprite());
-            lip.rectTransform.anchorMin = new Vector2(0f, 1f); lip.rectTransform.anchorMax = new Vector2(1f, 1f);
-            lip.rectTransform.pivot = new Vector2(0.5f, 1f); lip.rectTransform.sizeDelta = new Vector2(-90f, 5f); lip.rectTransform.anchoredPosition = new Vector2(0f, -4f);
-
-            float w = panelSize.x;
-            BuildTopStrip(root, w);
-            BuildOdometer(panel, new Vector2(-w * 0.30f, 4f));
-            BuildSpeedometer(panel, new Vector2(0f, 0f));
-            BuildBattery(panel, new Vector2(w * 0.24f, -4f));
-            BuildLimit(panel, new Vector2(w * 0.36f, 0f));
-            BuildWarning(root);
-
-            // red screen-edge flash on a crash (on top, edge-only so the centre stays clear)
-            vignette = AddImage(root, "CrashVignette", danger, VignetteSprite());
-            Stretch(vignette.rectTransform);
-            vignette.color = new Color(danger.r, danger.g, danger.b, 0f);
-
-            built = true;
-        }
-
-        // The route + day strip lives at the TOP of the screen (not on the cluster).
-        private void BuildTopStrip(RectTransform root, float w)
-        {
-            RectTransform strip = NewRect(root, "TopStrip");
-            strip.anchorMin = new Vector2(0.5f, 1f); strip.anchorMax = new Vector2(0.5f, 1f); strip.pivot = new Vector2(0.5f, 1f);
-            strip.sizeDelta = new Vector2(w, 40f); strip.anchoredPosition = new Vector2(0f, -22f);
-
-            TMP_Text day = AddText(strip, "DayLabel", "ASUBUHI", 24, accent, TextAlignmentOptions.Left);
-            Anchor(day.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(170f, 30f), new Vector2(90f, 0f));
-            dayLabel = day;
-
-            Image bar = AddImage(strip, "RouteBar", trackDim, PillSprite());
-            Anchor(bar.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(w * 0.64f, 6f), new Vector2(40f, 0f));
-            Image fill = AddImage(bar.rectTransform, "RouteFill", accent, PillSprite());
-            fill.type = Image.Type.Filled; fill.fillMethod = Image.FillMethod.Horizontal; fill.fillOrigin = 0; fill.fillAmount = 0.4f;
-            Stretch(fill.rectTransform);
-            routeFill = fill;
-            routeBarWidth = w * 0.64f;
-
-            // charge-station / goal marker at the end of the route
-            Image charge = AddImage(bar.rectTransform, "Charge", gold, BoltSprite());
-            Anchor(charge.rectTransform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(22f, 22f), new Vector2(0f, 0f));
-
-            // rider marker rides the head of the fill (stand-in for a scooter sprite)
-            Image rider = AddImage(bar.rectTransform, "Rider", ink, CircleSprite());
-            rider.rectTransform.anchorMin = new Vector2(0f, 0.5f); rider.rectTransform.anchorMax = new Vector2(0f, 0.5f);
-            rider.rectTransform.pivot = new Vector2(0.5f, 0.5f); rider.rectTransform.sizeDelta = new Vector2(20f, 20f); rider.rectTransform.anchoredPosition = Vector2.zero;
-            Image riderDot = AddImage(rider.rectTransform, "Dot", accent, CircleSprite());
-            Anchor(riderDot.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(10f, 10f), Vector2.zero);
-            routeMarker = rider;
-        }
-
-        private void BuildOdometer(RectTransform parent, Vector2 pos)
-        {
-            RectTransform block = NewRect(parent, "Odometer");
-            Anchor(block, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(420f, 150f), pos);
-
-            TMP_Text label = AddText(block, "Label", "ALAMA · KM", 18, muted, TextAlignmentOptions.Center);
-            Anchor(label.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(300f, 22f), new Vector2(0f, -6f));
-
-            // dark window holding the reels, framed by a lighter bezel so it stands out from the panel
-            Image bezel = AddImage(block, "WindowBezel", Hex("#3C2D22"), RoundedSprite(13));
-            Anchor(bezel.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(376f, 112f), new Vector2(0f, -2f));
-            Image window = AddImage(block, "Window", Hex("#0B0806"), RoundedSprite(10));
-            Anchor(window.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(360f, 96f), new Vector2(0f, -2f));
-
-            float cellW = 56f; cellHeight = 90f;
-            reelCellPos = new float[digits]; reelTargetCell = new int[digits];
-            float totalW = digits * cellW + 18f; // gap
-            float startX = -totalW * 0.5f + cellW * 0.5f;
-            for (int i = 0; i < digits; i++)
+            tierFxTimer = TierFxSeconds;
+            bool throwFx = SpeedFeel.MotionScale > CalmCutoff; // Prikkelarm keeps colour + a soft thump only
+            if (tierRing != null)
             {
-                float x = startX + i * cellW + (i >= digits - 3 ? 18f : 0f);
-                BuildReel(window.rectTransform, new Vector2(x, 0f), cellW);
-                reelCellPos[i] = 10f; reelTargetCell[i] = 10;
+                tierRing.gameObject.SetActive(throwFx);
+                tierRing.rectTransform.localScale = Vector3.one * 0.4f;
+                tierRing.color = new Color(gold.r, gold.g, gold.b, 0.9f);
             }
-
-            // team multiplier badge — always visible (×1 minimum), brightens as the shared streak climbs
-            RectTransform badge = NewRect(block, "StreakBadge");
-            Anchor(badge, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(66f, 42f), new Vector2(-2f, -2f));
-            Image bg = badge.gameObject.AddComponent<Image>(); bg.sprite = RoundedSprite(12); bg.type = Image.Type.Sliced; bg.color = muted;
-            streakBg = bg;
-            streakText = AddText(badge, "x", "×1", 26, panelColour, TextAlignmentOptions.Center);
-            Stretch(streakText.rectTransform);
-            streakBadge = badge;
-
-            TMP_Text sub = AddText(block, "Sub", "TEAM SCORE", 15, muted, TextAlignmentOptions.Center);
-            Anchor(sub.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(300f, 20f), new Vector2(0f, 4f));
-        }
-
-        private void BuildReel(RectTransform parent, Vector2 pos, float cellW)
-        {
-            RectTransform reel = NewRect(parent, "Reel");
-            Anchor(reel, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(cellW, cellHeight), pos);
-            reel.gameObject.AddComponent<RectMask2D>();
-
-            RectTransform strip = NewRect(reel, "Strip");
-            strip.anchorMin = new Vector2(0.5f, 0.5f); strip.anchorMax = new Vector2(0.5f, 0.5f); strip.pivot = new Vector2(0.5f, 0.5f);
-            strip.sizeDelta = new Vector2(cellW, cellHeight * 30f); strip.anchoredPosition = new Vector2(0f, 10f * cellHeight);
-
-            var cells = new TMP_Text[30];
-            for (int k = 0; k < 30; k++)
+            if (tierSparks == null) return;
+            for (int i = 0; i < tierSparks.Length; i++)
             {
-                TMP_Text c = AddText(strip, "c" + k, (k % 10).ToString(), 70, accent, TextAlignmentOptions.Center);
-                Anchor(c.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(cellW, cellHeight), new Vector2(0f, -k * cellHeight));
-                cells[k] = c;
-            }
-            reelStrips.Add(strip); reelCells.Add(cells);
-        }
-
-        private void BuildSpeedometer(RectTransform parent, Vector2 pos)
-        {
-            RectTransform block = NewRect(parent, "Speedometer");
-            Anchor(block, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(260f, 200f), pos);
-
-            const float gd = 150f;                 // gauge diameter
-            Vector2 hub = new Vector2(0f, -6f);     // lowered so the whole gauge sits further down in the panel
-
-            // Top semicircle: origin Left + clockwise + 0.5 fills Left→Top→Right.
-            Image track = AddImage(block, "Track", trackDim, RingSprite(0.72f));
-            track.type = Image.Type.Filled; track.fillMethod = Image.FillMethod.Radial360; track.fillOrigin = (int)Image.Origin360.Left; track.fillClockwise = true; track.fillAmount = 0.5f;
-            Anchor(track.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(gd, gd), hub);
-
-            Image fill = AddImage(block, "Fill", accent, RingSprite(0.72f));
-            fill.type = Image.Type.Filled; fill.fillMethod = Image.FillMethod.Radial360; fill.fillOrigin = (int)Image.Origin360.Left; fill.fillClockwise = true; fill.fillAmount = 0.25f;
-            Anchor(fill.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(gd, gd), hub);
-            speedFill = fill;
-
-            // needle: bar with its base pinned at the hub, pointing up at half-speed
-            Image n = AddImage(block, "Needle", ink, null);
-            n.rectTransform.anchorMin = new Vector2(0.5f, 0.5f); n.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
-            n.rectTransform.pivot = new Vector2(0.5f, 0f);
-            n.rectTransform.sizeDelta = new Vector2(5f, gd * 0.5f - 6f);
-            n.rectTransform.anchoredPosition = hub;
-            needle = n;
-
-            Image hubCap = AddImage(block, "Hub", ink, CircleSprite());
-            Anchor(hubCap.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(16f, 16f), hub);
-
-            // km/h number sits in the lower gap of the dial, just under the hub
-            kmhText = AddText(block, "Kmh", "64", 44, ink, TextAlignmentOptions.Center);
-            Anchor(kmhText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(180f, 48f), new Vector2(0f, hub.y - 34f));
-            TMP_Text unit = AddText(block, "Unit", "speedometer", 15, muted, TextAlignmentOptions.Center);
-            Anchor(unit.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(180f, 18f), new Vector2(0f, hub.y - 64f));
-
-            ledLeft = AddImage(block, "LED_Left", ledOff, CircleSprite());
-            Anchor(ledLeft.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(16f, 16f), new Vector2(12f, hub.y));
-            ledRight = AddImage(block, "LED_Right", ledOff, CircleSprite());
-            Anchor(ledRight.rectTransform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(16f, 16f), new Vector2(-12f, hub.y));
-        }
-
-        private void BuildBattery(RectTransform parent, Vector2 pos)
-        {
-            RectTransform block = NewRect(parent, "Battery");
-            Anchor(block, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(70f, 150f), pos);
-
-            int n = 10; batterySegments = new Image[n];
-            float segH = 9f, gap = 4f; float start = -(n * (segH + gap)) * 0.5f + segH * 0.5f + 6f;
-            for (int i = 0; i < n; i++)
-            {
-                Image seg = AddImage(block, "Seg" + i, ledOff, RoundedSprite(2));
-                Anchor(seg.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(44f, segH), new Vector2(0f, start + i * (segH + gap)));
-                batterySegments[i] = seg;
-            }
-            TMP_Text sub = AddText(block, "Sub", "MUDA", 15, muted, TextAlignmentOptions.Center);
-            Anchor(sub.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(90f, 18f), new Vector2(0f, 2f));
-        }
-
-        private void BuildLimit(RectTransform parent, Vector2 pos)
-        {
-            RectTransform block = NewRect(parent, "SpeedLimit");
-            Anchor(block, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(110f, 150f), pos);
-
-            Image disc = AddImage(block, "Disc", ink, CircleSprite());
-            Anchor(disc.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(96f, 96f), new Vector2(0f, 6f));
-            Image ring = AddImage(block, "Ring", danger, RingSprite(0.78f));
-            Anchor(ring.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(96f, 96f), new Vector2(0f, 6f));
-            limitRing = ring;
-            limitText = AddText(block, "Number", "80", 46, panelColour, TextAlignmentOptions.Center);
-            Anchor(limitText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(90f, 56f), new Vector2(0f, 6f));
-
-            TMP_Text sub = AddText(block, "Sub", "speed limit", 15, muted, TextAlignmentOptions.Center);
-            Anchor(sub.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(110f, 18f), new Vector2(0f, 2f));
-        }
-
-        // Rule-warning banner — floats just above the cluster, centred over the speedometer.
-        private void BuildWarning(RectTransform root)
-        {
-            RectTransform banner = NewRect(root, "RuleWarning");
-            banner.anchorMin = new Vector2(0.5f, 0f); banner.anchorMax = new Vector2(0.5f, 0f); banner.pivot = new Vector2(0.5f, 0f);
-            banner.sizeDelta = new Vector2(640f, 56f);
-            banner.anchoredPosition = new Vector2(0f, panelSize.y + 16f); // just above the panel, over the gauge
-
-            Image bg = banner.gameObject.AddComponent<Image>();
-            bg.sprite = RoundedSprite(24); bg.type = Image.Type.Sliced; bg.raycastTarget = false;
-            bg.color = new Color(danger.r, danger.g, danger.b, 0.22f);
-            warningBg = bg;
-
-            warningText = AddText(banner, "Text", "VERKEERDE WEGHELFT", 26, ink, TextAlignmentOptions.Center);
-            Stretch(warningText.rectTransform);
-
-            warningRoot = banner.gameObject;
-            warningRoot.SetActive(false);
-        }
-
-        // ---- UI helpers --------------------------------------------------------------
-        private static Color Hex(string h) { ColorUtility.TryParseHtmlString(h, out var c); return c; }
-
-        private RectTransform NewRect(RectTransform parent, string name)
-        {
-            var go = new GameObject(name, typeof(RectTransform));
-            go.layer = parent.gameObject.layer;
-            var rt = go.GetComponent<RectTransform>();
-            rt.SetParent(parent, false);
-            return rt;
-        }
-
-        private Image AddImage(RectTransform parent, string name, Color colour, Sprite sprite)
-        {
-            var rt = NewRect(parent, name);
-            var img = rt.gameObject.AddComponent<Image>();
-            img.color = colour; img.sprite = sprite; img.raycastTarget = false;
-            if (sprite != null && sprite.border != Vector4.zero) img.type = Image.Type.Sliced; // 9-slice rounded sprites
-            return img;
-        }
-
-        private TMP_Text AddText(RectTransform parent, string name, string text, float size, Color colour, TextAlignmentOptions align)
-        {
-            var rt = NewRect(parent, name);
-            var t = rt.gameObject.AddComponent<TextMeshProUGUI>();
-            t.text = text; t.fontSize = size; t.color = colour; t.alignment = align;
-            t.raycastTarget = false; t.fontStyle = FontStyles.Bold;
-            return t;
-        }
-
-        private static void Stretch(RectTransform rt)
-        { rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one; rt.pivot = new Vector2(0.5f, 0.5f); rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero; }
-
-        private static void Anchor(RectTransform rt, Vector2 aMin, Vector2 aMax, Vector2 size, Vector2 pos)
-        { rt.anchorMin = aMin; rt.anchorMax = aMax; rt.pivot = new Vector2(0.5f, 0.5f); rt.sizeDelta = size; rt.anchoredPosition = pos; }
-
-        private void ClearGenerated()
-        {
-            var rt = (RectTransform)transform;
-            for (int i = rt.childCount - 1; i >= 0; i--)
-            {
-                var child = rt.GetChild(i).gameObject;
-                if (Application.isPlaying) Destroy(child); else DestroyImmediate(child);
+                Image sp = tierSparks[i];
+                if (sp == null) continue;
+                sp.gameObject.SetActive(throwFx);
+                if (!throwFx) continue;
+                float ang = (i + UnityEngine.Random.value * 0.8f) * (Mathf.PI * 2f / tierSparks.Length);
+                tierSparkDirs[i] = new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * (60f + UnityEngine.Random.value * 50f);
+                sp.rectTransform.anchoredPosition = Vector2.zero;
+                sp.rectTransform.localScale = Vector3.one;
+                Color sc = sp.color; sc.a = 1f; sp.color = sc;
             }
         }
 
-        // ---- procedural sprites ------------------------------------------------------
-        private Sprite _circle, _bolt;
-        private readonly Dictionary<int, Sprite> _rounded = new();
-        private readonly Dictionary<float, Sprite> _ring = new();
-        private Sprite _pill;
-
-        private Sprite CircleSprite()
+        private void DriveTierFx()
         {
-            if (_circle != null) return _circle;
-            int s = 64; var tex = NewTex(s, s);
-            float r = s * 0.5f, cx = r, cy = r;
-            for (int y = 0; y < s; y++) for (int x = 0; x < s; x++)
-            { float d = Mathf.Sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy)); tex.SetPixel(x, y, new Color(1, 1, 1, Mathf.Clamp01(r - d))); }
-            tex.Apply(); _circle = ToSprite(tex); return _circle;
-        }
-
-        private Sprite RingSprite(float innerFrac)
-        {
-            if (_ring.TryGetValue(innerFrac, out var cached)) return cached;
-            int s = 128; var tex = NewTex(s, s);
-            float r = s * 0.5f, cx = r, cy = r, inner = r * innerFrac;
-            for (int y = 0; y < s; y++) for (int x = 0; x < s; x++)
-            { float d = Mathf.Sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy)); float a = Mathf.Clamp01(r - d) * Mathf.Clamp01(d - inner); tex.SetPixel(x, y, new Color(1, 1, 1, a)); }
-            tex.Apply(); var sp = ToSprite(tex); _ring[innerFrac] = sp; return sp;
-        }
-
-        private Sprite RoundedSprite(int radius)
-        {
-            if (_rounded.TryGetValue(radius, out var cached)) return cached;
-            int s = radius * 2 + 4; var tex = NewTex(s, s);
-            for (int y = 0; y < s; y++) for (int x = 0; x < s; x++)
+            if (tierFxTimer <= 0f) return;
+            tierFxTimer -= Time.deltaTime;
+            if (tierFxTimer <= 0f)
             {
-                float dx = Mathf.Max(radius - x, x - (s - radius), 0f);
-                float dy = Mathf.Max(radius - y, y - (s - radius), 0f);
-                float d = Mathf.Sqrt(dx * dx + dy * dy);
-                tex.SetPixel(x, y, new Color(1, 1, 1, Mathf.Clamp01(radius - d + 0.5f)));
+                if (streakBadge != null) streakBadge.localScale = Vector3.one;
+                if (tierRing != null) tierRing.gameObject.SetActive(false);
+                if (tierSparks != null)
+                    for (int i = 0; i < tierSparks.Length; i++)
+                        if (tierSparks[i] != null) tierSparks[i].gameObject.SetActive(false);
+                return;
             }
-            tex.Apply();
-            var sp = Sprite.Create(tex, new Rect(0, 0, s, s), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect, new Vector4(radius, radius, radius, radius));
-            _rounded[radius] = sp; return sp;
-        }
 
-        private Sprite PillSprite() { if (_pill == null) _pill = RoundedSprite(3); return _pill; }
+            float motion = SpeedFeel.MotionScale;
+            float t = 1f - tierFxTimer / TierFxSeconds;        // 0 → 1 over the celebration
+            float easeOut = 1f - (1f - t) * (1f - t);
 
-        // Transparent in the middle, opaque toward the edges/corners — tinted red and stretched full-screen.
-        private Sprite _vignette;
-        private Sprite VignetteSprite()
-        {
-            if (_vignette != null) return _vignette;
-            int s = 128; var tex = NewTex(s, s);
-            float c = s * 0.5f;
-            for (int y = 0; y < s; y++) for (int x = 0; x < s; x++)
+            // Badge thump: fast out, slow settle — ×1.5 at full motion, a soft ×1.2 on the calm dial.
+            if (streakBadge != null)
             {
-                float dx = (x - c) / c, dy = (y - c) / c;
-                float d = Mathf.Sqrt(dx * dx + dy * dy);
-                tex.SetPixel(x, y, new Color(1, 1, 1, Mathf.SmoothStep(0.65f, 1.15f, d)));
+                float peak = Mathf.Lerp(0.2f, 0.5f, motion);
+                float k = Mathf.Sin(Mathf.Pow(t, 0.6f) * Mathf.PI);
+                streakBadge.localScale = Vector3.one * (1f + peak * k);
             }
-            tex.Apply(); _vignette = ToSprite(tex); return _vignette;
-        }
 
-        // Rounded TOP corners, square bottom — so the panel can sit flush against the screen's bottom edge.
-        private Sprite _roundedTop;
-        private Sprite RoundedTopSprite(int radius)
-        {
-            if (_roundedTop != null) return _roundedTop;
-            int s = radius * 2 + 4; var tex = NewTex(s, s);
-            for (int y = 0; y < s; y++) for (int x = 0; x < s; x++)
+            // Thrown ring: expands out of the badge while fading.
+            if (tierRing != null && tierRing.gameObject.activeSelf)
             {
-                float dx = Mathf.Max(radius - x, x - (s - radius), 0f);
-                float dy = Mathf.Max(y - (s - radius), 0f); // only the top edge rounds; bottom stays square
-                float d = Mathf.Sqrt(dx * dx + dy * dy);
-                tex.SetPixel(x, y, new Color(1, 1, 1, Mathf.Clamp01(radius - d + 0.5f)));
+                tierRing.rectTransform.localScale = Vector3.one * Mathf.Lerp(0.4f, 1.8f, easeOut);
+                tierRing.color = new Color(gold.r, gold.g, gold.b, 0.9f * (1f - t));
             }
-            tex.Apply();
-            _roundedTop = Sprite.Create(tex, new Rect(0, 0, s, s), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect, new Vector4(radius, 2, radius, radius));
-            return _roundedTop;
+
+            // Spark burst: pooled dots fly outward, shrink and fade.
+            if (tierSparks != null)
+                for (int i = 0; i < tierSparks.Length; i++)
+                {
+                    Image sp = tierSparks[i];
+                    if (sp == null || !sp.gameObject.activeSelf) continue;
+                    sp.rectTransform.anchoredPosition = tierSparkDirs[i] * easeOut;
+                    sp.rectTransform.localScale = Vector3.one * (1f - 0.7f * t);
+                    Color sc = sp.color; sc.a = 1f - t; sp.color = sc;
+                }
         }
 
-        private Sprite BoltSprite()
-        {
-            if (_bolt != null) return _bolt;
-            int s = 64; var tex = NewTex(s, s);
-            Vector2[] pts = { new(0.55f,0.95f), new(0.30f,0.50f), new(0.48f,0.50f), new(0.42f,0.05f), new(0.70f,0.55f), new(0.52f,0.55f) };
-            for (int y = 0; y < s; y++) for (int x = 0; x < s; x++)
-            { bool inside = PointInPoly(new Vector2((float)x / s, (float)y / s), pts); tex.SetPixel(x, y, new Color(1, 1, 1, inside ? 1f : 0f)); }
-            tex.Apply(); _bolt = ToSprite(tex); return _bolt;
-        }
-
-        private static bool PointInPoly(Vector2 p, Vector2[] v)
-        { bool c = false; for (int i = 0, j = v.Length - 1; i < v.Length; j = i++) if (((v[i].y > p.y) != (v[j].y > p.y)) && (p.x < (v[j].x - v[i].x) * (p.y - v[i].y) / (v[j].y - v[i].y) + v[i].x)) c = !c; return c; }
-
-        private static Texture2D NewTex(int w, int h) { var t = new Texture2D(w, h, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp }; return t; }
-        private static Sprite ToSprite(Texture2D tex) => Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f);
     }
 }

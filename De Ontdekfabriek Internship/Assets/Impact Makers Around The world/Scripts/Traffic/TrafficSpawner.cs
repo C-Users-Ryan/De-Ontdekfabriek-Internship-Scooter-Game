@@ -56,50 +56,47 @@ namespace KenyaScooter.Traffic
                 return;
 
             float dt = Time.deltaTime;
-            Vector3 playerPosition = player.position;
-            float playerLong = RoadDirection.Longitudinal(playerPosition);
+            // Road space: the player's arc (road odometer) and lateral. Vehicles are placed and reasoned about
+            // along the road, so traffic rides through bends instead of pausing on the straight +Z spawn line.
+            float playerArc = PlayerArc;
+            float playerLateral = RoadDirection.Lateral(player.position);
 
             for (int i = TrafficVehicle.Active.Count - 1; i >= 0; i--)
             {
                 TrafficVehicle vehicle = TrafficVehicle.Active[i];
-                vehicle.Tick(dt, config, playerPosition);
+                vehicle.Tick(dt, config, playerArc, playerLateral);
 
-                float vehicleLong = RoadDirection.Longitudinal(vehicle.transform.position);
-                if (playerLong - vehicleLong > config.despawnBehindDistance)
+                float ahead = vehicle.RoadArc - playerArc;
+                if (-ahead > config.despawnBehindDistance)
                     Despawn(vehicle);
                 else if (vehicle.Direction == LaneDirection.SameDirection
-                    && vehicleLong - playerLong > config.sameDirectionSpawnDistance + 40f)
+                    && ahead > config.sameDirectionSpawnDistance + 40f)
                     Despawn(vehicle); // pulled too far ahead (the player braked) — recycle so spawning never stalls
             }
 
-            if (state == GameState.Playing && !CurveAhead())
+            if (state == GameState.Playing)
             {
-                SpawnSameDirection(playerLong);
-                SpawnOncoming(playerLong);
+                // No curve gate any more: vehicles are placed in road space and follow the bend (see SpawnSingle /
+                // RoadSequencer.TryGetRoadPose), so the stream no longer thins approaching a turn.
+                SpawnSameDirection(playerArc);
+                SpawnOncoming(playerArc);
             }
         }
 
-        /// <summary>
-        /// True when the road bends within the spawn distance. Traffic is placed on the straight +Z
-        /// spawn line, which leaves the road through a curve, so spawning pauses across a bend and the
-        /// existing stream flows through and clears — the road thins naturally at a turn, then resumes.
-        /// </summary>
-        private bool CurveAhead()
-        {
-            if (RoadSequencer.Instance == null)
-                return false;
-            float lookAhead = Mathf.Max(config.sameDirectionSpawnDistance, config.oncomingSpawnDistance) + 30f;
-            return Mathf.Abs(RoadSequencer.Instance.SharpestCurveWithin(lookAhead)) > 5f;
-        }
+        /// <summary>The player's progress along the road centreline (metres) — the rewound road odometer when a
+        /// sequencer exists, else the world odometer. Shared with TrafficVehicle so placement uses one frame.</summary>
+        private static float PlayerArc =>
+            RoadSequencer.Instance != null ? RoadSequencer.Instance.PlayerArc
+            : (WorldSpeed.Instance != null ? WorldSpeed.Instance.DistanceTravelled : 0f);
 
         // ---- Spawning -------------------------------------------------------------
 
-        private void SpawnSameDirection(float playerLong)
+        private void SpawnSameDirection(float playerArc)
         {
             if (CountDirection(LaneDirection.SameDirection) >= config.maxSameDirection)
                 return;
 
-            float horizon = playerLong + config.sameDirectionSpawnDistance;
+            float horizonArc = playerArc + config.sameDirectionSpawnDistance;
             TrafficVehicle furthest = FurthestInDirection(LaneDirection.SameDirection);
             if (furthest != null)
             {
@@ -109,35 +106,35 @@ namespace KenyaScooter.Traffic
 
                 // The spawn guarantee (M11): never closer than gap + car length
                 // behind the queue's tail. Wait until the queue has drifted in.
-                if (RoadDirection.Longitudinal(furthest.transform.position) + furthest.length + gap > horizon)
+                if (furthest.RoadArc + furthest.length + gap > horizonArc)
                     return;
             }
 
             SpawnVehicle(sameDirectionPrefabs, LaneDirection.SameDirection,
-                RoadSideConfig.Active.OwnLaneCentre, horizon, allowSwarm: true);
+                RoadSideConfig.Active.OwnLaneCentre, horizonArc, allowSwarm: true);
         }
 
-        private void SpawnOncoming(float playerLong)
+        private void SpawnOncoming(float playerArc)
         {
             if (CountDirection(LaneDirection.Oncoming) >= config.maxOncoming)
                 return;
 
-            float spawnLong = playerLong + config.oncomingSpawnDistance;
+            float spawnArc = playerArc + config.oncomingSpawnDistance;
             TrafficVehicle furthest = FurthestInDirection(LaneDirection.Oncoming);
 
             // The previous oncoming vehicle must have closed nextOncomingGap metres
             // before another appears — every gap is a completable overtake window (M11).
-            if (furthest != null && RoadDirection.Longitudinal(furthest.transform.position) > spawnLong - nextOncomingGap)
+            if (furthest != null && furthest.RoadArc > spawnArc - nextOncomingGap)
                 return;
 
             SpawnVehicle(oncomingPrefabs, LaneDirection.Oncoming,
-                RoadSideConfig.Active.OncomingLaneCentre, spawnLong, allowSwarm: true);
+                RoadSideConfig.Active.OncomingLaneCentre, spawnArc, allowSwarm: true);
             nextOncomingGap = (config.oncomingMinGap + Random.value * config.oncomingGapJitter)
                 * activeProfile.oncomingIntervalMult;
         }
 
         private void SpawnVehicle(TrafficVehicle[] prefabs, LaneDirection direction, float laneCentre,
-            float longitudinal, bool allowSwarm)
+            float arc, bool allowSwarm)
         {
             TrafficVehicle prefab = WeightedPick(prefabs);
             if (prefab == null)
@@ -149,19 +146,19 @@ namespace KenyaScooter.Traffic
                 for (int i = 0; i < count; i++)
                 {
                     float lateral = laneCentre + Random.Range(-config.bodaSwarmLateralJitter, config.bodaSwarmLateralJitter);
-                    SpawnSingle(prefab, direction, lateral, longitudinal + i * config.bodaSwarmSpacing);
+                    SpawnSingle(prefab, direction, lateral, arc + i * config.bodaSwarmSpacing);
                 }
                 return;
             }
 
-            SpawnSingle(prefab, direction, laneCentre, longitudinal);
+            SpawnSingle(prefab, direction, laneCentre, arc);
         }
 
-        private void SpawnSingle(TrafficVehicle prefab, LaneDirection direction, float lateral, float longitudinal)
+        private void SpawnSingle(TrafficVehicle prefab, LaneDirection direction, float lateral, float arc)
         {
             TrafficVehicle vehicle = pools[prefab].Get();
-            Vector3 position = RoadDirection.Current * longitudinal + RoadDirection.SteerAxis * lateral;
-            vehicle.Activate(direction, activeProfile, lateral, position);
+            // Placed at a point on the road (arc + lateral); Activate derives the curved world pose.
+            vehicle.Activate(direction, activeProfile, lateral, arc);
             vehicle.gameObject.SetActive(true);
         }
 
@@ -201,12 +198,14 @@ namespace KenyaScooter.Traffic
 
             // Prewarm (M10): the player starts behind a populated queue, never an
             // empty road. Swarms are skipped here to keep prewarm spacing exact.
-            float playerLong = player != null ? RoadDirection.Longitudinal(player.position) : 0f;
+            // Placed in road space (the road resets to arc 0), so the prewarmed queue already sits on the
+            // road's opening shape rather than the straight +Z line.
+            float playerArc = PlayerArc;
             float distance = config.prewarmStartDistance;
             while (distance <= config.prewarmEndDistance)
             {
                 SpawnVehicle(sameDirectionPrefabs, LaneDirection.SameDirection,
-                    RoadSideConfig.Active.OwnLaneCentre, playerLong + distance, allowSwarm: false);
+                    RoadSideConfig.Active.OwnLaneCentre, playerArc + distance, allowSwarm: false);
                 distance += config.prewarmGap + Random.Range(-config.prewarmGapJitter, config.prewarmGapJitter);
             }
         }
@@ -272,10 +271,9 @@ namespace KenyaScooter.Traffic
                 TrafficVehicle vehicle = TrafficVehicle.Active[i];
                 if (vehicle.Direction != direction)
                     continue;
-                float longitudinal = RoadDirection.Longitudinal(vehicle.transform.position);
-                if (longitudinal > best)
+                if (vehicle.RoadArc > best)
                 {
-                    best = longitudinal;
+                    best = vehicle.RoadArc;
                     furthest = vehicle;
                 }
             }

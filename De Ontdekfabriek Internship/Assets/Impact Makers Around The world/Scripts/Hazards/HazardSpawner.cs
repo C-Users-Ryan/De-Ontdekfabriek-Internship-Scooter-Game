@@ -130,6 +130,18 @@ namespace KenyaScooter.Hazards
                 }
             }
 
+            // Per-tile hazard permission (2026-07-04): the tile itself decides which hazards may sit on it
+            // (RoadTile.allowedHazards in the tile's inspector; an empty list allows everything). Checked at
+            // the arc the cluster would actually land on, so the rule follows the tile, not the zone.
+            RoadTile tileAhead = RoadSequencer.Instance != null
+                ? RoadSequencer.Instance.TileAt(playerArc + config.spawnAheadDistance)
+                : null;
+            if (tileAhead != null && !tileAhead.AllowsHazard(config))
+            {
+                state.nextClusterAt = playerArc + 20f; // retry further along, on a tile that allows this hazard
+                return;
+            }
+
             SpawnCluster(state, playerArc);
             state.clustersThisSession++;
             state.nextClusterAt = playerArc + IntervalFor(config);
