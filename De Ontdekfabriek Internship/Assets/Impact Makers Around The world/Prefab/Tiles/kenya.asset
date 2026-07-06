@@ -13,12 +13,12 @@ MonoBehaviour:
   m_Name: kenya
   m_EditorClassIdentifier: Assembly-CSharp::KenyaScooter.Roads.RoadSequence
   zoneName: Kenya
-  contextTags: []
+  contextTags:
+  - Wild
   tiles:
   - {fileID: 4646429838730487416, guid: 921013845bc04754589cbd7a43dd2914, type: 3}
   - {fileID: 1817543908115721991, guid: f5282e07619d65144b38b27818b48046, type: 3}
   - {fileID: 7783795907584609438, guid: 121a62aefbaa30e4588593e20e76d361, type: 3}
-  - {fileID: 8678437511983235021, guid: d80724633762f2d4d9528b23bdc01c04, type: 3}
   shuffleTiles: 0
   weight: 1
   cooldownTiles: 10

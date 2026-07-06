@@ -6,13 +6,16 @@ using KenyaScooter.Roads;
 namespace KenyaScooter.Session
 {
     /// <summary>
-    /// The relay checkpoint (Req §9.2): when the timer expires, the road is capped a controlled distance
-    /// ahead (SessionConfig.checkpointDistance) with a charge-station tile (RoadSequencer.SpawnCheckpoint).
-    /// The world keeps scrolling normally, so the player coasts toward it as part of the road — no prefab
-    /// teleports in. The remaining distance is measured ALONG the road (arc), so it stays correct through any
-    /// turns between the player and the station; close to the tile's stop marker a speed override brakes the
-    /// world to a stop (start distance from v²/2a, so it works from any speed), then CheckpointReached fires —
-    /// GameManager commits the turn and the checkpoint screen takes over.
+    /// The relay checkpoint (Req §9.2): a few seconds BEFORE the timer runs out (SessionConfig.checkpointLeadSeconds)
+    /// the charge-station tile is woven into the road at the far draw horizon, in the haze, with no cap or release
+    /// (RoadSequencer.SpawnCheckpoint(0)) — so nothing on the visible road changes and the player watches the station
+    /// emerge from the distance and grow as they ride up to it, rather than it popping in at T=0. The world keeps
+    /// scrolling normally, so the player rides toward it as part of the road. The remaining distance is measured
+    /// ALONG the road (arc), so it stays correct through any turns between the player and the station; close to the
+    /// tile's stop marker a speed override brakes the world to a stop (start distance from v²/2a, so it works from
+    /// any speed) — braking runs even while still Playing so a fast player can't overrun the capped road end, but the
+    /// turn only ENDS once the time is up. Then CheckpointReached fires, GameManager commits the turn, and the
+    /// checkpoint screen takes over.
     /// Separate from GameManager by design (Q1): session states live in one place, checkpoint
     /// choreography in another.
     /// </summary>
@@ -27,6 +30,7 @@ namespace KenyaScooter.Session
         private bool braking;
         private bool reached;
         private bool armed;   // stopArc has been captured for the current checkpoint tile
+        private bool woven;   // the station has been laid into the road (the lead-time weave, or Begin's fallback)
         private float stopArc; // the road-metre the world should brake to a stop on
 
         private void OnEnable() => GameEvents.SessionReset += HandleSessionReset;
@@ -38,19 +42,43 @@ namespace KenyaScooter.Session
             braking = false;
             reached = false;
             armed = false;
+            // Normally the station was already woven in by the lead-time pass below, so this no-ops. If it wasn't
+            // (e.g. a session shorter than the lead time), weave it now — still at the draw horizon, still no pop.
             if (RoadSequencer.Instance != null)
-                RoadSequencer.Instance.SpawnCheckpoint(config != null ? config.checkpointDistance : 0f);
+                RoadSequencer.Instance.SpawnCheckpoint(0f);
         }
 
         private void Update()
         {
-            if (GameManager.State != GameState.AtCheckpoint || reached)
+            RoadSequencer seq = RoadSequencer.Instance;
+
+            // Weave the charge station into the road a few seconds BEFORE the timer runs out, at the far build
+            // horizon (in the haze), with no cap/release — so nothing on the visible road changes and the player
+            // watches the station emerge from the distance and grow as they ride up to it, instead of it popping
+            // into view when the time hits 0. Runs once, while still Playing.
+            if (!woven && seq != null && config != null && HasCheckpoint
+                && GameManager.State == GameState.Playing
+                && TimerManager.Instance != null
+                && TimerManager.Instance.Remaining <= config.checkpointLeadSeconds)
+            {
+                seq.SpawnCheckpoint(0f);
+                woven = true;
+            }
+
+            if (reached)
                 return;
 
-            RoadSequencer seq = RoadSequencer.Instance;
             RoadTile tile = seq != null ? seq.ActiveCheckpointTile : null;
             if (tile == null)
-                return;
+                return; // no station in the road yet (before the lead-time weave)
+
+            // Run the arrival braking once the station is in the road — in Playing too, not only AtCheckpoint — so
+            // a fast player can never overrun it and ride off the (now capped) road end before the timer expires.
+            // The turn only actually ENDS once the time is up (AtCheckpoint); a player who reaches the bay early
+            // just brakes to a stop and waits there.
+            bool timeUp = GameManager.State == GameState.AtCheckpoint;
+            if (!timeUp && GameManager.State != GameState.Playing)
+                return; // Rewinding / Ready — leave the world alone
 
             // The road-metre the world should stop on: the arc of the tile's stop point (purple ball). Cached
             // once — the nearest-point search behind StopRunDistance is not worth re-running each frame, and the
@@ -84,6 +112,8 @@ namespace KenyaScooter.Session
 
             if (speed <= config.checkpointStopSpeed || ahead <= 0f)
             {
+                if (!timeUp)
+                    return; // stopped at the bay before the time is up — hold here (world already braked) until it is
                 reached = true;
                 WorldSpeed.Instance.SetCurrent(0f);
                 // Cinematic relay: hand the stop to the charge-station sequence, which pulls the bike into the bay,
@@ -101,6 +131,7 @@ namespace KenyaScooter.Session
             braking = false;
             reached = false;
             armed = false;
+            woven = false;
         }
     }
 }

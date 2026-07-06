@@ -98,16 +98,22 @@ namespace KenyaScooter.Session
                 return;
             }
 
-            // Hold the world stopped while parked, and ease the bike into the bay on the near (driving-side) shoulder.
+            // Hold the world stopped while the bike charges.
             WorldSpeed.Instance.SetCurrent(0f);
             WorldSpeed.Instance.BeginOverride(0f, 1000f);
 
+            // Where the bike rests. DEFAULT (bayLateral 0): stop EXACTLY where the player is — no sideways move to a
+            // bay or to lane centre (Ryan: "just let them stop, don't move them to the exact point"). The scripted
+            // pose is still taken so input is ignored during the charge and the pull-out can ease the bike away, but
+            // its lateral target is the player's own position, so nothing slides. Only a configured bay (bayLateral
+            // > 0) eases the bike onto the near shoulder.
+            bool useBay = Mathf.Abs(cfg.bayLateral) > 0.01f;
             float ownSide = RoadSideConfig.Active != null ? RoadSideConfig.Active.OwnSide : -1f;
-            float bayLateral = ownSide * Mathf.Abs(cfg.bayLateral);
-            float bayYaw = ownSide * Mathf.Abs(cfg.bayYaw);
+            float parkLateral = useBay ? ownSide * Mathf.Abs(cfg.bayLateral) : player.CurrentLateral;
+            float parkYaw = useBay ? ownSide * Mathf.Abs(cfg.bayYaw) : 0f;
             float t = Mathf.Max(0.1f, cfg.pullInSeconds);
-            float lateralRate = Mathf.Abs(bayLateral - player.CurrentLateral) / t;
-            player.BeginScriptedPose(bayLateral, bayYaw, lateralRate, Mathf.Abs(bayYaw) / t);
+            float lateralRate = Mathf.Abs(parkLateral - player.CurrentLateral) / t;
+            player.BeginScriptedPose(parkLateral, parkYaw, lateralRate, Mathf.Max(1f, Mathf.Abs(parkYaw) / t));
 
             phase = Phase.PullIn;
             timer = 0f;

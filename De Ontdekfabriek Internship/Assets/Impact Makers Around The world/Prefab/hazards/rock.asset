@@ -1,0 +1,72 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4afd8b2f12ecfa14183f6b1555e7bf06, type: 3}
+  m_Name: rock
+  m_EditorClassIdentifier: Assembly-CSharp::KenyaScooter.Config.HazardSpawnConfig
+  prefab: {fileID: 7665817278404981299, guid: 3ddc5fb916b34504e995024cd156d48c, type: 3}
+  poolSize: 12
+  response: 1
+  deduct: 1
+  deduction: 50
+  speedScaled: 1
+  popupKey: POPUP_DEDUCT
+  warnKey: Steen
+  speedPenalty: 0.35
+  shakeStrength: 0.6
+  wobbleStrength: 0
+  clustersPer100m: 2
+  densityOverSession:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0.25
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 0.4
+      value: 0.6
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  minClusterGap: 25
+  maxPerSession: 0
+  clusterMin: 1
+  clusterMax: 1
+  clusterSpacing: 4
+  lateralStagger: 1.2
+  scaleRange: {x: 1.33, y: 1.39}
+  zones: 4
+  spawnAheadDistance: 95
+  spawnHeight: 0.01
+  requiredContextTags:
+  - Wild
+  lateralLimit: 4

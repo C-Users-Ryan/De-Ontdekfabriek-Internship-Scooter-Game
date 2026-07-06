@@ -7,29 +7,30 @@ namespace KenyaScooter.FX
 {
     /// <summary>
     /// The scooter's headlight — the ONE real-time light in the scene besides the sun/moon. A single spot with
-    /// NO shadows, plus a lamp glow and an additive translucent beam, all fading in with the night.
+    /// NO shadows, plus a lamp glow and an additive light-pool on the road, all fading in with the night.
     ///
     /// PLACEABLE: drop this on an empty GameObject, parent it under the bike at the headlamp and point it forward;
-    /// the whole light (spot + glow + beam) builds as children of THAT object, so it sits where you place it and
+    /// the whole light (spot + glow + pool) builds as children of THAT object, so it sits where you place it and
     /// moves with the bike. Left unplaced, it self-bootstraps and mounts itself on the player.
     ///
-    /// The spot is aimed and ranged to light the SAME stretch the beam covers, so anything the beam falls on is
-    /// really lit. The beam is ADDITIVE, so it brightens the road it covers (enhances sight) instead of fogging it.
-    /// Everything but the spot is a cheap mesh, so the scene stays at two real lights whatever the traffic.
+    /// The spot does the real lighting; a warm ADDITIVE light-POOL laid flat on the road ahead shows the headlight's
+    /// throw where a real one would fall — on the tarmac, not floating in the air — so it reads as "the road ahead is
+    /// lit" instead of a confusing forward shaft. Everything but the spot is a cheap mesh, so the scene stays at two
+    /// real lights whatever the traffic.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class ScooterHeadlight : MonoBehaviour
     {
-        [Header("Spot (the real light — reaches as far as the beam)")]
-        [SerializeField] private float maxIntensity = 7f;
-        [Tooltip("How far the real light reaches. Keep long so the far road the beam covers is actually lit.")]
-        [SerializeField] private float range = 150f;
+        [Header("Spot (the real light — reaches as far as the pool)")]
+        [SerializeField] private float maxIntensity = 9f;
+        [Tooltip("How far the real light reaches (metres) — how far ahead things are actually lit. Keep long so the far road the pool covers is really lit.")]
+        [SerializeField] private float range = 260f;
         [SerializeField] private float spotAngle = 72f;
         [SerializeField] private Color colour = new Color(1f, 0.95f, 0.82f);
-        [Tooltip("Aim: metres ahead the spot points, and metres it drops below the lamp. Big ahead / small drop = " +
-                 "a nearly FORWARD throw that lights what's in front of the player, not just the road right below.")]
-        [SerializeField] private float aimAhead = 13f;
-        [SerializeField] private float aimDrop = 1.2f;
+        [Tooltip("Pitch of the spot beam in degrees. POSITIVE aims UP (lifts the throw onto the road/cars further " +
+                 "ahead); negative aims DOWN toward the tarmac right in front. ~9 lights well ahead while the wide " +
+                 "cone still covers the near road, and the flat road light-pool below stays put.")]
+        [SerializeField] private float aimPitchDegrees = 9f;
 
         [Header("Auto-mount (only when self-bootstrapped, not when you place it)")]
         [SerializeField] private Vector3 localOffset = new Vector3(0f, 0.72f, 1.35f);
@@ -38,23 +39,21 @@ namespace KenyaScooter.FX
         [SerializeField] private float glowSize = 0.18f;
         [SerializeField] private float glowStrength = 0.7f;
 
-        [Header("Visible light beam (additive, enhances sight)")]
-        [Tooltip("Beam colour — tint the shaft independently of the real light.")]
-        [SerializeField] private Color beamColour = new Color(1f, 0.95f, 0.8f);
-        [Tooltip("Length of the visible beam shaft (metres); it fades out over this distance.")]
-        [SerializeField] private float beamLength = 16f;
-        [Tooltip("The 'hole' at the headlight — beam radius right at the lamp (metres).")]
-        [SerializeField] private float beamStartRadius = 0.16f;
-        [Tooltip("Beam radius at the far end (metres) — how WIDE the shaft spreads.")]
-        [SerializeField] private float beamEndRadius = 3.4f;
-        [Tooltip("Base opacity of the beam at the lamp (before intensity).")]
-        [SerializeField, Range(0f, 1f)] private float beamAlpha = 0.22f;
-        [Tooltip("Brightness multiplier on the additive beam — push above 1 for a stronger shaft.")]
-        [SerializeField] private float beamIntensity = 1.2f;
-        [Tooltip("How quickly the beam fades along its length: 1 = linear, higher = fades sooner, lower = reaches further.")]
-        [SerializeField] private float beamFadePower = 1.4f;
-        [Tooltip("Downward pitch of the beam shaft (degrees) — SHALLOW so it skims the road and fades before the horizon.")]
-        [SerializeField] private float beamPitchDeg = 4f;
+        [Header("Visible light pool on the road (additive — the headlight's throw)")]
+        [Tooltip("Pool colour — tint the light on the road independently of the real spot.")]
+        [SerializeField] private Color poolColour = new Color(1f, 0.94f, 0.78f);
+        [Tooltip("Where the pool starts / ends ahead of the bike (metres).")]
+        [SerializeField] private float poolNear = 2f;
+        [SerializeField] private float poolFar = 32f;
+        [Tooltip("Pool width at the near / far end (metres) — fans out like a real headlight throw.")]
+        [SerializeField] private float poolNearWidth = 1.6f;
+        [SerializeField] private float poolFarWidth = 9f;
+        [Tooltip("Metres to drop the pool below the lamp so it lies ON the road. Raise if it floats, lower if it sinks.")]
+        [SerializeField] private float poolDrop = 0.8f;
+        [Tooltip("Base opacity of the pool (before the night fade).")]
+        [SerializeField, Range(0f, 1f)] private float poolAlpha = 0.28f;
+        [Tooltip("Brightness multiplier on the additive pool — push above 1 for a stronger glow.")]
+        [SerializeField] private float poolIntensity = 1.15f;
 
         [Header("Fade")]
         [SerializeField] private float fadeSpeed = 2.2f;
@@ -65,12 +64,12 @@ namespace KenyaScooter.FX
         [System.NonSerialized] public bool autoMode;
 
         private Light spot;
-        private Renderer glow, beam;
+        private Renderer glow, pool;
         private MaterialPropertyBlock mpb;
         private Transform player;
         private bool built;
         private float current;
-        private float lastGlow = -1f, lastBeam = -1f;
+        private float lastGlow = -1f, lastPool = -1f;
 
         private static readonly int ColorId = Shader.PropertyToID("_Color");
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
@@ -130,13 +129,13 @@ namespace KenyaScooter.FX
                 lastGlow = current;
                 Tint(glow, colour * (current * glowStrength), lit);
             }
-            if (beam != null && !Mathf.Approximately(current, lastBeam))
+            if (pool != null && !Mathf.Approximately(current, lastPool))
             {
-                lastBeam = current;
+                lastPool = current;
                 // Additive: rgb (× intensity) is the added light; alpha gates it by the night fade + base opacity.
-                float k = beamIntensity;
-                var c = new Color(beamColour.r * k, beamColour.g * k, beamColour.b * k, current * beamAlpha);
-                Tint(beam, c, lit);
+                float k = poolIntensity;
+                var c = new Color(poolColour.r * k, poolColour.g * k, poolColour.b * k, current * poolAlpha);
+                Tint(pool, c, lit);
             }
         }
 
@@ -155,7 +154,7 @@ namespace KenyaScooter.FX
             var rig = new GameObject("Headlight Rig").transform;
             rig.SetParent(mount, false);
             rig.localPosition = Vector3.zero;
-            rig.localRotation = Quaternion.LookRotation(new Vector3(0f, -aimDrop, aimAhead).normalized, Vector3.up);
+            rig.localRotation = Quaternion.Euler(-aimPitchDegrees, 0f, 0f); // negative X-euler pitches the forward beam UP
 
             spot = rig.gameObject.AddComponent<Light>();
             spot.type = LightType.Spot;
@@ -169,7 +168,7 @@ namespace KenyaScooter.FX
             spot.enabled = false;
 
             glow = BuildGlow(rig);
-            beam = BuildBeam(rig);
+            pool = BuildPool(mount); // on the LEVEL mount, not the tilted rig, so it lies flat on the road
         }
 
         private static Transform FindHeadlamp(Transform root)
@@ -197,46 +196,39 @@ namespace KenyaScooter.FX
             return mr;
         }
 
-        private Renderer BuildBeam(Transform parent)
+        private Renderer BuildPool(Transform parent)
         {
-            var go = new GameObject("Light Beam");
+            var go = new GameObject("Light Pool");
             go.transform.SetParent(parent, false);
-            float rigPitch = Mathf.Atan2(aimDrop, aimAhead) * Mathf.Rad2Deg;
-            go.transform.localRotation = Quaternion.Euler(beamPitchDeg - rigPitch, 0f, 0f); // own shallow pitch
-            go.AddComponent<MeshFilter>().sharedMesh = BuildBeamMesh();
+            go.transform.localPosition = new Vector3(0f, -poolDrop, 0f); // dropped to road level
+            go.transform.localRotation = Quaternion.identity;            // lies flat, facing straight up
+            go.AddComponent<MeshFilter>().sharedMesh = BuildPoolMesh();
             var mr = go.AddComponent<MeshRenderer>();
-            mr.sharedMaterial = MakeBeamMaterial(); // per-instance so beamFadePower can shape its own gradient
+            mr.sharedMaterial = MakePoolMaterial(); // per-instance so the gradient is its own
             StripProbes(mr);
             mr.enabled = false;
             return mr;
         }
 
-        private Mesh BuildBeamMesh()
+        // A flat trapezoid on the ground (XZ plane): narrow at the bike, fanning out down the road ahead.
+        private Mesh BuildPoolMesh()
         {
-            const int seg = 22;
-            var mesh = new Mesh { name = "HeadlightBeam" };
-            var verts = new Vector3[(seg + 1) * 2];
-            var uvs = new Vector2[(seg + 1) * 2];
-            for (int i = 0; i <= seg; i++)
+            float hn = poolNearWidth * 0.5f, hf = poolFarWidth * 0.5f;
+            var mesh = new Mesh { name = "HeadlightPool" };
+            mesh.vertices = new[]
             {
-                float a = (float)i / seg * Mathf.PI * 2f;
-                float cx = Mathf.Cos(a), cy = Mathf.Sin(a);
-                int s = i * 2;
-                verts[s] = new Vector3(cx * beamStartRadius, cy * beamStartRadius, 0f);
-                verts[s + 1] = new Vector3(cx * beamEndRadius, cy * beamEndRadius, beamLength);
-                uvs[s] = new Vector2((float)i / seg, 0f);   // v = 0 at the lamp
-                uvs[s + 1] = new Vector2((float)i / seg, 1f); // v = 1 at the far end (gradient texture fades it)
-            }
-            var tris = new int[seg * 6];
-            for (int i = 0; i < seg; i++)
+                new Vector3(-hn, 0f, poolNear), // 0 near-left
+                new Vector3( hn, 0f, poolNear), // 1 near-right
+                new Vector3( hf, 0f, poolFar),  // 2 far-right
+                new Vector3(-hf, 0f, poolFar),  // 3 far-left
+            };
+            mesh.uv = new[]
             {
-                int s = i * 2, t = i * 6;
-                tris[t] = s; tris[t + 1] = s + 1; tris[t + 2] = s + 3;
-                tris[t + 3] = s; tris[t + 4] = s + 3; tris[t + 5] = s + 2;
-            }
-            mesh.vertices = verts;
-            mesh.uv = uvs;
-            mesh.triangles = tris;
+                new Vector2(0f, 0f), new Vector2(1f, 0f), // v = 0 at the bike
+                new Vector2(1f, 1f), new Vector2(0f, 1f), // v = 1 far down the road
+            };
+            mesh.triangles = new[] { 0, 2, 1, 0, 3, 2 }; // material is double-sided, so winding is cosmetic
+            mesh.RecalculateNormals();
             mesh.RecalculateBounds();
             return mesh;
         }
@@ -277,15 +269,15 @@ namespace KenyaScooter.FX
             return glowMat;
         }
 
-        /// <summary>ADDITIVE translucent material for the beam (adds warm light = enhances sight). Per-instance so
-        /// beamFadePower shapes its own length gradient. URP/Unlit set additive-transparent; alpha-sprite fallback.</summary>
-        private Material MakeBeamMaterial()
+        /// <summary>ADDITIVE translucent material for the road pool (adds warm light = enhances sight). Per-instance so
+        /// the gradient is its own. URP/Unlit set additive-transparent; alpha-sprite fallback.</summary>
+        private Material MakePoolMaterial()
         {
-            Texture2D grad = BeamGradient(beamFadePower);
+            Texture2D grad = PoolGradient();
             Shader urp = Shader.Find("Universal Render Pipeline/Unlit");
             if (urp != null)
             {
-                var m = new Material(urp) { name = "HeadlightBeam", mainTexture = grad };
+                var m = new Material(urp) { name = "HeadlightPool", mainTexture = grad };
                 m.SetFloat("_Surface", 1f);   // transparent
                 m.SetFloat("_Blend", 2f);     // additive
                 m.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
@@ -296,24 +288,27 @@ namespace KenyaScooter.FX
                 m.renderQueue = (int)RenderQueue.Transparent;
                 return m;
             }
-            return new Material(Shader.Find("Sprites/Default")) { name = "HeadlightBeam", mainTexture = grad };
+            return new Material(Shader.Find("Sprites/Default")) { name = "HeadlightPool", mainTexture = grad };
         }
 
-        private static Texture2D BeamGradient(float power)
+        // 2-D soft-edged gradient: bright down the centre, fading at the sides (u) and fading in near / out far (v),
+        // so the pool has no hard rectangle edge — it reads as a soft glow the headlight casts on the tarmac.
+        private static Texture2D PoolGradient()
         {
-            const int h = 64;
-            var tex = new Texture2D(2, h, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, name = "BeamGrad" };
-            float p = Mathf.Max(0.1f, power);
+            const int w = 48, h = 64;
+            var tex = new Texture2D(w, h, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, name = "PoolGrad" };
             for (int y = 0; y < h; y++)
             {
                 float v = y / (float)(h - 1);
-                // A BUMP, not bright-at-the-lamp: faint right at the lamp (v=0) so the player's OWN beam doesn't wash
-                // the near foreground / obscure the view or show a weird bright origin; it builds to a peak out on the
-                // road ahead, then fades to the far end. (Car beams keep bright-at-lamp — seen from outside, the source
-                // should be brightest.)
-                float alpha = Mathf.SmoothStep(0f, 0.32f, v) * Mathf.Pow(1f - v, p);
-                for (int x = 0; x < 2; x++)
-                    tex.SetPixel(x, y, new Color(1f, 1f, 1f, alpha));
+                // faint right under the bike, builds to a peak just ahead, then fades to the far end
+                float lengthA = Mathf.SmoothStep(0f, 0.28f, v) * Mathf.Pow(1f - v, 1.3f);
+                for (int x = 0; x < w; x++)
+                {
+                    float u = x / (float)(w - 1);
+                    float widthA = Mathf.Sin(u * Mathf.PI); // 0 at the edges, 1 down the centre
+                    widthA *= widthA;                        // tighter, softer sides
+                    tex.SetPixel(x, y, new Color(1f, 1f, 1f, lengthA * widthA));
+                }
             }
             tex.Apply();
             return tex;

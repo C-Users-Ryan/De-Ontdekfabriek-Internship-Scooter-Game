@@ -226,6 +226,11 @@ namespace KenyaScooter.UI
 
         private void PopulateRelay()
         {
+            // Commit the turn BEFORE reading its score and the class total. On the checkpoint-relay path this
+            // screen and GameManager.CommitTurn both fire on CheckpointReached, and the event does not guarantee
+            // GameManager runs first — without this the relay reads FinalScore/group total before they are written
+            // and shows "+0 · KLAS TOTAAL 0" on a turn that actually earned points. CommitTurn is idempotent.
+            if (GameManager.Instance != null) GameManager.Instance.CommitTurn();
             int turn = TurnScore();
             int o = Overtakes();
             if (relayKicker != null) relayKicker.text = "BEURT KLAAR  ·  " + TeamLabel();
@@ -285,6 +290,7 @@ namespace KenyaScooter.UI
 
         private void PopulateGameOver()
         {
+            if (GameManager.Instance != null) GameManager.Instance.CommitTurn(); // idempotent; keep the score read-after-commit like the relay screen
             int o = Overtakes();
             if (goKicker != null) goKicker.text = "OEPS  ·  " + TeamLabel();
             if (goScore != null) goScore.text = Group(TurnScore());

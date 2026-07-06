@@ -29,7 +29,7 @@ namespace KenyaScooter.Settings
     [DisallowMultipleComponent]
     public sealed partial class SettingsMenu : MonoBehaviour
     {
-        // House palette (Ugani / TATOE), now sourced from the shared UiKit tokens so the facilitator menu matches
+        // House palette (Ugani / Impact Makers Around The World), now sourced from the shared UiKit tokens so the facilitator menu matches
         // the framing screens and the HUD exactly (the rationale doc flagged the old #F2A055 accent / #F9E9D6 ink
         // as "snap to the canonical brand hexes at final art lock" — this is that snap). The warm Maroon panel is
         // kept deliberately: the rationale documents it as the deep warm backing that makes the orange and the

@@ -185,7 +185,14 @@ namespace KenyaScooter.Core
             SetState(endState);
         }
 
-        private void CommitTurn()
+        /// <summary>
+        /// Freezes this turn's final score into <see cref="SessionStats"/> and adds it to the group total —
+        /// exactly once per turn (guarded). Public and idempotent so the relay screen can force the commit before
+        /// it reads FinalScore / the group total: on the checkpoint-relay path this and the screen both fire on
+        /// CheckpointReached and the event does not guarantee this runs first, which otherwise let the screen read
+        /// the score before it was written and show "+0" on a turn that earned points.
+        /// </summary>
+        public void CommitTurn()
         {
             if (turnCommitted)
                 return;

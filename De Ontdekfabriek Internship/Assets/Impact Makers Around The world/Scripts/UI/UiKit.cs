@@ -6,7 +6,7 @@ using UnityEngine.UI;
 namespace KenyaScooter.UI
 {
     /// <summary>
-    /// Shared, additive design tokens for the whole procedural UI (the warm TATOE · Ugani &amp; Jump Energy
+    /// Shared, additive design tokens for the whole procedural UI (the warm Impact Makers Around The World · Ugani &amp; Jump Energy
     /// house style). Before this, every screen carried its own slightly-different palette and a grab-bag of
     /// magic radii, type sizes and one-off hex strings ("#9c3a12" pasted in five files, accent as both
     /// #F19141 and #F2A055). This centralises the colour roles, a type scale, a corner-radius rhythm and a

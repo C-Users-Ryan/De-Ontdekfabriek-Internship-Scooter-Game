@@ -7050,7 +7050,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::KenyaScooter.Hazards.HazardSpawner
   configs:
   - {fileID: 11400000, guid: 6b552f1b2b753714bacd37cf256d772f, type: 2}
+  - {fileID: 11400000, guid: ea585650a5d0f0842bbdb5a8e7140390, type: 2}
   despawnBehindDistance: 25
+  turnBendThreshold: 0.5
+  minClusterSeparation: 12
 --- !u!1 &480736746
 GameObject:
   m_ObjectHideFlags: 0
@@ -19106,19 +19109,18 @@ MonoBehaviour:
   range: 150
   spotAngle: 72
   colour: {r: 1, g: 0.95, b: 0.82, a: 1}
-  aimAhead: 13
-  aimDrop: 1.2
+  aimPitchDegrees: 9
   localOffset: {x: 0, y: 0.72, z: 1.35}
   glowSize: 0.18
   glowStrength: 0.7
-  beamColour: {r: 1, g: 0.95, b: 0.8, a: 1}
-  beamLength: 16
-  beamStartRadius: 0
-  beamEndRadius: 3.4
-  beamAlpha: 0.22
-  beamIntensity: 1.2
-  beamFadePower: 1.4
-  beamPitchDeg: 4
+  poolColour: {r: 1, g: 0.94, b: 0.78, a: 1}
+  poolNear: 2
+  poolFar: 18
+  poolNearWidth: 1.6
+  poolFarWidth: 7
+  poolDrop: 0.8
+  poolAlpha: 0.28
+  poolIntensity: 1.15
   fadeSpeed: 2.2
   onThreshold: 0.18
 --- !u!1 &867287291
@@ -19305,8 +19307,11 @@ MonoBehaviour:
   openingSequence: {fileID: 11400000, guid: 5cd39b66b7974d34597e747832276aa5, type: 2}
   sequences:
   - {fileID: 11400000, guid: 5cd39b66b7974d34597e747832276aa5, type: 2}
+  - {fileID: 11400000, guid: 3afa3f60e6fa44041812b1f1c4330d75, type: 2}
+  - {fileID: 11400000, guid: 5cd39b66b7974d34597e747832276aa5, type: 2}
+  - {fileID: 11400000, guid: a3365a0a0f2307a4782f5a973f85ec14, type: 2}
   checkpointTile: {fileID: 8678437511983235021, guid: 363633453d734e449b1dc377e528989e, type: 3}
-  startTile: {fileID: 0}
+  startTile: {fileID: 8678437511983235021, guid: c53af1bc2ca5a1540a00e64a68976f11, type: 3}
   spawnHorizon: 350
   despawnBehind: 35
   poolSizePerTile: 4
@@ -37562,10 +37567,10 @@ CapsuleCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_Radius: 0.5
-  m_Height: 2
+  m_Radius: 0.1461543
+  m_Height: 1.1835074
   m_Direction: 1
-  m_Center: {x: 0, y: 0, z: 0}
+  m_Center: {x: -0.107576504, y: -0.40824628, z: 0}
 --- !u!23 &1896502477
 MeshRenderer:
   m_ObjectHideFlags: 0

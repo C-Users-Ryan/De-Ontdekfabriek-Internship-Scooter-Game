@@ -12,8 +12,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4afd8b2f12ecfa14183f6b1555e7bf06, type: 3}
   m_Name: Cone
   m_EditorClassIdentifier: Assembly-CSharp::KenyaScooter.Config.HazardSpawnConfig
-  prefab: {fileID: 997351197597896913, guid: a67da23a012204b48a3f587f67a5f091, type: 3}
+  prefab: {fileID: 4846376011262028557, guid: a626ecce434bca9418ae1983c9117d63, type: 3}
   poolSize: 12
+  response: 0
+  deduct: 1
+  deduction: 50
+  speedScaled: 1
+  popupKey: POPUP_DEDUCT
+  warnKey: WARN_POTHOLE
+  speedPenalty: 0.35
+  shakeStrength: 0.6
+  wobbleStrength: 0
   clustersPer100m: 3
   densityOverSession:
     serializedVersion: 2
@@ -57,5 +66,7 @@ MonoBehaviour:
   scaleRange: {x: 1, y: 1}
   zones: -1
   spawnAheadDistance: 95
+  spawnHeight: 0.21
   requiredContextTags:
   - 
+  lateralLimit: 4

@@ -28,8 +28,10 @@ namespace KenyaScooter.UI
         // Each row is (English, Dutch, Swahili). Dutch ships; English/Swahili back the language toggle. A blank
         // Dutch cell falls back to English in Get(). Kenya-flavour callouts (INGEHAALD!, KUUKUA!, the Swahili
         // time-of-day labels elsewhere) are intentionally kept, per the locked UI direction.
+        // Case-INSENSITIVE: hazard assets set warnKey by hand (e.g. rock.asset had "WARN_Rock"), so a casing slip
+        // must not fall through to showing the raw key on the HUD. All keys here are unique regardless of case.
         private static readonly Dictionary<string, (string en, string nl, string sw)> Table =
-            new Dictionary<string, (string, string, string)>
+            new Dictionary<string, (string, string, string)>(StringComparer.OrdinalIgnoreCase)
             {
                 // HUD
                 { "HUD_SCORE",      ("SCORE", "SCORE", "ALAMA") },
@@ -47,9 +49,9 @@ namespace KenyaScooter.UI
                 { "WARN_COLLISION", ("COLLISION!", "BOTSING!", "COLLISION!") },          // sw TODO: native review
                 { "WARN_WRONGLANE", ("WRONG LANE!", "VERKEERDE WEGHELFT!", "WRONG LANE!") }, // sw TODO: native review
                 { "WARN_SPEEDING",  ("TOO FAST!", "TE SNEL!", "POLE POLE!") },
-                { "WARN_POTHOLE",   ("POTHOLE!", "KUIL!", "POTHOLE!") },                  // sw TODO: native review
-                { "WARN_ROCK",      ("ROCKS!", "STENEN!", "ROCKS!") },                    // sw TODO: native review
-                { "WARN_BUMP",      ("SPEED BUMP!", "DREMPEL!", "SPEED BUMP!") },         // sw TODO: native review
+                { "WARN_POTHOLE",   ("POTHOLE!", "KUIL", "SHIMO!") },                     // sw "shimo" = hole/pit; confirm w/ native speaker
+                { "WARN_ROCK",      ("ROCK!", "STEEN", "JIWE!") },                        // sw "jiwe" = stone; confirm w/ native speaker
+                { "WARN_BUMP",      ("SPEED BUMP!", "DREMPEL", "MATUTA!") },              // sw "matuta" = Kenyan word for speed bumps; confirm w/ native speaker
                 { "WARN_CROSSING_AHEAD", ("VOETGANGERS · REM AF", "VOETGANGERS · REM AF", "VOETGANGERS · REM AF") }, // M28 crossing telegraph; sw TODO: native review
                 { "WARN_TURN_LEFT",  ("BEND  ·  ← LEFT",  "BOCHT  ·  ← LINKS",  "BOCHT  ·  ← LINKS") },  // turn telegraph (2026-07-05); "  ·  " splits the HUD banner into two lines
                 { "WARN_TURN_RIGHT", ("BEND  ·  RIGHT →", "BOCHT  ·  RECHTS →", "BOCHT  ·  RECHTS →") }, // turn telegraph (2026-07-05); sw TODO: native review

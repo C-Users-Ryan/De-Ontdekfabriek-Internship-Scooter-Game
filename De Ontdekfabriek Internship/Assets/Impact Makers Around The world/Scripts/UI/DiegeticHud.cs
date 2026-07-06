@@ -403,9 +403,15 @@ namespace KenyaScooter.UI
         private void OnHazardHit(HazardSpawnConfig def, float kmh, Vector3 pos)
         {
             alertTimer = 1.3f;
-            // A pedestrian hit comes through the hazard pipeline carrying the WARN_PEDESTRIAN key — show the
-            // corrective lesson ("let pedestrians go first") rather than a generic obstacle warning.
+            // Name the hazard the player actually hit. Each hazard asset carries its OWN label (warnKey —
+            // WARN_ROCK, WARN_POTHOLE, WARN_BUMP…), so a rock now reads "PAS OP · STEEN" instead of a generic
+            // "OBSTAKEL". WarningSystem already keys off warnKey the same way; this makes the banner match, and
+            // keeps it data-driven (a new hazard = a new asset + string, no code — SC4).
+            // A pedestrian hit keeps its corrective lesson ("let pedestrians go first"); an asset with no warnKey
+            // falls back to the coarse category so the banner is never blank.
+            string named = def != null && !string.IsNullOrEmpty(def.warnKey) ? SwahiliUI.Get(def.warnKey) : null;
             alertMsg = def != null && def.warnKey == "WARN_PEDESTRIAN" ? "VOETGANGER  ·  LAAT VOORGAAN"
+                : named != null ? "PAS OP  ·  " + named
                 : def == null ? "PAS OP!" : def.response switch
                 {
                     HazardResponse.SurfaceDefect  => "PAS OP  ·  KUIL",

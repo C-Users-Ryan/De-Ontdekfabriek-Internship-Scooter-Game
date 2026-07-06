@@ -4,7 +4,7 @@ using TMPro;
 namespace KenyaScooter.UI
 {
     /// <summary>
-    /// The UI's COLOUR palette in ONE asset (TATOE · Ugani & Jump Energy) and the single source of truth for it.
+    /// The UI's COLOUR palette in ONE asset (Impact Makers Around The World · Ugani & Jump Energy) and the single source of truth for it.
     /// Screens don't read this directly — they read <see cref="UiKit"/>, which reads the active theme's colours
     /// live — so recolouring for a future group (a new location, SC4) is a single asset swap that reaches every
     /// screen with no code edits. The colour defaults are the Ugani palette straight from the Huisstijl analysis,

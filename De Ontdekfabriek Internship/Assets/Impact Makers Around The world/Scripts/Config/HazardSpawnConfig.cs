@@ -65,5 +65,23 @@ namespace KenyaScooter.Config
         public float spawnHeight = 0.01f;
         [Tooltip("Only spawn while the active RoadSequence carries one of these context tags. Empty = everywhere. Rocks use murram/tsavo/construction (Req §6.2).")]
         public string[] requiredContextTags;
+        [Tooltip("Hazards are kept within ±this many metres of the road centre (the x axis). Beyond the drivable " +
+                 "road the surface banks up out of the player's reach, so a hazard placed there floats or clips " +
+                 "into the bank. 4 keeps every hazard — cluster stagger included — on the part of the road the " +
+                 "scooter can actually touch.")]
+        public float lateralLimit = 4f;
+
+        [Header("Warning marker (help the player spot this hazard)")]
+        [Tooltip("Optional prop dropped just UP-ROAD of each cluster of this hazard so the player sees it coming — " +
+                 "e.g. a warning cone, a branch or a sign (the physical twin of Warn Key's text). Purely visual: " +
+                 "the spawner switches OFF any colliders on it, so it never scores, hits or blocks. None = no marker.")]
+        public GameObject warningPrefab;
+        [Tooltip("How many marker instances to pool. Keep it a little above how many clusters are on screen at once.")]
+        public int warningPoolSize = 6;
+        [Tooltip("How far up-road (towards the player) the marker sits ahead of the cluster, in metres. Bigger = more warning.")]
+        public float warningLead = 6f;
+        [Tooltip("Sideways nudge of the marker from the cluster's line, in metres. 0 = in line with the hazard; a small " +
+                 "value sets the cone beside it rather than on top of it.")]
+        public float warningLateralOffset = 0f;
     }
 }

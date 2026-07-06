@@ -6,8 +6,8 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/Impact Makers Around The World Kenya.unity
-    guid: 62e82b879e1b89b4f9b9495fe99f9984
+    path: Assets/Scenes/Impact Makers Around The World Kenya turning.unity
+    guid: 34051296b483d5d4cb093ceb9c0b27f3
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_UseUCBPForAssetBundles: 0

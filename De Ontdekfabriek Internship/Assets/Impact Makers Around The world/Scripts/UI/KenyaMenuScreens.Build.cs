@@ -3,7 +3,7 @@
 // Pairs with the v2 KenyaMenuScreens.cs (runtime half) — install BOTH files together.
 //
 // What changed vs v1 (per "Kenya Game UI — Improved" / huisstijl spec):
-//   • Title follows the huisstijl title-page rule: logo ring + composition CENTRED, one action.
+//   • Title follows the huisstijl title-page rule: composition CENTRED, one action (logo ring removed 2026-07-06).
 //   • Primary buttons are the spec token: accent #F19141 fill, ink-on-accent text (pressed = burnt).
 //     Secondary buttons are the spec outline: 2px accent border, warm-white text.
 //   • Drive-side toggle is ONE segmented pill, on the Title screen only (removed from Team select).
@@ -52,7 +52,7 @@ namespace KenyaScooter.UI
 
         private GameObject BuildTitle()
         {
-            // Centred per the huisstijl title-page rule: the logo sits centred; one clear action.
+            // Centred per the huisstijl title-page rule: the composition is centred; one clear action.
             // The Title is the FRONT DOOR: it always shows first. Only the ANZA! CTA advances it — a stray
             // press anywhere on the screen must NOT start the game (removed the full-screen tap so the screen
             // holds until the button is pressed).
@@ -387,9 +387,16 @@ namespace KenyaScooter.UI
 
         private void BuildModeToggle(RectTransform root)
         {
-            TMP_Text cap = AddText(root, "ModeCap", "RIJMODUS  ·  KIES HET LAND", 18, kicker, TextAlignmentOptions.Center);
+            // v2.5 (2026-07-06): this caption floats on the open sunset sky with no card behind it, so the
+            // light-orange kicker washed out (orange-on-orange, barely legible). Warm-white ink + bold + a
+            // dark outline keeps it readable across the whole gradient — bright sky band to building silhouettes.
+            TMP_Text cap = AddText(root, "ModeCap", "RIJMODUS  ·  KIES HET LAND", 18, ink, TextAlignmentOptions.Center);
+            cap.fontStyle = FontStyles.Bold;
             Anchor(cap.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(700f, 24f), new Vector2(0f, 162f));
             UiKit.Caps(cap, 0.16f);
+            var capOutline = cap.gameObject.AddComponent<Outline>();
+            capOutline.effectColor = new Color(0f, 0f, 0f, 0.55f);
+            capOutline.effectDistance = new Vector2(1.4f, -1.4f);
 
             RectTransform pill = NewRect(root, "ModePill");
             Anchor(pill, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(660f, 66f), new Vector2(0f, 106f));
@@ -463,31 +470,22 @@ namespace KenyaScooter.UI
 
         private TMP_Text KickerRow(string text)
         {
-            // v2.3: mock-sized — a prominent tatoe ring with a roomy, wide-tracked caption beside it.
+            // v2.3: mock-sized — a roomy, wide-tracked caption. (The brand logo ring that sat before it was
+            // removed 2026-07-06 along with the other logo marks; the caption now starts at the column edge.)
             RectTransform row = Place("Kicker", 46f, 18f);
-            Image ring = AddImage(row, "Ring", accent, RingThin());
-            ring.rectTransform.anchorMin = new Vector2(0f, 0.5f); ring.rectTransform.anchorMax = new Vector2(0f, 0.5f);
-            ring.rectTransform.pivot = new Vector2(0f, 0.5f); ring.rectTransform.sizeDelta = new Vector2(44f, 44f); ring.rectTransform.anchoredPosition = Vector2.zero;
-            TMP_Text badge = AddText(row, "tatoe", "t", 16, cream, TextAlignmentOptions.Center);
-            badge.fontStyle = FontStyles.Bold;
-            badge.rectTransform.anchorMin = new Vector2(0f, 0.5f); badge.rectTransform.anchorMax = new Vector2(0f, 0.5f);
-            badge.rectTransform.pivot = new Vector2(0f, 0.5f); badge.rectTransform.sizeDelta = new Vector2(44f, 22f); badge.rectTransform.anchoredPosition = Vector2.zero;
             TMP_Text k = AddText(row, "Text", text, 26, kicker, TextAlignmentOptions.Left);
             k.fontStyle = FontStyles.Bold;
             k.rectTransform.anchorMin = new Vector2(0f, 0.5f); k.rectTransform.anchorMax = new Vector2(0f, 0.5f);
-            k.rectTransform.pivot = new Vector2(0f, 0.5f); k.rectTransform.sizeDelta = new Vector2(1000f, 32f); k.rectTransform.anchoredPosition = new Vector2(64f, 0f);
+            k.rectTransform.pivot = new Vector2(0f, 0.5f); k.rectTransform.sizeDelta = new Vector2(1000f, 32f); k.rectTransform.anchoredPosition = new Vector2(0f, 0f);
             Spaced(k, 0.16f);
             return k;
         }
 
-        // Centred kicker for the Title: the tatoe ring sits ABOVE the caption, both centred (huisstijl rule).
+        // Centred kicker for the Title: just the caption, centred (huisstijl rule). The brand logo ring that
+        // sat above it was removed 2026-07-06 with the other logo marks; the caption carries the title alone.
         private TMP_Text CenterKicker(string text)
         {
-            RectTransform row = Place("Kicker", 104f, 14f);
-            Image ring = AddImage(row, "Ring", accent, RingThin());
-            Anchor(ring.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(56f, 56f), new Vector2(0f, -28f));
-            TMP_Text badge = AddText(row, "tatoe", "tatoe", 13, cream, TextAlignmentOptions.Center);
-            Anchor(badge.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(56f, 18f), new Vector2(0f, -28f));
+            RectTransform row = Place("Kicker", 40f, 14f);
             TMP_Text k = AddText(row, "Text", text, 22, kicker, TextAlignmentOptions.Center);
             k.rectTransform.anchorMin = new Vector2(0f, 0f); k.rectTransform.anchorMax = new Vector2(1f, 0f); k.rectTransform.pivot = new Vector2(0.5f, 0f);
             k.rectTransform.sizeDelta = new Vector2(0f, 28f); k.rectTransform.anchoredPosition = new Vector2(0f, 4f);
@@ -612,20 +610,8 @@ namespace KenyaScooter.UI
                 sil.rectTransform.sizeDelta = new Vector2(0f, 190f); sil.rectTransform.anchoredPosition = Vector2.zero;
             }
 
-            // The tatoe focus-circle motif. On the (centred) Title it frames the composition from the middle;
-            // on the other screens it stays the soft right-hand frame.
-            Image ring = AddImage(root, "FocusRing", new Color(1f, 0.96f, 0.92f, centerFocus ? 0.13f : 0.16f), Ring(0.9f));
-            Image ring2 = AddImage(root, "FocusRingInner", new Color(1f, 0.96f, 0.92f, 0.07f), Ring(0.94f));
-            if (centerFocus)
-            {
-                Anchor(ring.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(980f, 980f), new Vector2(0f, 60f));
-                Anchor(ring2.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(680f, 680f), new Vector2(0f, 60f));
-            }
-            else
-            {
-                Anchor(ring.rectTransform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(940f, 940f), new Vector2(150f, 0f));
-                Anchor(ring2.rectTransform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(660f, 660f), new Vector2(150f, 0f));
-            }
+            // (The brand focus-circle motif — FocusRing / FocusRingInner — was removed 2026-07-06 along with
+            // the rest of the logo marks, so no brand ring or circle appears anywhere in the UI now.)
 
             // Legibility scrim behind the left column (mock: linear-gradient(96deg, dark → transparent)).
             if (!centerFocus)
@@ -677,8 +663,6 @@ namespace KenyaScooter.UI
         }
 
         private readonly System.Collections.Generic.Dictionary<int, Sprite> _rounded = new();
-        private readonly System.Collections.Generic.Dictionary<float, Sprite> _ring = new();
-        private Sprite _ringThin;
 
         private Sprite GradientSprite(Color top, Color bottom)
         {
@@ -696,18 +680,6 @@ namespace KenyaScooter.UI
             { float dx = Mathf.Max(radius - x, x - (s - radius), 0f); float dy = Mathf.Max(radius - y, y - (s - radius), 0f); tex.SetPixel(x, y, new Color(1, 1, 1, Mathf.Clamp01(radius - Mathf.Sqrt(dx * dx + dy * dy) + 0.5f))); }
             tex.Apply(); var sp = Sprite.Create(tex, new Rect(0, 0, s, s), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect, new Vector4(radius, radius, radius, radius)); _rounded[radius] = sp; return sp;
         }
-
-        private Sprite Ring(float innerFrac)
-        {
-            if (_ring.TryGetValue(innerFrac, out var c)) return c;
-            int s = 256; var tex = new Texture2D(s, s, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
-            float r = s * 0.5f, cx = r, cy = r, inner = r * innerFrac;
-            for (int y = 0; y < s; y++) for (int x = 0; x < s; x++)
-            { float d = Mathf.Sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy)); tex.SetPixel(x, y, new Color(1, 1, 1, Mathf.Clamp01(r - d) * Mathf.Clamp01(d - inner))); }
-            tex.Apply(); var sp = Sprite.Create(tex, new Rect(0, 0, s, s), new Vector2(0.5f, 0.5f), 100f); _ring[innerFrac] = sp; return sp;
-        }
-
-        private Sprite RingThin() { if (_ringThin == null) _ringThin = Ring(0.82f); return _ringThin; }
 
         // ---- scenery sprites (v2.2 backdrop) — all deterministic, no art assets ------
 

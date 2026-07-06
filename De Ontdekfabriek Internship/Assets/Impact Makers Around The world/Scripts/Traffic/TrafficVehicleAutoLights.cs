@@ -7,12 +7,13 @@ namespace KenyaScooter.Traffic
     /// <summary>
     /// Gives EVERY traffic vehicle "lights on" with zero prefab work. The car prefabs carry no wired light meshes
     /// (TrafficVehicleLights' slots are empty), so instead of hand-authoring lamps on each prefab this builds a
-    /// warm headlight bar on the nose and a red tail bar on the back, sized from the vehicle's own
+    /// warm headlight bar on the nose and two red tail lights on the rear corners, sized from the vehicle's own
     /// <see cref="TrafficVehicle.length"/>/<see cref="TrafficVehicle.width"/>, PLUS a visible additive headlight
     /// BEAM from the nose that fades in at night (so oncoming cars beam their headlights toward the player). They
     /// are EMISSIVE glows / translucent meshes on shared materials — NOT real lights — so any number of cars stays
-    /// cheap, keeping the scene at two real lights (the sun/moon and the scooter spot). The bars are ON day and
-    /// night; the tail bar brightens on braking; the beam is night-only (a shaft in daylight would look wrong).
+    /// cheap, keeping the scene at two real lights (the sun/moon and the scooter spot). The glows are ON day and
+    /// night; the two tail lights brighten at night so the back reads in the dark, and flare on braking; the beam
+    /// is night-only (a shaft in daylight would look wrong).
     ///
     /// A tiny self-bootstrapping <see cref="Provisioner"/> attaches this to each pooled vehicle as it appears, so
     /// there is nothing to wire in the scene or on the prefabs.
@@ -23,6 +24,11 @@ namespace KenyaScooter.Traffic
         // ---- Tunables (shared defaults; simple enough not to need per-car authoring) ----------------------
         private const float HeadHeight = 0.55f;       // lamp height up the nose/tail
         private const float TailHeight = 0.6f;
+        private const float TailEdgeFactor = 0.34f;    // how far toward the car's L/R edges the two tail lights sit (matches the beams)
+        private const float TailDayLevel = 0.5f;       // subtle red by day
+        private const float TailNightLevel = 1.6f;     // bright HDR red at night so the back reads clearly in the dark
+        private const float BrakeDayLevel = 1.2f;      // brake flare by day
+        private const float BrakeNightLevel = 2.2f;    // brake flare at night
         private const float BrakeDecel = 1.5f;         // m/s² slowing that counts as braking
         private const float BrakeCrawlSpeed = 0.5f;    // below this speed the car reads as braking/stopped
         // Headlight BEAM: a visible additive cone from the nose (oncoming cars beam toward the player). Night-only —
@@ -46,7 +52,7 @@ namespace KenyaScooter.Traffic
         private static Material glowMat, beamMat;
 
         private TrafficVehicle vehicle;
-        private Renderer head, tail, beamL, beamR;
+        private Renderer head, tailL, tailR, beamL, beamR;
         private MaterialPropertyBlock mpb;
         private float prevSpeed;
         private float lastHead = -1f, lastTail = -1f, lastBeam = -1f;
@@ -68,7 +74,10 @@ namespace KenyaScooter.Traffic
 
             // A wide, short glow bar reads as "lights on" without pretending to be two separate lamps.
             head = BuildBar("HeadlightGlow", new Vector3(0f, HeadHeight, halfLen + 0.03f), faceBack: false, new Vector2(w * 0.72f, 0.34f));
-            tail = BuildBar("TaillightGlow", new Vector3(0f, TailHeight, -(halfLen + 0.03f)), faceBack: true, new Vector2(w * 0.72f, 0.30f));
+            // Two tail lights at the rear corners (mirroring the two front beams) so the back reads as real tail
+            // lights, not one central blob; brightened at night in Update so the car is clearly visible in the dark.
+            tailL = BuildBar("TaillightGlowL", new Vector3(-w * TailEdgeFactor, TailHeight, -(halfLen + 0.03f)), faceBack: true, new Vector2(w * 0.34f, 0.30f));
+            tailR = BuildBar("TaillightGlowR", new Vector3(w * TailEdgeFactor, TailHeight, -(halfLen + 0.03f)), faceBack: true, new Vector2(w * 0.34f, 0.30f));
             // Two headlight beams, out toward the car's left/right edges (like real headlights), each tilted down a touch.
             beamL = BuildBeam(new Vector3(-w * BeamEdgeFactor, BeamHeight, halfLen));
             beamR = BuildBeam(new Vector3(w * BeamEdgeFactor, BeamHeight, halfLen));
@@ -94,16 +103,23 @@ namespace KenyaScooter.Traffic
                 Apply(head, HeadColour * on);
             }
 
-            // Tail: dim red normally, bright red when braking or crawling.
+            // Tail lights: subtle by day, bright HDR red at night so the back of the car is clearly visible in
+            // the dark (night-aware like the beams, via DayCycleManager.NightFactor01); brake/crawl flares brighter.
             float speed = vehicle != null ? vehicle.CurrentSpeed : 0f;
             float decel = (prevSpeed - speed) / dt;
             prevSpeed = speed;
             bool braking = decel > BrakeDecel || speed < BrakeCrawlSpeed;
-            float tailLevel = braking ? 1f : 0.45f;
-            if (!Mathf.Approximately(tailLevel, lastTail))
+            float night = DayCycleManager.NightFactor01;
+            float tailLevel = braking ? Mathf.Lerp(BrakeDayLevel, BrakeNightLevel, night)
+                                      : Mathf.Lerp(TailDayLevel, TailNightLevel, night);
+            // Sign of the key encodes braking, so a day↔night ramp OR a brake edge both refresh the two lights.
+            float tailKey = braking ? -tailLevel : tailLevel;
+            if (tailKey != lastTail)
             {
-                lastTail = tailLevel;
-                Apply(tail, (braking ? BrakeColour : TailColour) * tailLevel);
+                lastTail = tailKey;
+                Color tailC = (braking ? BrakeColour : TailColour) * tailLevel;
+                Apply(tailL, tailC);
+                Apply(tailR, tailC);
             }
 
             // Headlight beam: a visible additive shaft from the nose, fading in at night (off by day). The rgb carries

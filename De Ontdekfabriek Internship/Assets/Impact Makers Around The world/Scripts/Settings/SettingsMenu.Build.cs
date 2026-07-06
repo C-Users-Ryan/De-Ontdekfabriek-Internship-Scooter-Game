@@ -83,7 +83,7 @@ namespace KenyaScooter.Settings
         {
             // v2.8 (mock parity, at measured scale): a tall header band — 64px wordmark, caps subtitle, and a
             // roomy detail toggle + close on the right. A hairline under it separates the header from the body
-            // like the mock. (The tatoe ring badge was removed 2026-07-05 — the title carries the header alone.)
+            // like the mock. (The brand ring badge was removed 2026-07-05 — the title carries the header alone.)
             RectTransform head = NewRect(panel, "Header");
             Anchor(head, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 168f), new Vector2(0f, -96f));
             head.offsetMin = new Vector2(64f, head.offsetMin.y);
@@ -363,7 +363,7 @@ namespace KenyaScooter.Settings
             Anchor(pTab.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(190f, 10f), new Vector2(0f, -5f));
 
             // Padlock badge (also the staff-only press-and-hold recovery hotspot). v2: an accent RING (the
-            // tatoe focus-circle motif) instead of a filled disc.
+            // brand focus-circle motif) instead of a filled disc.
             RectTransform badge = NewRect(lockPanel, "Padlock");
             badge.anchorMin = new Vector2(0.5f, 1f); badge.anchorMax = new Vector2(0.5f, 1f); badge.pivot = new Vector2(0.5f, 1f);
             badge.sizeDelta = new Vector2(120f, 120f); badge.anchoredPosition = new Vector2(0f, -56f);

@@ -13,7 +13,13 @@ namespace KenyaScooter.Config
         public float sessionSeconds = 120f;
 
         [Header("Checkpoint (Req §9.2)")]
-        [Tooltip("How far ahead the charge station spawns when the timer expires.")]
+        [Tooltip("Seconds before the timer runs out that the charge station is woven into the road — placed at the " +
+                 "far draw horizon (in the haze) with no pop, so the player watches it emerge and grow as they ride " +
+                 "up to it instead of it appearing at the last second. Keep well below the session length; too high " +
+                 "and a very fast player could reach it before the time is actually up.")]
+        public float checkpointLeadSeconds = 10f;
+        [Tooltip("(No longer used for spawning — the station now weaves in at the draw horizon, so the approach " +
+                 "distance follows RoadSequencer.spawnHorizon. Kept for compatibility.)")]
         public float checkpointDistance = 110f;
         [Tooltip("Braking deceleration toward the checkpoint; the brake-start distance is computed from v²/2a.")]
         public float checkpointBrakeRate = 9f;
@@ -35,10 +41,13 @@ namespace KenyaScooter.Config
         public float chargeSeconds = 2.0f;
         [Tooltip("Seconds for the bike to ease back onto the road when the next player starts.")]
         public float pullOutSeconds = 1.1f;
-        [Tooltip("How far onto the shoulder the bike pulls to charge (metres from lane centre; the side follows the driving side, so it pulls to the near shoulder).")]
-        public float bayLateral = 3.0f;
-        [Tooltip("How far the bike angles toward the bay while parked (degrees toward the near shoulder).")]
-        public float bayYaw = 32f;
+        [Tooltip("How far onto the shoulder the bike pulls to charge (metres from lane centre; the side follows the " +
+                 "driving side). 0 (default) = the bike just stops in its lane at the stop point, no sideways pull; " +
+                 ">0 = it eases that many metres onto the near shoulder into a bay.")]
+        public float bayLateral = 0f;
+        [Tooltip("How far the bike angles toward the bay while parked (degrees toward the near shoulder). 0 (default) " +
+                 "= it stays straight. Pair with bayLateral > 0 if you want a visible pull-in to a roadside bay.")]
+        public float bayYaw = 0f;
         [Tooltip("How fast the world ramps back up to cruising speed as the bike pulls out (m/s^2).")]
         public float pullOutAccel = 7f;
 
