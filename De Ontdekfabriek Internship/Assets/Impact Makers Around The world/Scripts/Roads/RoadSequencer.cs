@@ -28,6 +28,11 @@ namespace KenyaScooter.Roads
         [Tooltip("The relay checkpoint tile (charge station). Appended to the road's end when the timer expires; " +
                  "leave empty to end the session on the Finish path instead.")]
         [SerializeField] private RoadTile checkpointTile;
+        [Tooltip("Optional charge-station tile the journey STARTS from: laid as the very first tile of the road " +
+                 "so the player pulls OUT of a station, mirroring the checkpoint the turn ends at. The pull-out " +
+                 "pose is ChargeStationSequence's job — this only puts the station there to see. May reuse the " +
+                 "same prefab as the checkpoint tile. Leave empty to start on open road.")]
+        [SerializeField] private RoadTile startTile;
         [Tooltip("Road is kept built this far ahead of the player.")]
         [SerializeField] private float spawnHorizon = 160f;
         [SerializeField] private float despawnBehind = 35f;
@@ -127,6 +132,8 @@ namespace KenyaScooter.Roads
                 BuildPoolsFor(sequences[i]);
             if (checkpointTile != null)
                 EnsurePool(checkpointTile);
+            if (startTile != null)
+                EnsurePool(startTile);
 
             // The player's arc-length is part of the rewind state, so a rewind across a curve
             // resumes from the right point on the road (the constant frame means there is no
@@ -402,8 +409,10 @@ namespace KenyaScooter.Roads
             tile.gameObject.SetActive(true);
             activeTiles.Add(tile);
 
-            if (tile.isCheckpoint)
-                ActiveCheckpointTile = tile;
+            // Note: ActiveCheckpointTile is set ONLY by SpawnCheckpoint (the end-of-turn relay), never from the
+            // isCheckpoint flag here — so a checkpoint-flagged charge tile reused as the START tile (which pulls
+            // the player OUT of a station) can never masquerade as the arrival checkpoint and make SpawnCheckpoint
+            // bail out.
 
             EvaluatePose(tile, tile.length, out buildRoadPosition, out buildRoadRotation);
             buildArc += tile.length;
@@ -547,20 +556,46 @@ namespace KenyaScooter.Roads
         // ---- Session flow ------------------------------------------------------------
 
         /// <summary>
-        /// Caps the road with the checkpoint tile (Req §9.2): clears any pending tiles, appends the
-        /// checkpoint at the current chain end, and halts further building so nothing spawns past it.
-        /// The player keeps riding into it; CheckpointController brakes to a stop at the tile's stop point.
-        /// Called once by CheckpointController when the timer expires.
+        /// Caps the road with the checkpoint tile (Req §9.2). Releases the road built beyond
+        /// <paramref name="distanceAhead"/> metres in front of the player, re-seats the build cursor on the
+        /// last surviving tile's exit, appends the checkpoint there and halts further building so nothing
+        /// spawns past it. The player keeps riding into it; CheckpointController brakes to a stop at the tile's
+        /// stop point. Called once by CheckpointController when the timer expires. <paramref name="distanceAhead"/>
+        /// ≤ 0 skips the cap and appends at the far build horizon (the pre-2026-07-06 behaviour).
         /// </summary>
-        public void SpawnCheckpoint()
+        public void SpawnCheckpoint(float distanceAhead)
         {
             if (checkpointTile == null || ActiveCheckpointTile != null)
                 return;
 
+            // Bring the station to a controlled, readable approach instead of the far draw horizon: drop every
+            // tile that starts beyond the cap, then rebuild the cursor from the last one left so the checkpoint
+            // seams onto continuous road. Without this the tile lands ~spawnHorizon metres ahead — a long crawl
+            // on a big draw distance — and any road left past the station would overlap the checkpoint tile.
+            if (distanceAhead > 0f)
+            {
+                float capArc = playerArc + distanceAhead;
+                for (int i = activeTiles.Count - 1; i >= 0; i--)
+                {
+                    if (activeTiles.Count <= 1)
+                        break;
+                    if (activeTiles[i].StartArc < capArc)
+                        break; // tiles are in ascending arc order — everything from here down starts before the cap
+                    activeTiles[i].SourcePool.Release(activeTiles[i]);
+                    activeTiles.RemoveAt(i);
+                }
+                RoadTile lastTile = activeTiles[activeTiles.Count - 1];
+                EvaluatePose(lastTile, lastTile.length, out buildRoadPosition, out buildRoadRotation);
+                buildArc = lastTile.StartArc + lastTile.length;
+            }
+
             prefabQueue.Clear();
             buildHalted = false; // let this one spawn through
             prefabQueue.Enqueue(checkpointTile);
-            SpawnNextTile();      // appends the checkpoint at the chain end and sets ActiveCheckpointTile
+            int before = activeTiles.Count;
+            SpawnNextTile();      // appends the checkpoint at the chain end
+            if (activeTiles.Count > before)
+                ActiveCheckpointTile = activeTiles[activeTiles.Count - 1]; // set even if the prefab's isCheckpoint flag was left off
             buildHalted = true;   // nothing builds past the checkpoint
         }
 
@@ -589,6 +624,11 @@ namespace KenyaScooter.Roads
             CurrentSequence = openingSequence;
             lastUsedAtTile[openingSequence] = 0;
             regionIndex = 0; // Regio-reis: every turn rides the route from region 1 — same journey for every student
+            // The journey begins pulling out of a charge station: lay it as the very first tile so the road
+            // leads out of the bay (the mirror image of the checkpoint the turn ends at). The bike's parked pose
+            // and pull-out are ChargeStationSequence's; this just puts the station under it.
+            if (startTile != null)
+                prefabQueue.Enqueue(startTile);
             EnqueueTiles(openingSequence);
 
             BuildAhead();

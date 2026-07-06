@@ -5655,6 +5655,7 @@ Transform:
   - {fileID: 466264362}
   - {fileID: 273439002}
   - {fileID: 1492952846}
+  - {fileID: 1262223446}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &370341243
@@ -5673,7 +5674,7 @@ MonoBehaviour:
   player: {fileID: 1896502479}
   timer: {fileID: 776635526}
   rewind: {fileID: 596019156}
-  checkpoint: {fileID: 1787707299}
+  checkpoint: {fileID: 1262223447}
   gameOverOnCollision: 0
 --- !u!1 &381874365
 GameObject:
@@ -19057,6 +19058,69 @@ MonoBehaviour:
   - {fileID: 8502550383689195962, guid: 7f475bde4bc808341982c64fa1af6560, type: 3}
   - {fileID: -319712398721671250, guid: b585815cbad075642b089433955803ff, type: 3}
   player: {fileID: 1896502479}
+--- !u!1 &847463924
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 847463925}
+  - component: {fileID: 847463926}
+  m_Layer: 0
+  m_Name: Headlight
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &847463925
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 847463924}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 3.535, y: 0.997, z: 0.595}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1706488117}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &847463926
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 847463924}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b4bf8a0d56ac7fd478ae34a3e1433e7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::KenyaScooter.FX.ScooterHeadlight
+  maxIntensity: 7
+  range: 150
+  spotAngle: 72
+  colour: {r: 1, g: 0.95, b: 0.82, a: 1}
+  aimAhead: 13
+  aimDrop: 1.2
+  localOffset: {x: 0, y: 0.72, z: 1.35}
+  glowSize: 0.18
+  glowStrength: 0.7
+  beamColour: {r: 1, g: 0.95, b: 0.8, a: 1}
+  beamLength: 16
+  beamStartRadius: 0
+  beamEndRadius: 3.4
+  beamAlpha: 0.22
+  beamIntensity: 1.2
+  beamFadePower: 1.4
+  beamPitchDeg: 4
+  fadeSpeed: 2.2
+  onThreshold: 0.18
 --- !u!1 &867287291
 GameObject:
   m_ObjectHideFlags: 0
@@ -19241,7 +19305,8 @@ MonoBehaviour:
   openingSequence: {fileID: 11400000, guid: 5cd39b66b7974d34597e747832276aa5, type: 2}
   sequences:
   - {fileID: 11400000, guid: 5cd39b66b7974d34597e747832276aa5, type: 2}
-  checkpointTile: {fileID: 0}
+  checkpointTile: {fileID: 8678437511983235021, guid: 363633453d734e449b1dc377e528989e, type: 3}
+  startTile: {fileID: 0}
   spawnHorizon: 350
   despawnBehind: 35
   poolSizePerTile: 4
@@ -25178,6 +25243,51 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1252526863}
   m_CullTransparentMesh: 1
+--- !u!1 &1262223445
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1262223446}
+  - component: {fileID: 1262223447}
+  m_Layer: 0
+  m_Name: Checkpointcontroller
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1262223446
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1262223445}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 370341242}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1262223447
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1262223445}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a99bf280911144042ae2042a44ef9462, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::KenyaScooter.Session.CheckpointController
+  config: {fileID: 11400000, guid: d6ecfd479453323479f683de20c7497b, type: 2}
 --- !u!1 &1264847627
 GameObject:
   m_ObjectHideFlags: 0
@@ -33938,7 +34048,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
-    m_AddedGameObjects: []
+    m_AddedGameObjects:
+    - targetCorrespondingSourceObject: {fileID: 8933922456644759442, guid: e43eccbe0f37f8c45be39ab35a2eb057, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 847463925}
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: e43eccbe0f37f8c45be39ab35a2eb057, type: 3}
 --- !u!4 &1706488117 stripped
@@ -35873,7 +35986,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::KenyaScooter.Session.CheckpointController
   config: {fileID: 11400000, guid: d6ecfd479453323479f683de20c7497b, type: 2}
-  player: {fileID: 1896502479}
 --- !u!1 &1797406764
 GameObject:
   m_ObjectHideFlags: 0

@@ -547,6 +547,34 @@ namespace KenyaScooter.Roads
         /// point (purple ball), wherever this tile currently sits in the world.</summary>
         public Vector3 StopPosition => transform.TransformPoint(stopPoint);
 
+        /// <summary>How far the scooter must RIDE onto this tile to sit at the charge bay — the arc (run-metres
+        /// from the begin point) of the point on the driven line nearest the stop point. Measured ALONG the
+        /// road, so it stays correct when the tile curves; a straight-line world distance would cut the corner
+        /// and read the bay as reached too early. CheckpointController adds this to <see cref="StartArc"/> to
+        /// know the exact road-metre the world should brake to a stop on.</summary>
+        public float StopRunDistance
+        {
+            get
+            {
+                EnsurePath();
+                // The stop point in this tile's run space (begin = origin, +Z = the entry heading) — the same
+                // space EvaluateRun samples, so the two compare directly.
+                Vector3 stopRun = Quaternion.Inverse(pathFacing) * (ToMetres(stopPoint) - PathOrigin);
+                stopRun.y = 0f;
+
+                float bestArc = 0f;
+                float bestSqr = float.MaxValue;
+                for (float u = 0f; u <= pathLength; u += 1f)
+                {
+                    EvaluateRun(u, out Vector3 p, out _);
+                    p.y = 0f;
+                    float sqr = (p - stopRun).sqrMagnitude;
+                    if (sqr < bestSqr) { bestSqr = sqr; bestArc = u; }
+                }
+                return bestArc;
+            }
+        }
+
         // ---- Hazards ---------------------------------------------------------------------------------------
 
         /// <summary>True when <paramref name="hazard"/> may spawn on this tile. An empty list allows everything,

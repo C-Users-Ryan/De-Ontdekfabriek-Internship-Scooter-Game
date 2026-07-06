@@ -6,19 +6,19 @@ using KenyaScooter.Roads;
 namespace KenyaScooter.Session
 {
     /// <summary>
-    /// The relay checkpoint (Req §9.2): when the timer expires, the road is capped with a
-    /// charge-station tile at the end of the chain (RoadSequencer.SpawnCheckpoint). The world keeps
-    /// scrolling normally, so the player coasts toward it as part of the road — no prefab teleports in.
-    /// Close to the tile's stop marker a speed override brakes the world to a stop (start distance from
-    /// v²/2a, so it works from any speed), then CheckpointReached fires — GameManager commits the turn
-    /// and the checkpoint screen takes over.
+    /// The relay checkpoint (Req §9.2): when the timer expires, the road is capped a controlled distance
+    /// ahead (SessionConfig.checkpointDistance) with a charge-station tile (RoadSequencer.SpawnCheckpoint).
+    /// The world keeps scrolling normally, so the player coasts toward it as part of the road — no prefab
+    /// teleports in. The remaining distance is measured ALONG the road (arc), so it stays correct through any
+    /// turns between the player and the station; close to the tile's stop marker a speed override brakes the
+    /// world to a stop (start distance from v²/2a, so it works from any speed), then CheckpointReached fires —
+    /// GameManager commits the turn and the checkpoint screen takes over.
     /// Separate from GameManager by design (Q1): session states live in one place, checkpoint
     /// choreography in another.
     /// </summary>
     public sealed class CheckpointController : MonoBehaviour
     {
         [SerializeField] private SessionConfig config;
-        [SerializeField] private Transform player;
 
         /// <summary>True when a checkpoint tile is configured on the sequencer; otherwise the timer ends the session.</summary>
         public bool HasCheckpoint =>
@@ -26,6 +26,8 @@ namespace KenyaScooter.Session
 
         private bool braking;
         private bool reached;
+        private bool armed;   // stopArc has been captured for the current checkpoint tile
+        private float stopArc; // the road-metre the world should brake to a stop on
 
         private void OnEnable() => GameEvents.SessionReset += HandleSessionReset;
         private void OnDisable() => GameEvents.SessionReset -= HandleSessionReset;
@@ -35,8 +37,9 @@ namespace KenyaScooter.Session
         {
             braking = false;
             reached = false;
+            armed = false;
             if (RoadSequencer.Instance != null)
-                RoadSequencer.Instance.SpawnCheckpoint();
+                RoadSequencer.Instance.SpawnCheckpoint(config != null ? config.checkpointDistance : 0f);
         }
 
         private void Update()
@@ -44,16 +47,28 @@ namespace KenyaScooter.Session
             if (GameManager.State != GameState.AtCheckpoint || reached)
                 return;
 
-            RoadTile tile = RoadSequencer.Instance != null ? RoadSequencer.Instance.ActiveCheckpointTile : null;
+            RoadSequencer seq = RoadSequencer.Instance;
+            RoadTile tile = seq != null ? seq.ActiveCheckpointTile : null;
             if (tile == null)
                 return;
 
+            // The road-metre the world should stop on: the arc of the tile's stop point (purple ball). Cached
+            // once — the nearest-point search behind StopRunDistance is not worth re-running each frame, and the
+            // tile's arc is fixed the moment it is appended to the chain.
+            if (!armed)
+            {
+                stopArc = tile.StartArc + tile.StopRunDistance;
+                armed = true;
+            }
+
             float speed = WorldSpeed.Instance.Current;
 
-            // Road length between the player and the tile's stop marker, along the direction of travel.
-            // The sequencer scrolls the tile with the rest of the world, so this shrinks on its own.
-            float ahead = RoadDirection.Longitudinal(tile.StopPosition)
-                - RoadDirection.Longitudinal(player.position);
+            // Road still to ride to the bay, measured ALONG the road (arc). The sequencer scrolls the tile with
+            // the world, so PlayerArc climbs toward stopArc on its own. Using arc — not a straight-line world
+            // distance — is what keeps this correct through the turns between the player and the station: the
+            // old world-Z distance read the station as "already here" the moment the road curved, braking the
+            // world to a halt while the charge tile was still far up the road and never came into view.
+            float ahead = stopArc - seq.PlayerArc;
 
             if (!braking)
             {
@@ -85,6 +100,7 @@ namespace KenyaScooter.Session
         {
             braking = false;
             reached = false;
+            armed = false;
         }
     }
 }

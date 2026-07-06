@@ -41,6 +41,18 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _DetailAlbedoMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _DetailMask:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _DetailNormalMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _DiffuseWarpNoise:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -73,6 +85,10 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _MetallicGlossMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _OcclusionMap:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -81,11 +97,27 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _ParallaxMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _SpecGlossMap:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _SpecularMaskTexture:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _TextureRamp:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _TextureSample:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _texcoord:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
@@ -116,20 +148,25 @@ Material:
     - _BankEnd: 0.8
     - _BankSand: 0.85
     - _BankStart: 0.3
+    - _BumpScale: 1
     - _Cutoff: 0.5
     - _Darken: 0
     - _DetailContrast: 1.3
+    - _DetailNormalMapScale: 1
     - _DiffusePosterizeOffset: 0
     - _DiffusePosterizePower: 1
     - _DiffusePosterizeSteps: 3
     - _DiffuseWarpAffectHalftone: 0
     - _DiffuseWarpBrightnessOffset: 1.12
     - _DirtScale: 0.35
+    - _DstBlend: 0
     - _DustBottom: 0
     - _DustStrength: 0.85
     - _DustTop: 0.5
     - _Flatness: 0.45
+    - _GlossMapScale: 1
     - _Glossiness: 0.5
+    - _GlossyReflections: 1
     - _GrainScale: 3
     - _GrainStrength: 0.16
     - _HalftoneEdgeOffset: 0.1
@@ -137,6 +174,8 @@ Material:
     - _HalftoneThreshold: 0.1
     - _HalftoneToonAffect: 0
     - _HaltonePatternSize: 0
+    - _HeightFogEnd: 0
+    - _HeightFogStart: 0
     - _IndirectLightAffectOnHatch: 0
     - _IndirectLightStrength: 1
     - _InverseMask: 0
@@ -144,6 +183,8 @@ Material:
     - _Lighten: 0
     - _MainLightIntesity: 1
     - _MaxScaleDependingOnCamera: 1
+    - _Metallic: 0
+    - _Mode: 0
     - _NoiseStrength: 0.38
     - _NormalMapStrength: 1
     - _OcclusionStrength: 1
@@ -157,9 +198,10 @@ Material:
     - _OverlayRotation: 0
     - _OverlayUVTilling: 0
     - _PaperTilling: 1
+    - _Parallax: 0.02
     - _PatchScale: 0.16
     - _PatchStrength: 0.2
-    - _QueueControl: -1
+    - _QueueControl: 0
     - _QueueOffset: 0
     - _RampDiffuseTextureLoaded: 1
     - _ReceiveShadows: 1
@@ -175,12 +217,15 @@ Material:
     - _SideShineHardness: 0
     - _SideShineIntensity: 1
     - _SmoothnessMultiplier: 1
+    - _SmoothnessTextureChannel: 0
     - _SpecularFaloff: 0
+    - _SpecularHighlights: 1
     - _SpecularMaskRotation: 0
     - _SpecularMaskScale: 1
     - _SpecularMaskStrength: 0.1856417
     - _SpecularPosterizeSteps: 0
     - _SpecularShadowMask: 0
+    - _SrcBlend: 1
     - _StepHalftoneTexture: 0
     - _StepOffset: 0
     - _Strength: 0
@@ -191,6 +236,7 @@ Material:
     - _UVScrollSpeed: 0
     - _UVScrollSpeedSpec: 0
     - _UVScrollSpeedWarp: 0
+    - _UVSec: 0
     - _UVSrcrollAngle: 0
     - _UVSrcrollAngleSpec: 0
     - _UVSrcrollAngleWarp: 0
@@ -218,6 +264,8 @@ Material:
     - _WarpStrength: 0
     - _WarpTextureRotation: 0
     - _WarpTextureScale: 1
+    - _ZWrite: 1
+    - __dirty: 1
     m_Colors:
     - _BaseColor: {r: 0.65999997, g: 0.39999998, b: 0.25999996, a: 1}
     - _Color: {r: 0.6792453, g: 0.6792453, b: 0.6792453, a: 1}
@@ -225,6 +273,7 @@ Material:
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 0}
     - _HalftoneColor: {r: 0, g: 0, b: 0, a: 1}
     - _HatchingColor: {r: 0, g: 0, b: 0, a: 1}
+    - _HeightFogColor: {r: 0, g: 0, b: 0, a: 0}
     - _NoiseCells: {r: 110, g: 240, b: 0, a: 0}
     - _OutlineColor: {r: 0, g: 0, b: 0, a: 0}
     - _RimColor: {r: 1, g: 1, b: 1, a: 0}
@@ -233,6 +282,7 @@ Material:
     - _RutColor: {r: 0.6, g: 0.33, b: 0.2, a: 1}
     - _SandColor: {r: 0.9, g: 0.67, b: 0.45, a: 1}
     - _ShadowColor: {r: 0, g: 0, b: 0, a: 0}
+    - _ShadowColorMy: {r: 0, g: 0, b: 0, a: 0}
     - _SpecColor: {r: 1, g: 1, b: 1, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
