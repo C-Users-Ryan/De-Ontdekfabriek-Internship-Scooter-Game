@@ -142,9 +142,21 @@ namespace KenyaScooter.Hazards
                 return;
             }
 
+            // Per-tile density (2026-07-05): the tile ahead scales how many hazards land on it — the inspector
+            // knob (RoadTile.hazardDensity) that makes a dirt stretch ride rough. 0 = keep this tile clear,
+            // >1 = more potholes/rocks. It shortens the gap to the NEXT cluster, so a rough tile fills in.
+            float tileDensity = tileAhead != null ? tileAhead.hazardDensity : 1f;
+            if (tileDensity <= 0.001f)
+            {
+                state.nextClusterAt = playerArc + 20f; // this tile wants no hazards; try again past it
+                return;
+            }
+
             SpawnCluster(state, playerArc);
             state.clustersThisSession++;
-            state.nextClusterAt = playerArc + IntervalFor(config);
+            // Scale the gap by the tile's density, but never below the config's minimum clear road — a rough
+            // tile packs in more hazards yet still leaves room to thread through (Req §6.1).
+            state.nextClusterAt = playerArc + Mathf.Max(config.minClusterGap, IntervalFor(config) / tileDensity);
         }
 
         private void SpawnCluster(SpawnState state, float playerArc)

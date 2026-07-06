@@ -23,7 +23,9 @@ namespace KenyaScooter.Roads
     public sealed class RoadSandDrift : MonoBehaviour
     {
         [Header("Master")]
-        [SerializeField] private bool driftEnabled = true;
+        // Off by default since 2026-07-06: the road itself is now murram (sandy) and the dust is meant to sit only
+        // OUTSIDE the road (RoadEdgeSand's bed), so on-road drift patches are redundant. Flip on to dust the road too.
+        [SerializeField] private bool driftEnabled = false;
 
         [Header("Scatter")]
         [Tooltip("How many sand drifts are pooled and on the road at once. Sparse, so it dusts the road, not paves it.")]

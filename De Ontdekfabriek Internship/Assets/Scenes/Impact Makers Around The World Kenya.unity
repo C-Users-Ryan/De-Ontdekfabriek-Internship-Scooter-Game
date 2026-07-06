@@ -30688,6 +30688,7 @@ MonoBehaviour:
   - {fileID: 499927548}
   - {fileID: 1631542983}
   sun: {fileID: 203844588}
+  transitionSmoothing: 0.6
 --- !u!1 &1513922456
 GameObject:
   m_ObjectHideFlags: 0
@@ -31886,7 +31887,7 @@ Transform:
   m_GameObject: {fileID: 1592818797}
   serializedVersion: 2
   m_LocalRotation: {x: 0.078459114, y: 0, z: 0, w: 0.99691737}
-  m_LocalPosition: {x: 3.547, y: 0.893, z: 0.5795}
+  m_LocalPosition: {x: 0, y: 0.893, z: 0.5795}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -33961,7 +33962,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8933922456644759442, guid: e43eccbe0f37f8c45be39ab35a2eb057, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -3.53
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8933922456644759442, guid: e43eccbe0f37f8c45be39ab35a2eb057, type: 3}
       propertyPath: m_LocalPosition.y

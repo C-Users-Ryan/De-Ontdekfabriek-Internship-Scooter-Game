@@ -5,49 +5,55 @@ using KenyaScooter.Core;
 namespace KenyaScooter.Roads
 {
     /// <summary>
-    /// Red-laterite SAND VERGES that make the road edges read as mixed with sand (Oplevering 25 Jun 2026: "there
-    /// is a lot of sand on and beside the road; the edges should transition from road to sand rather than a hard
-    /// line"). Two long flat strips run along both shoulders, on a lit, ALPHA-CLIPPED material with a procedurally
-    /// generated warm sand-grain texture whose alpha is a DENSITY mask: full sand in the strip, ramping out over a
-    /// speckled band at both edges, with tongues biting onto the asphalt and loose freckles landing past them. The
-    /// KenyaScooter/RoadSand shader (Shaders/Resources) dissolves the clip edge into individual grains, so the
-    /// sand genuinely MIXES with the road instead of meeting it in a wavering line. The strips are static (the
-    /// player is fixed at the origin facing +Z) and the sand SCROLLS its texture with the world, exactly like
-    /// ScrollingGround, so it never bends or pops and reads as moving ground.
+    /// Red-laterite SAND that the road sits in (Oplevering 25 Jun 2026: "there is a lot of sand on and beside the
+    /// road; the edges should transition from road to sand rather than a hard line").
     ///
-    /// Why alpha-CLIP (cutout) not alpha-blend: cutout sand is opaque, so it lights and fogs like real ground and
-    /// has no transparency sort order to fight the road/ground; the mixed edge comes from the mask + grain dissolve.
+    /// 2026-07-06 rework — ONE CONTINUOUS BED instead of two shoulder strips. The bed is a single flat sheet the
+    /// full width of the verges that runs UNDER the road (at <see cref="yLevel"/>, just below the road surface, so
+    /// the opaque road draws over the middle). Two things fall out of that:
+    ///   • there is never a bare-tile gap at the road edges — sand is continuous beneath the tarmac, so the road
+    ///     genuinely sits IN the sand;
+    ///   • the ragged DUST fray is only on the OUTSIDE — the sheet is solid across the whole middle (under and
+    ///     beside the road) and only fingers out into loose grains at the two far edges where it meets the open
+    ///     ground. No raggedness faces the road any more.
     ///
-    /// Self-activates after scene load (mirrors ScrollingGround being built once), additive and reversible: with
-    /// <see cref="sandEnabled"/> off it builds nothing, and it never touches gameplay (no collider, pure scenery).
+    /// Still lit + alpha-clipped on KenyaScooter/RoadSand (Shaders/Resources) so the outer edge dissolves into
+    /// individual grains, and the sheet SCROLLS its texture with the world like ScrollingGround (geometry static,
+    /// only the texture offset moves) so it never bends or pops. Self-activates after scene load, additive and
+    /// reversible (<see cref="sandEnabled"/>), no collider — pure scenery.
     /// </summary>
     public sealed class RoadEdgeSand : MonoBehaviour
     {
         [Header("Master")]
         [SerializeField] private bool sandEnabled = true;
 
-        [Header("Placement (metres from road centre)")]
-        [Tooltip("Inner edge of the sand, near the road. Slightly inside the road edge (~3.25 m lane + 1.5 m shoulder) so sand bites onto the asphalt.")]
-        [SerializeField] private float innerEdge = 2.8f;
-        [Tooltip("Outer edge of the sand, where it frays into the open ground.")]
-        [SerializeField] private float outerEdge = 14f;
-        [Tooltip("How far behind / ahead of the player the strips extend (metres). Cover the road draw distance.")]
+        [Header("Sand bed (metres from road centre)")]
+        [Tooltip("Half-width of the sand bed each side of the road centre. The bed is CONTINUOUS across the middle " +
+                 "and runs UNDER the road, so there is never a bare-tile gap at the road edges.")]
+        [SerializeField] private float halfWidth = 30f;
+        [Tooltip("Width of the ragged DUST fray at each OUTER edge (metres), where the sand fingers out into the " +
+                 "open ground. Everything inside this — beside AND under the road — stays solid, so the dust " +
+                 "pattern is only on the outside of the road shape.")]
+        [SerializeField] private float frayMetres = 12f;
+        [Tooltip("How far behind / ahead of the player the bed extends (metres). Cover the road draw distance.")]
         [SerializeField] private float zBehind = 80f;
         [SerializeField] private float zAhead = 420f;
-        [Tooltip("Height above the road surface (road sits at y = 0). A few cm so the sand draws over the road edge without z-fighting.")]
-        [SerializeField] private float yLevel = 0.02f;
+        [Tooltip("Height of the bed. Just BELOW the road surface (road sits at y = 0) so the opaque road draws over " +
+                 "the middle and the sand shows only beside/under it. Raise toward 0 if the bed is hidden; lower if " +
+                 "it pokes up through the road.")]
+        [SerializeField] private float yLevel = -0.02f;
 
         [Header("Look")]
         [Tooltip("Red-laterite sand colour. The grain texture is multiplied by this, so this is the dial for how red the sand is.")]
-        [SerializeField] private Color sandColour = new Color(0.66f, 0.40f, 0.26f, 1f);
+        [SerializeField] private Color sandColour = new Color(0.58f, 0.36f, 0.22f, 1f);
         [Tooltip("Texture repeats per metre along the road (grain density + how fast the ragged edge pattern repeats).")]
         [SerializeField] private float tilesPerMetre = 0.08f;
         [Tooltip("How strongly the sand scrolls with the world (1 = locked to the road).")]
         [SerializeField] private float scrollMultiplier = 1f;
 
-        [Header("Edge dissolve (KenyaScooter/RoadSand shader)")]
-        [Tooltip("How strongly the sand boundary dissolves into loose grains. 0 = smooth cutout line; higher = wider speckle band.")]
-        [SerializeField, Range(0f, 1f)] private float edgeNoiseStrength = 0.38f;
+        [Header("Outer dust dissolve (KenyaScooter/RoadSand shader)")]
+        [Tooltip("How strongly the OUTER sand boundary dissolves into loose grains. 0 = smooth cutout line; higher = wider speckle band.")]
+        [SerializeField, Range(0f, 1f)] private float edgeNoiseStrength = 0.4f;
         [Tooltip("Dissolve grain cells across (x) and along (y) one texture tile. Higher = finer grains.")]
         [SerializeField] private Vector2 edgeNoiseCells = new Vector2(110f, 240f);
 
@@ -61,8 +67,7 @@ namespace KenyaScooter.Roads
             go.AddComponent<RoadEdgeSand>();
         }
 
-        private MeshRenderer leftRenderer;
-        private MeshRenderer rightRenderer;
+        private MeshRenderer bedRenderer;
         private MaterialPropertyBlock mpb;
         private static readonly int BaseMapStId = Shader.PropertyToID("_BaseMap_ST"); // URP Lit
         private static readonly int MainTexStId = Shader.PropertyToID("_MainTex_ST"); // built-in fallback
@@ -85,60 +90,46 @@ namespace KenyaScooter.Roads
             mpb = new MaterialPropertyBlock();
 
             float vMax = Mathf.Max(1f, (zAhead + zBehind) * tilesPerMetre);
-            leftRenderer = BuildStrip("RoadEdgeSand_Left", -1f, vMax, mat);
-            rightRenderer = BuildStrip("RoadEdgeSand_Right", 1f, vMax, mat);
+            bedRenderer = BuildBed("RoadEdgeSand_Bed", vMax, mat);
             built = true;
         }
 
         private void Update()
         {
-            if (!built)
+            if (!built || bedRenderer == null)
                 return;
 
-            // Scroll the sand grain (and its ragged edge) with the world, the way ScrollingGround scrolls its
+            // Scroll the sand grain (and its ragged outer edge) with the world, the way ScrollingGround scrolls its
             // texture. The geometry stays put; only the texture offset moves, so it can never bend or overlap.
             float dist = WorldSpeed.Instance != null ? WorldSpeed.Instance.DistanceTravelled : 0f;
             float offset = dist * tilesPerMetre * scrollMultiplier;
             var st = new Vector4(1f, 1f, 0f, -offset);
 
-            if (leftRenderer != null)
-            {
-                leftRenderer.GetPropertyBlock(mpb);
-                mpb.SetVector(BaseMapStId, st);
-                mpb.SetVector(MainTexStId, st);
-                leftRenderer.SetPropertyBlock(mpb);
-            }
-            if (rightRenderer != null)
-            {
-                rightRenderer.GetPropertyBlock(mpb);
-                mpb.SetVector(BaseMapStId, st);
-                mpb.SetVector(MainTexStId, st);
-                rightRenderer.SetPropertyBlock(mpb);
-            }
+            bedRenderer.GetPropertyBlock(mpb);
+            mpb.SetVector(BaseMapStId, st);
+            mpb.SetVector(MainTexStId, st);
+            bedRenderer.SetPropertyBlock(mpb);
         }
 
-        /// <summary>One shoulder strip: a flat quad from innerEdge to outerEdge on the given side, lying just above
-        /// the road. UV.x = 0 at the ROAD side (so the ragged inner edge always faces the road on both sides), UV.y
-        /// runs along the road for the scroll.</summary>
-        private MeshRenderer BuildStrip(string stripName, float side, float vMax, Material mat)
+        /// <summary>The single sand bed: one flat quad the full width (-halfWidth .. +halfWidth), lying just under
+        /// the road so the road draws over the middle. UV.x = 0 at the left outer edge, 1 at the right outer edge
+        /// (so the fray is symmetric on both outsides); UV.y runs along the road for the scroll.</summary>
+        private MeshRenderer BuildBed(string bedName, float vMax, Material mat)
         {
-            var go = new GameObject(stripName);
+            var go = new GameObject(bedName);
             go.transform.SetParent(transform, false);
 
-            float innerX = side * innerEdge;
-            float outerX = side * outerEdge;
             float zMin = -zBehind;
             float zMax = zAhead;
 
-            var mesh = new Mesh { name = stripName };
+            var mesh = new Mesh { name = bedName };
             mesh.vertices = new[]
             {
-                new Vector3(innerX, yLevel, zMin),
-                new Vector3(innerX, yLevel, zMax),
-                new Vector3(outerX, yLevel, zMax),
-                new Vector3(outerX, yLevel, zMin),
+                new Vector3(-halfWidth, yLevel, zMin),
+                new Vector3(-halfWidth, yLevel, zMax),
+                new Vector3( halfWidth, yLevel, zMax),
+                new Vector3( halfWidth, yLevel, zMin),
             };
-            // UV.x: 0 at the road (inner) side, 1 at the outer side. UV.y tiles along Z for the scroll.
             mesh.uv = new[]
             {
                 new Vector2(0f, 0f),
@@ -153,17 +144,16 @@ namespace KenyaScooter.Roads
             var mf = go.AddComponent<MeshFilter>();
             mf.sharedMesh = mesh;
             var mr = go.AddComponent<MeshRenderer>();
-            mr.sharedMaterial = mat; // shared; the material is double-sided so winding never hides a strip
+            mr.sharedMaterial = mat; // shared; the material is double-sided so winding never hides the bed
             mr.shadowCastingMode = ShadowCastingMode.Off;
             mr.receiveShadows = true; // it is ground, let the warm light read on it
             return mr;
         }
 
         /// <summary>A lit, alpha-clipped sand material. Prefers the custom KenyaScooter/RoadSand shader (in
-        /// Shaders/Resources so builds keep it): same cutout, but the clip edge dissolves into individual grains,
-        /// so the sand MIXES into the asphalt instead of ending in a line. Falls back to plain URP/Lit cutout,
-        /// which still works (the density-gradient mask alone already softens the edge). Double-sided as a safety
-        /// net for the quad winding.</summary>
+        /// Shaders/Resources so builds keep it): the clip edge dissolves into individual grains, so the outer
+        /// boundary reads as sand fingering into the ground instead of ending in a line. Falls back to plain
+        /// URP/Lit cutout. Double-sided as a safety net for the quad winding.</summary>
         private Material BuildSandMaterial(Texture2D tex)
         {
             Shader shader = Shader.Find("KenyaScooter/RoadSand");
@@ -180,7 +170,8 @@ namespace KenyaScooter.Roads
             if (m.HasProperty("_Glossiness")) m.SetFloat("_Glossiness", 0.1f);
             if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", 0f);
 
-            // Alpha cutout: opaque sand with a clipped edge (the texture's alpha is the shoulder DENSITY mask).
+            // Alpha cutout: opaque sand with a clipped edge (the texture's alpha is the DENSITY mask — solid in the
+            // middle, fraying only at the outer edges).
             if (m.HasProperty("_AlphaClip")) m.SetFloat("_AlphaClip", 1f);
             if (m.HasProperty("_Cutoff")) m.SetFloat("_Cutoff", 0.5f);
             m.EnableKeyword("_ALPHATEST_ON");
@@ -192,15 +183,13 @@ namespace KenyaScooter.Roads
             return m;
         }
 
-        /// <summary>Procedural warm sand grain with a DENSITY mask (not a binary in/out): alpha ramps from 0 to
-        /// full over a speckled transition band at both edges, tongues of sand reach in toward the road at the
-        /// inner edge (UV.x small) and loose freckles land past it on the tarmac itself, thinning toward the road
-        /// centre. The RoadSand shader turns that density into a per-grain dissolve, so the boundary reads as sand
-        /// MIXING into the asphalt instead of a wavering line. Grayscale-warm grain, tinted red by the material's
-        /// BaseColor, so the redness is one dial. Tiles along V for the scroll.</summary>
-        private static Texture2D BuildSandTexture()
+        /// <summary>Procedural warm sand with a DENSITY mask that is SOLID across the whole middle (under and beside
+        /// the road) and only frays at the two OUTER edges. The fray threshold varies in BOTH u and v so the sand
+        /// fingers out into the ground in irregular tongues instead of stripey bands. Grayscale-warm grain tinted
+        /// red by the material's BaseColor, so the redness is one dial. Tiles along V for the scroll.</summary>
+        private Texture2D BuildSandTexture()
         {
-            const int w = 128;  // across the strip (UV.x: 0 road side .. 1 outer)
+            const int w = 192;  // across the bed (UV.x: 0 left outer .. 1 right outer)
             const int h = 192;  // along the road (UV.y), tiled
             var tex = new Texture2D(w, h, TextureFormat.RGBA32, false)
             {
@@ -210,44 +199,37 @@ namespace KenyaScooter.Roads
             };
             var px = new Color32[w * h];
 
+            // The fray band as a fraction of the (full-width) UV: frayMetres out of the whole 2*halfWidth sheet.
+            float frayFrac = Mathf.Clamp(frayMetres / Mathf.Max(1f, 2f * halfWidth), 0.02f, 0.45f);
+
             for (int y = 0; y < h; y++)
             {
                 float v = (float)y / h;
-                // Ragged inner edge (toward the road): a wavering threshold, with occasional deep tongues that
-                // reach right onto the asphalt. Lower threshold = sand reaches further toward the road centre.
-                float inner = Mathf.Lerp(0.03f, 0.24f, Mathf.PerlinNoise(v * 6f, 0.37f));
-                if (Mathf.PerlinNoise(v * 2.3f, 4.1f) > 0.74f)
-                    inner = 0f; // a tongue of sand spilling onto the road
-                // Ragged outer edge: frays into the open ground so there is no hard line on the savanna side.
-                float outer = Mathf.Lerp(0.80f, 1.0f, Mathf.PerlinNoise(v * 5f, 9.2f));
-                // Width of the density ramps. The inner band wavers so the mix zone itself varies along the road.
-                float innerBand = Mathf.Lerp(0.10f, 0.26f, Mathf.PerlinNoise(v * 7.7f, 2.2f));
-                const float outerBand = 0.12f;
-
                 for (int x = 0; x < w; x++)
                 {
                     float u = (x + 0.5f) / w;
+                    float edgeDist = Mathf.Min(u, 1f - u); // 0 at the two outer edges, 0.5 at the centre
 
-                    // Density: 0 on the asphalt, ramping to 1 inside the strip, ramping out again at the far side.
-                    float tIn = Mathf.Clamp01((u - inner) / innerBand);
-                    float tOut = Mathf.Clamp01((outer - u) / outerBand);
-                    float a01 = Mathf.Min(tIn, tOut);
-
-                    if (a01 > 0f && a01 < 1f)
+                    float a01;
+                    if (edgeDist >= frayFrac)
                     {
-                        // Speckle the ramps: with the shader's grain dissolve this breaks the boundary into
-                        // scattered sand instead of a soft-but-straight gradient.
-                        float clump = Mathf.PerlinNoise(u * 46f, v * 120f);
-                        a01 = Mathf.Clamp01(a01 * Mathf.Lerp(0.55f, 1.45f, clump));
+                        a01 = 1f; // solid: the whole middle, under and beside the road
                     }
-                    else if (a01 <= 0f && u < inner)
+                    else
                     {
-                        // Loose freckles past the inner edge: stray sand sitting ON the tarmac, denser near the
-                        // shoulder and thinning toward the road centre so it never buries the lane.
-                        float toward = u / Mathf.Max(inner, 0.001f); // 0 = road centre .. 1 = at the sand edge
-                        float freckle = Mathf.PerlinNoise(u * 34f + 7f, v * 88f + 3f);
-                        if (freckle > Mathf.Lerp(0.88f, 0.70f, toward))
-                            a01 = 0.3f + 0.45f * toward;
+                        // Inside the outer fray band: dissolve from 0 (very edge) to 1 (fray inner boundary), with
+                        // the threshold wandering in BOTH u and v so the sand reaches out in irregular fingers
+                        // rather than horizontal stripes.
+                        float t = edgeDist / frayFrac;
+                        float broad = Mathf.PerlinNoise(u * 7f + 0.5f, v * 11f);
+                        float thresh = Mathf.Lerp(0.08f, 0.82f, broad);
+                        a01 = Mathf.Clamp01((t - thresh) / 0.35f);
+                        if (a01 > 0f && a01 < 1f)
+                        {
+                            // Speckle the transition so the shader's grain dissolve scatters it into loose grains.
+                            float fine = Mathf.PerlinNoise(u * 33f, v * 41f);
+                            a01 = Mathf.Clamp01(a01 * Mathf.Lerp(0.5f, 1.5f, fine));
+                        }
                     }
 
                     byte a = (byte)(Mathf.Clamp01(a01) * 255f);
@@ -256,7 +238,7 @@ namespace KenyaScooter.Roads
                     // material's red BaseColor sets the actual sand colour.
                     float grain = Mathf.PerlinNoise(u * 9f, v * 22f);
                     float speck = Mathf.PerlinNoise(u * 40f, v * 90f);
-                    float light = Mathf.Clamp01(Mathf.Lerp(0.78f, 1.12f, grain) * Mathf.Lerp(0.94f, 1.06f, speck));
+                    float light = Mathf.Clamp01(Mathf.Lerp(0.80f, 1.10f, grain) * Mathf.Lerp(0.95f, 1.05f, speck));
                     byte r = (byte)(light * 255f);
                     byte g = (byte)(light * 0.96f * 255f);
                     byte b = (byte)(light * 0.90f * 255f);

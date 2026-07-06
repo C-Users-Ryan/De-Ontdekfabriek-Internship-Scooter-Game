@@ -12,8 +12,8 @@ namespace KenyaScooter.Player
     /// ScooterLean adds them onto the model, so nothing here ever touches a transform and the two shakes
     /// compose instead of fighting.
     ///
-    /// The shake is layered Perlin noise, not a sine — washboard ripple with the odd bigger stone, so it
-    /// reads as SURFACE, not vibration. It scales with the eased RoadSurfaceFeel.DirtBlend01 (so it grabs at
+    /// The shake is layered Perlin noise, not a sine — a fine washboard ripple, so it reads as a loose dusty
+    /// SURFACE, not a vibration and not jolting over rocks. It scales with the eased RoadSurfaceFeel.DirtBlend01 (so it grabs at
     /// the dirt tile's seam and settles back on tarmac), with world speed (a stopped scooter sits still) and
     /// with the motion-sensitivity dial (the Prikkelarm players get a calmer ride here too, exactly like the
     /// lean and the speed FX). It moves ONLY the scooter model, never the camera or the lens — the speed-FX
@@ -21,12 +21,16 @@ namespace KenyaScooter.Player
     /// </summary>
     public sealed class DirtRumble : MonoBehaviour
     {
-        [Tooltip("Peak roll jitter in degrees at full speed on full dirt. Keep small — the read is 'rough road', not 'crash wobble'.")]
-        [SerializeField] private float rollAmplitude = 1.6f;
-        [Tooltip("Peak vertical shake of the model in metres. A couple of centimetres reads as suspension chatter.")]
-        [SerializeField] private float bobAmplitude = 0.022f;
-        [Tooltip("Base shake frequency (noise scrolls per second) at cruise. Rises with speed, like real washboard.")]
-        [SerializeField] private float baseFrequency = 7f;
+        [Tooltip("Peak roll jitter in degrees at full speed on full dirt. Kept FAINT on purpose — the dirt road " +
+                 "is communicated by the DUST (ScooterDirtDust), not by shaking the bike; this is only a whisper " +
+                 "of tactile texture under it. ~0.25 is a hint; much above 0.5 starts to read as a rough ride.")]
+        [SerializeField] private float rollAmplitude = 0.25f;
+        [Tooltip("Peak vertical shake of the model in metres. A few millimetres is a subtle settle; more than " +
+                 "that and the bike starts to feel like it is bouncing, which we no longer want.")]
+        [SerializeField] private float bobAmplitude = 0.004f;
+        [Tooltip("Base shake frequency (noise scrolls per second) at cruise. Rises with speed. Lowish = a slow, " +
+                 "soft sway rather than a buzz.")]
+        [SerializeField] private float baseFrequency = 6.5f;
 
         /// <summary>Roll (degrees) ScooterLean adds on top of steer lean + turn lean + hazard wobble.</summary>
         public float CurrentRoll { get; private set; }
@@ -61,18 +65,19 @@ namespace KenyaScooter.Player
 
             noiseTime += Time.deltaTime * baseFrequency * Mathf.Lerp(0.7f, 1.5f, ratio);
 
-            // Two noise octaves: a slow washboard base plus a faster sparkle — the odd 'bigger stone' falls
-            // out of the octaves lining up, so the shake never turns into a metronome.
+            // Two noise octaves, weighted toward the FINER one: a loose-dirt shimmy with only a hint of slow
+            // undulation, so the ride reads as sand/murram — never a metronome, never a boulder field.
             CurrentRoll = Noise(noiseTime, 0.37f) * rollAmplitude * strength;
             CurrentBob = Noise(noiseTime * 1.7f, 5.11f) * bobAmplitude * strength;
         }
 
-        /// <summary>Signed layered Perlin noise, roughly -1..1.</summary>
+        /// <summary>Signed layered Perlin noise, roughly -1..1. Weighted toward the faster octave so the shake is
+        /// a fine loose-surface buzz rather than slow heaves that read as driving over rocks.</summary>
         private static float Noise(float t, float seed)
         {
             float slow = Mathf.PerlinNoise(t, seed) * 2f - 1f;
-            float fast = Mathf.PerlinNoise(t * 2.7f, seed + 11.3f) * 2f - 1f;
-            return slow * 0.65f + fast * 0.35f;
+            float fast = Mathf.PerlinNoise(t * 3.3f, seed + 11.3f) * 2f - 1f;
+            return slow * 0.4f + fast * 0.6f;
         }
 
         private void HandleSessionReset()

@@ -24,29 +24,29 @@ namespace KenyaScooter.FX
         [SerializeField] private float maxIntensity = 7f;
         [Tooltip("How far the real light reaches. Keep long so the far road the beam covers is actually lit.")]
         [SerializeField] private float range = 150f;
-        [SerializeField] private float spotAngle = 64f;
+        [SerializeField] private float spotAngle = 72f;
         [SerializeField] private Color colour = new Color(1f, 0.95f, 0.82f);
-        [Tooltip("Aim: metres ahead the spot points, and metres it drops below the lamp. Lower drop / bigger ahead " +
-                 "= flatter throw that reaches further down the road (to match the beam).")]
-        [SerializeField] private float aimAhead = 8f;
-        [SerializeField] private float aimDrop = 1.5f;
+        [Tooltip("Aim: metres ahead the spot points, and metres it drops below the lamp. Big ahead / small drop = " +
+                 "a nearly FORWARD throw that lights what's in front of the player, not just the road right below.")]
+        [SerializeField] private float aimAhead = 13f;
+        [SerializeField] private float aimDrop = 1.2f;
 
         [Header("Auto-mount (only when self-bootstrapped, not when you place it)")]
         [SerializeField] private Vector3 localOffset = new Vector3(0f, 0.72f, 1.35f);
 
         [Header("Visible lamp glow")]
-        [SerializeField] private float glowSize = 0.28f;
-        [SerializeField] private float glowStrength = 1.3f;
+        [SerializeField] private float glowSize = 0.18f;
+        [SerializeField] private float glowStrength = 0.7f;
 
         [Header("Visible light beam (additive, enhances sight)")]
         [Tooltip("Beam colour — tint the shaft independently of the real light.")]
         [SerializeField] private Color beamColour = new Color(1f, 0.95f, 0.8f);
         [Tooltip("Length of the visible beam shaft (metres); it fades out over this distance.")]
-        [SerializeField] private float beamLength = 12f;
+        [SerializeField] private float beamLength = 16f;
         [Tooltip("The 'hole' at the headlight — beam radius right at the lamp (metres).")]
         [SerializeField] private float beamStartRadius = 0.16f;
         [Tooltip("Beam radius at the far end (metres) — how WIDE the shaft spreads.")]
-        [SerializeField] private float beamEndRadius = 2.6f;
+        [SerializeField] private float beamEndRadius = 3.4f;
         [Tooltip("Base opacity of the beam at the lamp (before intensity).")]
         [SerializeField, Range(0f, 1f)] private float beamAlpha = 0.22f;
         [Tooltip("Brightness multiplier on the additive beam — push above 1 for a stronger shaft.")]
@@ -54,7 +54,7 @@ namespace KenyaScooter.FX
         [Tooltip("How quickly the beam fades along its length: 1 = linear, higher = fades sooner, lower = reaches further.")]
         [SerializeField] private float beamFadePower = 1.4f;
         [Tooltip("Downward pitch of the beam shaft (degrees) — SHALLOW so it skims the road and fades before the horizon.")]
-        [SerializeField] private float beamPitchDeg = 6f;
+        [SerializeField] private float beamPitchDeg = 4f;
 
         [Header("Fade")]
         [SerializeField] private float fadeSpeed = 2.2f;
@@ -163,7 +163,7 @@ namespace KenyaScooter.FX
             spot.renderMode = LightRenderMode.ForcePixel;
             spot.range = range;
             spot.spotAngle = spotAngle;
-            spot.innerSpotAngle = spotAngle * 0.5f;
+            spot.innerSpotAngle = spotAngle * 0.3f; // small full-bright core, long falloff = strong centre, soft edges
             spot.color = colour;
             spot.intensity = 0f;
             spot.enabled = false;
@@ -307,7 +307,11 @@ namespace KenyaScooter.FX
             for (int y = 0; y < h; y++)
             {
                 float v = y / (float)(h - 1);
-                float alpha = Mathf.Pow(1f - v, p);
+                // A BUMP, not bright-at-the-lamp: faint right at the lamp (v=0) so the player's OWN beam doesn't wash
+                // the near foreground / obscure the view or show a weird bright origin; it builds to a peak out on the
+                // road ahead, then fades to the far end. (Car beams keep bright-at-lamp — seen from outside, the source
+                // should be brightest.)
+                float alpha = Mathf.SmoothStep(0f, 0.32f, v) * Mathf.Pow(1f - v, p);
                 for (int x = 0; x < 2; x++)
                     tex.SetPixel(x, y, new Color(1f, 1f, 1f, alpha));
             }

@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Rendering;
+using KenyaScooter.Session;
 
 namespace KenyaScooter.Traffic
 {
@@ -7,10 +8,11 @@ namespace KenyaScooter.Traffic
     /// Gives EVERY traffic vehicle "lights on" with zero prefab work. The car prefabs carry no wired light meshes
     /// (TrafficVehicleLights' slots are empty), so instead of hand-authoring lamps on each prefab this builds a
     /// warm headlight bar on the nose and a red tail bar on the back, sized from the vehicle's own
-    /// <see cref="TrafficVehicle.length"/>/<see cref="TrafficVehicle.width"/>. They are EMISSIVE glow quads on a
-    /// shared unlit material (GPU-instanced) — NOT real lights — so any number of cars stays cheap, keeping the
-    /// scene at two real lights (the sun/moon and the scooter spot). The lights are ON day and night; the tail bar
-    /// brightens when the car brakes/crawls (a readable "the car ahead is slowing" cue).
+    /// <see cref="TrafficVehicle.length"/>/<see cref="TrafficVehicle.width"/>, PLUS a visible additive headlight
+    /// BEAM from the nose that fades in at night (so oncoming cars beam their headlights toward the player). They
+    /// are EMISSIVE glows / translucent meshes on shared materials — NOT real lights — so any number of cars stays
+    /// cheap, keeping the scene at two real lights (the sun/moon and the scooter spot). The bars are ON day and
+    /// night; the tail bar brightens on braking; the beam is night-only (a shaft in daylight would look wrong).
     ///
     /// A tiny self-bootstrapping <see cref="Provisioner"/> attaches this to each pooled vehicle as it appears, so
     /// there is nothing to wire in the scene or on the prefabs.
@@ -23,20 +25,31 @@ namespace KenyaScooter.Traffic
         private const float TailHeight = 0.6f;
         private const float BrakeDecel = 1.5f;         // m/s² slowing that counts as braking
         private const float BrakeCrawlSpeed = 0.5f;    // below this speed the car reads as braking/stopped
+        // Headlight BEAM: a visible additive cone from the nose (oncoming cars beam toward the player). Night-only —
+        // a visible shaft in daylight would look wrong, so it fades in with the day cycle while the glow bars stay on.
+        private const float BeamLength = 12f;
+        private const float BeamStartRadius = 0.2f;
+        private const float BeamEndRadius = 2.6f;        // wide diagonal spread (the two beams share the road ahead)
+        private const float BeamHeight = 0.6f;
+        private const float BeamEdgeFactor = 0.34f;      // how far toward the car's L/R edges the two headlights sit
+        private const float BeamPitchDeg = 12f;          // angled ~12° down so oncoming beams hit the road, not the player's face
+        private const float BeamAlpha = 0.4f;            // warm light each beam adds (additive; the two beams overlap)
+        private const float BeamNightThreshold = 0.2f;   // NightFactor below which the beams are off (no daytime shafts)
         private static readonly Color HeadColour = new Color(1f, 0.94f, 0.78f);
         private static readonly Color TailColour = new Color(1f, 0.10f, 0.04f);
         private static readonly Color BrakeColour = new Color(1f, 0.16f, 0.10f);
+        private static readonly Color BeamColour = new Color(1.35f, 1.28f, 1.08f); // warm, slightly HDR so the shaft reads bright + blooms
 
         private static readonly int ColorId = Shader.PropertyToID("_Color");
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
-        private static Mesh quadMesh;
-        private static Material glowMat;
+        private static Mesh quadMesh, beamMesh;
+        private static Material glowMat, beamMat;
 
         private TrafficVehicle vehicle;
-        private Renderer head, tail;
+        private Renderer head, tail, beamL, beamR;
         private MaterialPropertyBlock mpb;
         private float prevSpeed;
-        private float lastHead = -1f, lastTail = -1f;
+        private float lastHead = -1f, lastTail = -1f, lastBeam = -1f;
 
         private bool built;
 
@@ -56,6 +69,9 @@ namespace KenyaScooter.Traffic
             // A wide, short glow bar reads as "lights on" without pretending to be two separate lamps.
             head = BuildBar("HeadlightGlow", new Vector3(0f, HeadHeight, halfLen + 0.03f), faceBack: false, new Vector2(w * 0.72f, 0.34f));
             tail = BuildBar("TaillightGlow", new Vector3(0f, TailHeight, -(halfLen + 0.03f)), faceBack: true, new Vector2(w * 0.72f, 0.30f));
+            // Two headlight beams, out toward the car's left/right edges (like real headlights), each tilted down a touch.
+            beamL = BuildBeam(new Vector3(-w * BeamEdgeFactor, BeamHeight, halfLen));
+            beamR = BuildBeam(new Vector3(w * BeamEdgeFactor, BeamHeight, halfLen));
             prevSpeed = vehicle != null ? vehicle.CurrentSpeed : 0f;
         }
 
@@ -88,6 +104,17 @@ namespace KenyaScooter.Traffic
             {
                 lastTail = tailLevel;
                 Apply(tail, (braking ? BrakeColour : TailColour) * tailLevel);
+            }
+
+            // Headlight beam: a visible additive shaft from the nose, fading in at night (off by day). The rgb carries
+            // the night level so Apply disables the renderer by day; the additive material + gradient do the rest.
+            float beamOn = Mathf.InverseLerp(BeamNightThreshold, 1f, DayCycleManager.NightFactor01);
+            if (!Mathf.Approximately(beamOn, lastBeam))
+            {
+                lastBeam = beamOn;
+                Color bc = new Color(BeamColour.r * beamOn, BeamColour.g * beamOn, BeamColour.b * beamOn, BeamAlpha);
+                Apply(beamL, bc);
+                Apply(beamR, bc);
             }
         }
 
@@ -173,8 +200,99 @@ namespace KenyaScooter.Traffic
             return tex;
         }
 
+        // ---- Beam (additive shaft) ----------------------------------------------------------------------
+
+        private Renderer BuildBeam(Vector3 localPos)
+        {
+            var go = new GameObject("HeadlightBeam");
+            go.transform.SetParent(transform, false);
+            go.transform.localPosition = localPos;
+            go.transform.localRotation = Quaternion.Euler(BeamPitchDeg, 0f, 0f); // faces the car's nose (+Z), tilted down a touch
+            go.AddComponent<MeshFilter>().sharedMesh = BeamMesh();
+            var mr = go.AddComponent<MeshRenderer>();
+            mr.sharedMaterial = BeamMaterial();
+            mr.shadowCastingMode = ShadowCastingMode.Off;
+            mr.receiveShadows = false;
+            mr.lightProbeUsage = LightProbeUsage.Off;
+            mr.reflectionProbeUsage = ReflectionProbeUsage.Off;
+            mr.enabled = false;
+            return mr;
+        }
+
+        private static Mesh BeamMesh()
+        {
+            if (beamMesh != null)
+                return beamMesh;
+            const int seg = 16;
+            beamMesh = new Mesh { name = "CarHeadlightBeam" };
+            var verts = new Vector3[(seg + 1) * 2];
+            var uvs = new Vector2[(seg + 1) * 2];
+            for (int i = 0; i <= seg; i++)
+            {
+                float a = (float)i / seg * Mathf.PI * 2f;
+                float cx = Mathf.Cos(a), cy = Mathf.Sin(a);
+                int s = i * 2;
+                verts[s] = new Vector3(cx * BeamStartRadius, cy * BeamStartRadius, 0f);
+                verts[s + 1] = new Vector3(cx * BeamEndRadius, cy * BeamEndRadius, BeamLength);
+                uvs[s] = new Vector2((float)i / seg, 0f);
+                uvs[s + 1] = new Vector2((float)i / seg, 1f);
+            }
+            var tris = new int[seg * 6];
+            for (int i = 0; i < seg; i++)
+            {
+                int s = i * 2, t = i * 6;
+                tris[t] = s; tris[t + 1] = s + 1; tris[t + 2] = s + 3;
+                tris[t + 3] = s; tris[t + 4] = s + 3; tris[t + 5] = s + 2;
+            }
+            beamMesh.vertices = verts;
+            beamMesh.uv = uvs;
+            beamMesh.triangles = tris;
+            beamMesh.RecalculateBounds();
+            return beamMesh;
+        }
+
+        /// <summary>Shared ADDITIVE material for every car beam (adds warm light; order-independent so overlaps are
+        /// fine). URP/Unlit set additive-transparent; alpha-sprite fallback if URP/Unlit is unavailable.</summary>
+        private static Material BeamMaterial()
+        {
+            if (beamMat != null)
+                return beamMat;
+            Texture2D grad = BeamGradient();
+            Shader urp = Shader.Find("Universal Render Pipeline/Unlit");
+            if (urp != null)
+            {
+                beamMat = new Material(urp) { name = "CarHeadlightBeam", mainTexture = grad };
+                beamMat.SetFloat("_Surface", 1f);
+                beamMat.SetFloat("_Blend", 2f);
+                beamMat.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
+                beamMat.SetFloat("_DstBlend", (float)BlendMode.One);
+                beamMat.SetFloat("_ZWrite", 0f);
+                beamMat.SetFloat("_Cull", (float)CullMode.Off);
+                beamMat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                beamMat.renderQueue = (int)RenderQueue.Transparent;
+                beamMat.enableInstancing = true;
+                return beamMat;
+            }
+            beamMat = new Material(Shader.Find("Sprites/Default")) { name = "CarHeadlightBeam", mainTexture = grad };
+            return beamMat;
+        }
+
+        private static Texture2D BeamGradient()
+        {
+            const int h = 48;
+            var tex = new Texture2D(2, h, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, name = "CarBeamGrad" };
+            for (int y = 0; y < h; y++)
+            {
+                float alpha = Mathf.Pow(1f - y / (float)(h - 1), 1.1f); // slower fade = the shaft stays visible further
+                tex.SetPixel(0, y, new Color(1f, 1f, 1f, alpha));
+                tex.SetPixel(1, y, new Color(1f, 1f, 1f, alpha));
+            }
+            tex.Apply();
+            return tex;
+        }
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetStatics() { quadMesh = null; glowMat = null; }
+        private static void ResetStatics() { quadMesh = null; glowMat = null; beamMesh = null; beamMat = null; }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Bootstrap()

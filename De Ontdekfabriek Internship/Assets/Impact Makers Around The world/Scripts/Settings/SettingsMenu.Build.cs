@@ -12,6 +12,13 @@ namespace KenyaScooter.Settings
 {
     public sealed partial class SettingsMenu
     {
+        // The sheet's size is resolved to the live canvas at Build time (see ResolveCanvasSize) so it fits any
+        // aspect — a 4:3 tablet, a 16:10 tablet, or a 16:9 editor Game view — without clipping the header/footer,
+        // and stays a comfortable, not-too-wide width instead of a fixed landscape slab. The width-dependent bits
+        // (sidebar row pitch, the profiles card grid) derive from these two numbers.
+        private const float PanelMarginX = 130f, PanelMarginY = 96f;
+        private float panelW = 1760f, panelH = 1420f;
+
         // ---- build --------------------------------------------------------------------
 
         [ContextMenu("Rebuild now")]
@@ -30,10 +37,17 @@ namespace KenyaScooter.Settings
             dim.color = new Color(0f, 0f, 0f, 0.78f);
             dim.raycastTarget = true;
 
+            // Resolve the sheet to the live canvas so it fits the screen (no clipped header/footer) and never
+            // grows wider than it needs to. Capped narrow enough to read as a centred panel, tall enough to use
+            // the available height, and always kept inside the canvas edges.
+            Vector2 canvasSize = ResolveCanvasSize();
+            panelW = Mathf.Min(Mathf.Clamp(canvasSize.x - 2f * PanelMarginX, 1480f, 2120f), canvasSize.x - 40f);
+            panelH = Mathf.Min(Mathf.Clamp(canvasSize.y - 2f * PanelMarginY, 1140f, 1420f), canvasSize.y - 40f);
+
             // Centre panel on the spec tokens (v2.7, mock parity): rust hairline, near-solid warm surface,
             // and the accent bar running along the panel's top edge like the mock's operator desk.
             RectTransform panel = NewRect((RectTransform)root.transform, "Panel");
-            Anchor(panel, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(1904f, 1456f), Vector2.zero);
+            Anchor(panel, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(panelW, panelH), Vector2.zero);
             UiKit.AddDropShadow(panel, UiKit.RadiusXl, 0.45f, 40f, 16f);
             var panelImg = panel.gameObject.AddComponent<Image>();
             panelImg.sprite = UiKit.Rounded(UiKit.RadiusXl); panelImg.type = Image.Type.Sliced;
@@ -67,30 +81,26 @@ namespace KenyaScooter.Settings
 
         private void BuildHeader(RectTransform panel)
         {
-            // v2.8 (mock parity, at measured scale): a tall header band — big tatoe ring, 64px wordmark,
-            // caps subtitle, and a roomy detail toggle + close on the right. A hairline under it separates
-            // the header from the body like the mock.
+            // v2.8 (mock parity, at measured scale): a tall header band — 64px wordmark, caps subtitle, and a
+            // roomy detail toggle + close on the right. A hairline under it separates the header from the body
+            // like the mock. (The tatoe ring badge was removed 2026-07-05 — the title carries the header alone.)
             RectTransform head = NewRect(panel, "Header");
             Anchor(head, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 168f), new Vector2(0f, -96f));
             head.offsetMin = new Vector2(64f, head.offsetMin.y);
             head.offsetMax = new Vector2(-64f, head.offsetMax.y);
 
-            var ring = AddImage(head, "Ring", Accent, RingSprite());
-            Anchor(ring.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(92f, 92f), new Vector2(46f, 2f));
-            TMP_Text ringT = AddText(head, "t", "t", 32, Cream, TextAlignmentOptions.Center); ringT.fontStyle = FontStyles.Bold;
-            Anchor(ringT.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(92f, 44f), new Vector2(46f, 2f));
-
+            // (No logo badge — the title carries the header on its own.)
             TMP_Text title = AddText(head, "Title", "Spelinstellingen", 66, Cream, TextAlignmentOptions.Left);
             title.fontStyle = FontStyles.Bold;
             title.rectTransform.anchorMin = new Vector2(0f, 0.5f); title.rectTransform.anchorMax = new Vector2(0.7f, 0.5f);
             title.rectTransform.pivot = new Vector2(0f, 0.5f);
-            title.rectTransform.offsetMin = new Vector2(122f, -20f); title.rectTransform.offsetMax = new Vector2(0f, 62f);
+            title.rectTransform.offsetMin = new Vector2(4f, -20f); title.rectTransform.offsetMax = new Vector2(0f, 62f);
 
             headerSub = AddText(head, "Sub", "", 21, Kicker, TextAlignmentOptions.Left);
             headerSub.fontStyle = FontStyles.Bold;
             headerSub.rectTransform.anchorMin = new Vector2(0f, 0.5f); headerSub.rectTransform.anchorMax = new Vector2(0.85f, 0.5f);
             headerSub.rectTransform.pivot = new Vector2(0f, 0.5f);
-            headerSub.rectTransform.sizeDelta = new Vector2(0f, 28f); headerSub.rectTransform.anchoredPosition = new Vector2(122f, -42f);
+            headerSub.rectTransform.sizeDelta = new Vector2(0f, 28f); headerSub.rectTransform.anchoredPosition = new Vector2(4f, -42f);
             Spaced(headerSub, 0.10f);
 
             // Close (big, top-right, easy target) — the X is DRAWN (the font has no ✕ glyph; it rendered as a box).
@@ -138,22 +148,6 @@ namespace KenyaScooter.Settings
             return (p - (a + ab * t)).magnitude;
         }
 
-        private Sprite _ringSprite;
-        private Sprite RingSprite()
-        {
-            if (_ringSprite != null) return _ringSprite;
-            int s = 128; var tex = new Texture2D(s, s, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
-            float r = s * 0.5f, inner = r * 0.80f;
-            for (int y = 0; y < s; y++) for (int x = 0; x < s; x++)
-            {
-                float dd = Mathf.Sqrt((x - r) * (x - r) + (y - r) * (y - r));
-                tex.SetPixel(x, y, new Color(1f, 1f, 1f, Mathf.Clamp01(r - dd) * Mathf.Clamp01(dd - inner)));
-            }
-            tex.Apply();
-            _ringSprite = Sprite.Create(tex, new Rect(0, 0, s, s), new Vector2(0.5f, 0.5f), 100f);
-            return _ringSprite;
-        }
-
         // BASIS | EXPERT master switch in the header. BASIS keeps every category to its essentials (finer tuning
         // behind "Meer opties"); EXPERT opens them fully. Persisted, and re-renders the current page on change.
         private void BuildDetailLevelControl(RectTransform head)
@@ -197,26 +191,38 @@ namespace KenyaScooter.Settings
             categoryHost.offsetMin = new Vector2(56f, 156f);
             categoryHost.offsetMax = new Vector2(56f + 500f, -210f);
 
+            // Only categories that actually have settings, actions or (for Profielen) presets appear.
+            System.Func<SettingCategory, bool> eligible = cat =>
+            {
+                foreach (var _ in SettingsCatalog.InCategory(cat)) return true;
+                foreach (var _ in SettingsCatalog.ActionsInCategory(cat)) return true;
+                if (cat == SettingCategory.Profiles && SettingsCatalog.Presets.Count > 0) return true;
+                if (cat == SettingCategory.Overview) return true; // a read-only view, always available
+                return false;
+            };
+
+            // Size the row pitch so every category fits the column height without a scroll: on a short (16:9)
+            // canvas the rows tighten; on a tall (4:3) one they relax back to the roomy 84 default.
+            int catCount = 0;
+            foreach (SettingCategory cat in System.Enum.GetValues(typeof(SettingCategory)))
+                if (eligible(cat)) catCount++;
+            float colH = panelH - 366f; // categoryHost height (top −210, bottom 156)
+            float pitch = catCount > 0 ? Mathf.Min(84f, colH / catCount) : 84f;
+            float itemH = Mathf.Clamp(pitch - 8f, 52f, 76f);
+
             float y = 0f;
             foreach (SettingCategory cat in System.Enum.GetValues(typeof(SettingCategory)))
             {
-                // Only show categories that actually have settings, actions or (for Profielen) presets.
-                bool any = false;
-                foreach (var _ in SettingsCatalog.InCategory(cat)) { any = true; break; }
-                if (!any) foreach (var _ in SettingsCatalog.ActionsInCategory(cat)) { any = true; break; }
-                if (!any && cat == SettingCategory.Profiles && SettingsCatalog.Presets.Count > 0) any = true;
-                if (!any && cat == SettingCategory.Overview) any = true; // a read-only view, always available
-                if (!any) continue;
+                if (!eligible(cat)) continue;
 
                 categoryOrder.Add(cat);
                 SettingCategory captured = cat;
 
                 // v2.8 (mock): quiet rows — no grey boxes; only the ACTIVE category wears the accent pill,
-                // labels read mixed-case. Pitch (84) is sized so all ~12 categories fit the column height
-                // without a scroll (12 × 84 = 1008 < the ~1090 available).
+                // labels read mixed-case.
                 RectTransform b = NewRect(categoryHost, "Cat_" + cat);
                 b.anchorMin = new Vector2(0f, 1f); b.anchorMax = new Vector2(1f, 1f); b.pivot = new Vector2(0.5f, 1f);
-                b.sizeDelta = new Vector2(0f, 76f); b.anchoredPosition = new Vector2(0f, -y);
+                b.sizeDelta = new Vector2(0f, itemH); b.anchoredPosition = new Vector2(0f, -y);
                 var img = b.gameObject.AddComponent<Image>(); img.sprite = Rounded(24); img.type = Image.Type.Sliced; img.color = new Color(0f, 0f, 0f, 0f);
                 var btn = b.gameObject.AddComponent<Button>(); btn.targetGraphic = img;
                 btn.onClick.AddListener(() => ShowCategory(captured));
@@ -236,7 +242,7 @@ namespace KenyaScooter.Settings
                 categoryBadges.Add(badgeT);
 
                 categoryButtons.Add(btn);
-                y += 84f;
+                y += pitch;
             }
 
             RefreshSidebarCounts();
@@ -723,9 +729,11 @@ namespace KenyaScooter.Settings
             introT.rectTransform.offsetMin = new Vector2(4f, -100f); introT.rectTransform.offsetMax = new Vector2(-4f, -58f);
             y += 110f + 18f;
 
-            // The 2-wide preset grid (content area is ~1236 wide → cards ~588). Tall enough that even a
-            // two-line title plus a three-line description never overruns the card (auto-layout inside).
-            const float cardH = 236f, gap = 22f, cardW = 588f;
+            // The 2-wide preset grid — cards sized to the live content width (20px padding each side, one gap
+            // between), so they fill the column at any panel width instead of a fixed 588. Tall enough that
+            // even a two-line title plus a three-line description never overruns the card (auto-layout inside).
+            const float cardH = 236f, gap = 22f;
+            float cardW = Mathf.Max(360f, (RowHostWidth() - 40f - gap) * 0.5f);
             int i = 0, presetRows = 0;
             foreach (var preset in SettingsCatalog.Presets)
             {
@@ -1246,6 +1254,32 @@ namespace KenyaScooter.Settings
         // ---- generic UI + sprites (mirrors KenyaMenuScreens) --------------------------
 
         private static Color Hex(string h) { ColorUtility.TryParseHtmlString(h, out var c); return c; }
+
+        // Width of the row/profiles area = panel width minus the sidebar column (view left inset 612 + right 56).
+        private float RowHostWidth() => panelW - 668f;
+
+        // The canvas size in UI (reference) units, so Build can size the panel to the live screen/aspect. Computed
+        // from the CanvasScaler formula off Screen (valid even before the first layout pass); falls back to the
+        // canvas rect, then the 4:3 reference resolution, so it always returns something sensible.
+        private Vector2 ResolveCanvasSize()
+        {
+            var scaler = GetComponentInParent<CanvasScaler>();
+            if (scaler != null && scaler.uiScaleMode == CanvasScaler.ScaleMode.ScaleWithScreenSize
+                && Screen.width > 1 && Screen.height > 1)
+            {
+                Vector2 r = scaler.referenceResolution;
+                if (r.x > 1f && r.y > 1f)
+                {
+                    float logW = Mathf.Log(Screen.width / r.x, 2f);
+                    float logH = Mathf.Log(Screen.height / r.y, 2f);
+                    float scale = Mathf.Pow(2f, Mathf.Lerp(logW, logH, Mathf.Clamp01(scaler.matchWidthOrHeight)));
+                    if (scale > 0.0001f) return new Vector2(Screen.width, Screen.height) / scale;
+                }
+            }
+            var crt = GetComponentInParent<Canvas>()?.transform as RectTransform;
+            if (crt != null && crt.rect.width > 1f && crt.rect.height > 1f) return crt.rect.size;
+            return new Vector2(2048f, 1536f);
+        }
 
         private RectTransform NewRect(RectTransform parent, string name)
         { var go = new GameObject(name, typeof(RectTransform)); go.layer = parent.gameObject.layer; var rt = go.GetComponent<RectTransform>(); rt.SetParent(parent, false); return rt; }

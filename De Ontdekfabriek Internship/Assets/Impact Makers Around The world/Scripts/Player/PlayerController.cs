@@ -2,6 +2,7 @@ using UnityEngine;
 using KenyaScooter.Config;
 using KenyaScooter.Controls;
 using KenyaScooter.Core;
+using KenyaScooter.FX;
 using KenyaScooter.SafetyNet;
 
 namespace KenyaScooter.Player
@@ -95,34 +96,118 @@ namespace KenyaScooter.Player
             // ScooterConfig.rideHeight for the vertical position.)
             baseHeight = transform.position.y;
 
-            // The bike model holder (and the camera rig) must sit laterally ON the root: the collider, the
-            // camera and every lane/hazard system live on the root, so any sideways offset on a direct child
-            // makes the visible bike ride beside the player. A stray editor drag once left the model holder
-            // at x = -3.554 (found 2026-07-05) — snap any such offset back at boot so no saved scene can
-            // ever bring that tear back. Height/forward grounding offsets are left untouched.
-            for (int i = 0; i < transform.childCount; i++)
-            {
-                Transform child = transform.GetChild(i);
-                if (Mathf.Abs(child.localPosition.x) > 0.001f)
-                {
-                    Debug.LogWarning(
-                        $"[PlayerController] '{child.name}' sat {child.localPosition.x:0.###} m sideways off the " +
-                        "player root — snapped to 0 so the bike rides where the player actually is.", child);
-                    Vector3 p = child.localPosition;
-                    p.x = 0f;
-                    child.localPosition = p;
-                }
-            }
+            // The bike model holder, the scooter model itself and the camera rig must all sit on the player's
+            // lateral centre line: the collider, the camera and every lane/hazard system live on the root, so ANY
+            // sideways offset in that holder chain makes the visible bike ride beside where the player actually is.
+            // A stray editor drag keeps leaving the model shoved sideways — x = -3.554 on the holder in one scene,
+            // and x = -3.53 on the model prefab NESTED inside "visual layer" in another (2026-07-06). The old guard
+            // only checked the root's DIRECT children, so the nested drag slipped straight through and the tear kept
+            // coming back. Snap the lateral X of the whole holder chain (children AND grandchildren) at boot so no
+            // saved scene can bring it back — but stop before the model's own parts (wheels, mirrors, exhaust),
+            // whose left/right positions are meant to be off-centre. Height/forward grounding offsets are untouched.
+            SnapLateralChain(transform, 2);
+
+            // SnapLateralChain only zeroes the LOCAL X of the holder transforms. It cannot see an offset
+            // baked DEEPER — inside the model prefab, or into the FBX/mesh itself — so if the bike mesh is
+            // authored off-centre the holders read x=0 yet the bike still RENDERS beside the player, and the
+            // tear survives every play. That was the real cause of "aligned in the scene, breaks on Play"
+            // (2026-07-06): the camera follows the ROOT's world X (RoadDirection.Lateral == worldPosition.x)
+            // while the model's rendered centre sat ~3.5 m to the side, baked into the Planeta Sport prefab.
+            // This measures the model's ACTUAL rendered centre and slides its holder so that centre sits on
+            // the player's world X — wherever the offset is baked. It runs every boot, so no saved scene or
+            // re-imported prefab can bring the tear back. Only X moves; height/forward grounding is untouched.
+            CentreModelOnRoot();
 
             // The visual lean is a separate component (M6). Add it automatically if it is not
             // already on the scooter, so the model leans into steering with no manual wiring.
+            // Added AFTER the centring above, so ScooterLean caches the model's corrected position.
             if (GetComponent<ScooterLean>() == null)
                 gameObject.AddComponent<ScooterLean>();
 
             // The dirt-road shake source (2026-07-05) is auto-added the same way; ScooterLean composes its
-            // roll + bob onto the model. It idles at zero until a tile's Surface is set to Dirt.
+            // roll + bob onto the model. It idles at zero until a tile's Surface is set to Dirt. It is kept
+            // deliberately faint now — the dirt road is COMMUNICATED mainly by the dust below, not by shaking.
             if (GetComponent<DirtRumble>() == null)
                 gameObject.AddComponent<DirtRumble>();
+
+            // The player's own murram dust — the primary "this is a dirt road" cue. A world-space plume off the
+            // rear wheel that blooms on a Dirt tile and stays clean on tarmac, matching the dust the traffic
+            // kicks up. Auto-added so it needs no scene wiring; it self-gates on surface + speed + the dust toggle.
+            if (GetComponent<ScooterDirtDust>() == null)
+                gameObject.AddComponent<ScooterDirtDust>();
+        }
+
+        /// <summary>Zeroes the local X of the player's structural holder transforms — its children and their
+        /// children (the model holder, the scooter model root, the camera rig and the camera) — so an accidental
+        /// sideways drag anywhere in that chain can never leave the visible bike riding beside the player. It
+        /// recurses only to <paramref name="maxDepth"/> levels, so it never reaches the model's own mesh parts,
+        /// whose left/right positions (the two wheels, mirrors, exhaust) are legitimately off-centre.</summary>
+        private static void SnapLateralChain(Transform parent, int maxDepth)
+        {
+            if (maxDepth <= 0)
+                return;
+            for (int i = 0; i < parent.childCount; i++)
+            {
+                Transform child = parent.GetChild(i);
+                if (Mathf.Abs(child.localPosition.x) > 0.001f)
+                {
+                    Debug.LogWarning(
+                        $"[PlayerController] '{child.name}' sat {child.localPosition.x:0.###} m sideways off the " +
+                        "player centre line — snapped to 0 so the bike rides where the player actually is.", child);
+                    Vector3 p = child.localPosition;
+                    p.x = 0f;
+                    child.localPosition = p;
+                }
+                SnapLateralChain(child, maxDepth - 1);
+            }
+        }
+
+        /// <summary>Slides the visible scooter model sideways so its RENDERED centre sits on the player's
+        /// world X — the line the collider, the camera and every lane system ride on. Unlike SnapLateralChain
+        /// (which only zeroes holder LOCAL X), this reads the model's real renderer bounds, so it corrects an
+        /// offset no matter where it is baked: a dragged holder, the model prefab, or the FBX/mesh pivot. The
+        /// whole model subtree moves as one, so anything parented to it (e.g. the headlight) keeps its place on
+        /// the bike. Only X is changed; the authored height and forward grounding are preserved.</summary>
+        private void CentreModelOnRoot()
+        {
+            Transform holder = FindModelHolder();
+            if (holder == null)
+                return;
+
+            Renderer[] rends = holder.GetComponentsInChildren<Renderer>();
+            if (rends.Length == 0)
+                return;
+
+            Bounds bounds = rends[0].bounds;
+            for (int i = 1; i < rends.Length; i++)
+                bounds.Encapsulate(rends[i].bounds);
+
+            float offsetX = bounds.center.x - transform.position.x;
+            if (Mathf.Abs(offsetX) < 0.001f)
+                return;
+
+            Debug.LogWarning(
+                $"[PlayerController] The scooter model rendered {offsetX:0.###} m off the player centre line " +
+                "(a stray drag, or a lateral offset baked into the model prefab/FBX). Sliding its holder " +
+                $"'{holder.name}' so the bike rides where the player — and the camera — actually are.", holder);
+
+            Vector3 worldPos = holder.position;
+            worldPos.x -= offsetX;
+            holder.position = worldPos;
+        }
+
+        /// <summary>The visible-model holder: the first child that carries an actual mesh (Mesh or
+        /// SkinnedMesh renderer). Never the camera rig, whose only renderer is the speed-line particles.</summary>
+        private Transform FindModelHolder()
+        {
+            for (int i = 0; i < transform.childCount; i++)
+            {
+                Transform child = transform.GetChild(i);
+                if (child.GetComponentInChildren<MeshRenderer>() != null
+                    || child.GetComponentInChildren<SkinnedMeshRenderer>() != null)
+                    return child;
+            }
+            return null;
         }
 
         private void Start()

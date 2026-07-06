@@ -4986,6 +4986,7 @@ MonoBehaviour:
   muted: {r: 0.60784316, g: 0.5411765, b: 0.47058824, a: 1}
   ledOff: {r: 0.22745098, g: 0.19607843, b: 0.17254902, a: 1}
   trackDim: {r: 0.22745098, g: 0.19607843, b: 0.17254902, a: 1}
+  chargeVisualSeconds: 1.6
 --- !u!213 &342303420
 Sprite:
   m_ObjectHideFlags: 0
@@ -9615,6 +9616,12 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   autoConfigure: 1
+  wiiRadialPreset: 1
+  streakSpeed: 36
+  streakLength: 2.6
+  streakDensity: 90
+  tunnelDepth: 30
+  tunnelAngle: 16
   overrideMaterial: {fileID: 0}
   lineColor: {r: 1, g: 1, b: 1, a: 1}
   lengthScale: 1.5
@@ -19238,9 +19245,7 @@ MonoBehaviour:
   spawnHorizon: 350
   despawnBehind: 35
   poolSizePerTile: 4
-  branchCarrierTile: {fileID: 6185508137840456350, guid: 7a5289b8e4a7a0643b9b63f4ac11b04f, type: 3}
-  sharpCurveAngleThreshold: 45
-  minSharpCurveSpacing: 160
+  zoneBiasMultiplier: 8
 --- !u!1 &881460712
 GameObject:
   m_ObjectHideFlags: 0
@@ -20443,7 +20448,7 @@ Transform:
   m_GameObject: {fileID: 971037621}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -3.554, y: -1.172, z: 0.163}
+  m_LocalPosition: {x: -3.69, y: -1.172, z: 0.163}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -24781,12 +24786,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::KenyaScooter.UI.KenyaMenuScreens
   teamName: TEAM SIMBA
-  ink: {r: 0.9764706, g: 0.9137255, b: 0.8392157, a: 1}
-  kicker: {r: 0.9490196, g: 0.6431373, b: 0.40784314, a: 1}
-  accent: {r: 0.9490196, g: 0.627451, b: 0.33333334, a: 1}
-  cream: {r: 1, g: 0.9647059, b: 0.9254902, a: 1}
-  success: {r: 0.60784316, g: 0.8784314, b: 0.4862745, a: 1}
-  cardFill: {r: 0.11, g: 0.05, b: 0.03, a: 0.46}
 --- !u!1 &1234656429
 GameObject:
   m_ObjectHideFlags: 0
@@ -29465,6 +29464,8 @@ MonoBehaviour:
   curveBankGain: 0.8
   maxCurveBank: 6
   curveFeelLerp: 4
+  player: {fileID: 0}
+  scriptedFollowLerp: 5
 --- !u!1 &1459031919
 GameObject:
   m_ObjectHideFlags: 0
@@ -30686,6 +30687,7 @@ MonoBehaviour:
   - {fileID: 499927548}
   - {fileID: 1631542983}
   sun: {fileID: 203844588}
+  transitionSmoothing: 0.6
 --- !u!1 &1513922456
 GameObject:
   m_ObjectHideFlags: 0

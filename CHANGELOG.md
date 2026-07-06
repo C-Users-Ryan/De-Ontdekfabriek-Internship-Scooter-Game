@@ -3,6 +3,38 @@
 All notable changes to the Kenya Scooter Game (`KenyaScooter`) codebase.
 Format based on [Keep a Changelog](https://keepachangelog.com/). This entry covers the final feature and fix push.
 
+## [Unreleased] - 2026-07-05
+
+### Added — day/night blue hour + a real scooter headlight
+- A sixth day phase, **MAGHARIBI (blue hour)**, plus a **USIKU** night bridge the dusk→night jump (a ~30 s sweep, not a 15 s collapse); phase times re-paced across the session and `DayCycleConfig.scaleToSessionLength` fits the arc to any facilitator-set timer.
+- **`FX/ScooterHeadlight`** — the only real light in the scene besides the sun/moon: a shadowless spot, off by day, easing in below dusk off `DayCycleManager.NightFactor01`. Traffic never gets a real `Light` — cars glow **emissive** head/tail lights (`TrafficVehicleLights` / `TrafficVehicleAutoLights`), so the scene holds at two real lights regardless of traffic count.
+
+### Added — dirt (murram) roads
+- **`RoadTile.surface`** (Paved/Dirt) + **`RoadTile.hazardDensity`** (0–4, more potholes/rocks on a rough tile). `Roads/RoadSurfaceFeel` publishes the eased dirt blend. The surface is communicated by **dust** (`FX/ScooterDirtDust`, a rear-wheel plume that blooms on dirt, clean on tarmac), not by shaking (`Player/DirtRumble` cut to a whisper). Facilitator step "Onverharde wegen" (UIT/SUBTIEL/VOL). Feel/FX only — speed, steering and scoring are identical on every surface.
+
+### Added — performance modes
+- **`Core/PerformanceMode`** — a facilitator "Prestaties" tier (AUTOMATISCH/VOLLEDIG/GEBALANCEERD/LICHT) so old exhibition tablets stay smooth. Reversible tier engine (captures the authored baseline, restores before each apply, re-applies on session reset). **Trades atmosphere, never gameplay:** traffic, hazards, speeds and scoring are identical in every tier so leaderboard scores stay comparable across devices.
+- Scoring amounts (overtake multiplier, per-hazard values, streak on/off) exposed to facilitators; a zone-aware speed read crossfades white speed lines (city) and dust (wild).
+
+### Changed — road turns rebuilt clean-slate
+- Turn authoring is now **two draggable points per turn** on `RoadTile` (green = begin, red = end); a tile defines itself (length, difficulty, allowed hazards, begin/exit points, turns). `RoadTile.EvaluateRun` is the single evaluator the sequencer, mesh, lean and spawn gating all read; **authored turns are never softened**. See `Assets/Impact Makers Around The world/ROAD SYSTEM — Step by Step Guide.md`.
+
+### Removed — the old turn/junction stack
+- Deleted 19 scripts: `TileTurn` (+`TileTurnArt`/`TileTurnConform`), `TurnTrigger`, `TurnScheduler`, `TurnSafety`, `RoadPath`, `RoadJunction`, `JunctionSideRoads`, `curveAngle`, the exit/stop anchors, and every turn/junction editor tool + its tests. **Branching junctions were removed as a feature.** Old turn/junction prefabs are dead — re-author tiles with the Turns list.
+
+### Changed — UI rebuilt 1:1 to the mock (UI v2)
+- The framing screens, the diegetic HUD and the settings menu were rebuilt against the 11-screen improved-UI mock across ~9 play-test rounds: measured sizing (not eyeballed), title-first flow (tap-to-start-anywhere retired), one-tap play, and drawn sprites where the font has no tick/cross/back glyph.
+
+### Removed — UI elements that were not in the design
+- The **A109 route-progress strip** on the relay + eindstand screens and the **"JOUW RIT" coaching panel** were removed (not in the mock). *Supersedes the "route strip on the relay + eindstand" and "coaching report on the relay hand-off" additions in the 2026-06-30 entry below.*
+
+### Changed — sense of speed de-gimmicked (final state)
+- The speed read is now a **gentle capped FOV** (~+8°) plus Kenyan dust (`SlipstreamDust` / `DustRush`) plus `SpeedLines` particle streaks. **Removed:** the camera speed-dive, the `SpeedGrade` chromatic-aberration/fisheye volume, and the velocity rattle — all distorted the fixed-camera view and pushed the first-person handlebars out of frame. `RealRiderMode` horizon roll capped at 15°. *Supersedes the "Velocity" speed-read description in the 2026-06-30 entry below.*
+
+### Maintenance
+- The "Levend Kenia" wind/ambience FX batch was copied to the live project (2026-07-03).
+- `README — Architecture and System Map.md` and the Road System guide were updated for all of the above; the vault mirror and live project were re-synced.
+
 ## [Unreleased] - 2026-06-30
 
 ### Added — settings hub covers the newest systems (presets now shape the whole game)

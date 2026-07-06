@@ -10,9 +10,9 @@ namespace KenyaScooter.Roads
     public enum TileDifficulty { Clear, Low, Medium, High }
 
     /// <summary>What the road on a tile is made of (2026-07-05). Dirt = a murram road: the scooter visual
-    /// rumbles (DirtRumble), every dust layer kicks up more (WeatherConfig.dirtDustMultiplier), and a
-    /// CurvedRoadMesh tile tints its strip red-brown. Pure feel + FX — speed, scoring and steering are
-    /// identical on both surfaces, so a dirt zone is atmosphere, never a difficulty knob.</summary>
+    /// rumbles (DirtRumble) and every dust layer kicks up more (WeatherConfig.dirtDustMultiplier). It does NOT
+    /// touch the tile's look — the road you designed stays exactly as authored. To make a dirt stretch ride
+    /// rough, dial up this tile's <see cref="RoadTile.hazardDensity"/> so more potholes and rocks land on it.</summary>
     public enum RoadSurfaceType { Paved, Dirt }
 
     /// <summary>
@@ -50,15 +50,20 @@ namespace KenyaScooter.Roads
         [Tooltip("Metres of driven road on this tile — measured automatically from the points (begin → turns → exit).")]
         public float length = 30f;
         public TileDifficulty difficulty = TileDifficulty.Clear;
-        [Tooltip("What this tile's road is made of. DIRT = a murram road: the ride rumbles, vehicles kick up " +
-                 "more dust, and a generated (CurvedRoadMesh) road strip is tinted red-brown automatically. " +
-                 "Feel and FX only — speed and scoring stay exactly the same as on tarmac.")]
+        [Tooltip("What this tile's road is made of. DIRT = a murram road: the ride rumbles and vehicles kick up " +
+                 "more dust. It does NOT change how the tile LOOKS — your designed art is left alone. Feel and " +
+                 "FX only; speed and scoring stay the same. To make dirt ride rough, raise Hazard Density below.")]
         public RoadSurfaceType surface = RoadSurfaceType.Paved;
 
         [Header("Hazards")]
         [Tooltip("Which hazards MAY spawn on this tile. Leave EMPTY to allow all hazards. Drag in the " +
                  "HazardSpawnConfig assets (pothole, rock, speed bump, ...) you want to permit here.")]
         public HazardSpawnConfig[] allowedHazards;
+        [Tooltip("How many potholes, rocks and other hazards land on THIS tile, relative to normal. " +
+                 "1 = the usual amount, 2 = twice as many, 0.5 = half, 0 = none. This is how you make a DIRT " +
+                 "stretch ride rough: mark the tile Dirt (dust + rumble) and turn this up. Pair it with the " +
+                 "allow-list above (list only the pothole/rock configs) to make the tile favour those.")]
+        [Range(0f, 4f)] public float hazardDensity = 1f;
 
         [Header("The road, as points (drag the balls in the Scene view)")]
         [Tooltip("BEGIN POINT (blue ball): where the road enters the tile. The game attaches this point to " +

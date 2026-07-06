@@ -27,9 +27,13 @@ namespace KenyaScooter.Config
         public bool dustEnabled = true;
 
         [Header("Atmospheric haze (fog)")]
-        [Tooltip("Exponential fog density used while dust is on. Higher = thicker, hazier air and a nearer " +
-                 "horizon. Keep small; the warm fog COLOUR comes from the day cycle. 0 = no fog thickening.")]
-        public float hazeFogDensity = 0.012f;
+        [Tooltip("Exponential-squared fog density used while dust is on. Higher = thicker, hazier air, a nearer " +
+                 "horizon, and — because it is DISTANCE fog — more of any FAR TALL landmark swallowed into the haze " +
+                 "band, so its top does not poke out as a hard silhouette against the sky (raised 0.009 -> 0.013 on " +
+                 "2026-07-06 for exactly that: veil the distant rock/skyline top at the end of the world). Squared, " +
+                 "so a small bump thickens the far horizon a lot while barely touching the near road and traffic. " +
+                 "Keep small; the warm fog COLOUR comes from the day cycle. 0 = no fog thickening.")]
+        public float hazeFogDensity = 0.013f;
         [Tooltip("Seconds the fog density takes to ease in/out when the dust toggle flips, so it never pops.")]
         public float hazeFadeSeconds = 2.5f;
 
@@ -58,8 +62,9 @@ namespace KenyaScooter.Config
         [Header("Dirt roads (2026-07-05)")]
         [Tooltip("How much MORE dust a dirt (murram) tile kicks up than tarmac: multiplies the behind-vehicle " +
                  "plume, the player's slipstream wake and the lean scrape while the road under the player is " +
-                 "Dirt (RoadTile.surface), easing in/out across the surface change. 1 = dirt dusts like tarmac.")]
-        public float dirtDustMultiplier = 2.5f;
+                 "Dirt (RoadTile.surface), easing in/out across the surface change. 1 = dirt dusts like tarmac. " +
+                 "Turned up so the dirt road reads clearly through DUST (the surface's main cue now, not the shake).")]
+        public float dirtDustMultiplier = 3.5f;
 
         [Header("Wind (the shared WindField gust clock)")]
         [Tooltip("Seconds per gust-front window. One front lands somewhere inside each window (hashed), so the " +

@@ -54,14 +54,22 @@ namespace KenyaScooter.Session
         private static readonly int AtmosphereId = Shader.PropertyToID("_AtmosphereThickness");
         private static readonly int SkyExposureId = Shader.PropertyToID("_Exposure");
 
-        // The atmosphere changes slowly, so we recompute it ~15×/s instead of every frame. The sun arcs at roughly
-        // 1.5°/s over the session, well below what the eye resolves, so this cadence is invisible yet cuts the
-        // per-frame cost to near zero on the tablet. On top of that we skip the writes whenever neither the phase nor
-        // the blend moved enough to see (a paused game, or the day settled into night), so a static sky costs nothing.
+        // The phase blend changes slowly, so we recompute the TARGET look ~15×/s instead of every frame. The applied
+        // look then eases toward that target every frame (EaseAndApply); the sun arcs at ~1.5°/s, far below what the
+        // eye resolves at this cadence.
         private const float EvalInterval = 1f / 15f;
         private float evalAccum;
-        private int lastLo = -1;
-        private float lastEase = -1f;
+
+        // The applied look eases toward the target every frame (EaseAndApply) so slow day changes track with no lag.
+        // The turn-to-turn reset from night back to morning is the "sudden brightening" — that is handled separately:
+        // it is snapped to morning BEHIND the relay hand-off screen (OnCheckpointReached) and HELD there, so the
+        // tap-to-start screen and the next turn both open at dawn and the player never watches night brighten in view.
+        [Tooltip("Seconds the look takes to glide for in-play changes. The turn reset is hidden behind the hand-off screen, not eased.")]
+        [SerializeField] private float transitionSmoothing = 0.6f;
+        private bool targetValid, hasApplied, holdMorning;
+        private Quaternion tSunRot, aSunRot;
+        private Color tSunCol, aSunCol, tFog, aFog, tSkyTint, aSkyTint, tGround, aGround;
+        private float tSunInt, aSunInt, tAtmo, aAtmo, tExp, aExp, tNight;
 
         /// <summary>Self-activates after scene load so the day cycle always runs automatically, with no manager to
         /// place or wire in the scene. Skips if a manager is already present (a hand-placed one still wins).</summary>
@@ -75,8 +83,30 @@ namespace KenyaScooter.Session
 
         private void Awake() => Resolve();
 
-        private void OnEnable() => GameEvents.SessionReset += HandleSessionReset;
-        private void OnDisable() => GameEvents.SessionReset -= HandleSessionReset;
+        private void OnEnable()
+        {
+            GameEvents.SessionReset += HandleSessionReset;
+            GameEvents.CheckpointReached += OnCheckpointReached;
+        }
+
+        private void OnDisable()
+        {
+            GameEvents.SessionReset -= HandleSessionReset;
+            GameEvents.CheckpointReached -= OnCheckpointReached;
+        }
+
+        /// <summary>The turn is over (bike at the charge station) and the relay hand-off screen is taking the world.
+        /// Snap the day to morning NOW, behind that screen, and HOLD it there until the next turn starts — so the
+        /// tap-to-start screen and the next turn both open at dawn and the player never watches the night brighten
+        /// back to morning in view. Snapped directly (not via Update) so it lands even if the state leaves
+        /// Playing/AtCheckpoint immediately after.</summary>
+        private void OnCheckpointReached()
+        {
+            if (config == null || config.phases.Length == 0 || !config.cycleEnabled)
+                return;
+            holdMorning = true;
+            SnapToPhase(0);
+        }
 
         /// <summary>Fills any reference left unwired, so the cycle runs with zero scene setup. Prefers the shared
         /// config asset (so the facilitator's Dag-nacht toggle keeps steering the SAME instance); only if none is
@@ -116,46 +146,19 @@ namespace KenyaScooter.Session
 
             EnsureSkybox();
 
-            // Throttle: most frames just accumulate time and return (see EvalInterval above).
+            // Recompute the TARGET look at the eval cadence (cheap). The phase blend is what actually moves.
             evalAccum += Time.deltaTime;
-            if (evalAccum < EvalInterval)
-                return;
-            evalAccum = 0f;
-
-            // Where are we on the authored timeline? lo = the phase we are in, hi = the next one, frac = progress
-            // between them, measured against the REAL time each phase spans — so the fast equatorial dusk stays fast.
-            float elapsed = config.cycleEnabled
-                ? TimerManager.Instance.Elapsed
-                : config.phases[Mathf.Clamp(config.fixedPhaseIndex, 0, config.phases.Length - 1)].startTime;
-
-            // Fit the authored arc to the facilitator's actual session length: convert real elapsed into the
-            // reference timeline the start times were authored on, so the full day always spans the whole run.
-            if (config.cycleEnabled && config.scaleToSessionLength)
+            if (!targetValid || evalAccum >= EvalInterval)
             {
-                float duration = TimerManager.Instance.Duration;
-                if (duration > 0.01f && config.referenceSessionSeconds > 0.01f)
-                    elapsed *= config.referenceSessionSeconds / duration;
+                evalAccum = 0f;
+                targetValid = true;
+                ComputeTarget();
             }
 
-            ResolveBlend(elapsed, out int lo, out int hi, out float frac);
-            float ease = Mathf.SmoothStep(0f, 1f, frac); // ease the colour/light glide in and out of each phase
-
-            if (lo != CurrentPhase)
-            {
-                CurrentPhase = lo;
-                GameEvents.RaiseDayPhaseChanged(lo, config.phases[lo].label);
-                // Refresh skybox-derived ambient on the (few) phase changes, not every frame.
-                if (skyDriven)
-                    DynamicGI.UpdateEnvironment();
-            }
-
-            // Nothing moved enough to be visible: leave the sun, fog, sky and volumes exactly as they are.
-            if (lo == lastLo && Mathf.Abs(ease - lastEase) < 0.004f)
-                return;
-            lastLo = lo;
-            lastEase = ease;
-
-            ApplyBlend(lo, hi, ease);
+            // Glide the applied look toward the target EVERY frame: slow day changes track exactly, but a sudden jump
+            // (the turn-to-turn reset from night back to morning) eases over transitionSmoothing so it reads as a
+            // gentle dawn instead of a flash.
+            EaseAndApply(Time.deltaTime);
         }
 
         /// <summary>Resolves the scene skybox once. If it is a Skybox/Procedural material (has the tint + atmosphere
@@ -209,41 +212,123 @@ namespace KenyaScooter.Session
             frac = Mathf.Clamp01((elapsed - phases[lo].startTime) / span);
         }
 
-        /// <summary>Writes the continuously interpolated look for the moment between phases lo and hi. This is the
-        /// vibe upgrade over the old "snap toward the current phase then hold": the sun now genuinely ARCS and the sky
-        /// keeps warming all through each phase, so the light feels alive and the equatorial dusk sweeps quickly to
-        /// night. Cost is a handful of lerps, run at EvalInterval, so it stays cheap on the tablet.</summary>
-        private void ApplyBlend(int lo, int hi, float ease)
+        /// <summary>Recomputes the TARGET look for the current moment on the timeline (the phase blend). Stored, not
+        /// written to the scene directly — EaseAndApply glides the actual look toward it so the turn reset doesn't flash.</summary>
+        private void ComputeTarget()
         {
+            float elapsed = holdMorning ? 0f
+                : config.cycleEnabled ? TimerManager.Instance.Elapsed
+                : config.phases[Mathf.Clamp(config.fixedPhaseIndex, 0, config.phases.Length - 1)].startTime;
+
+            // Fit the authored arc to the facilitator's actual session length.
+            if (config.cycleEnabled && config.scaleToSessionLength)
+            {
+                float duration = TimerManager.Instance.Duration;
+                if (duration > 0.01f && config.referenceSessionSeconds > 0.01f)
+                    elapsed *= config.referenceSessionSeconds / duration;
+            }
+
+            ResolveBlend(elapsed, out int lo, out int hi, out float frac);
+            float ease = Mathf.SmoothStep(0f, 1f, frac);
+
+            if (lo != CurrentPhase)
+            {
+                CurrentPhase = lo;
+                GameEvents.RaiseDayPhaseChanged(lo, config.phases[lo].label);
+                if (skyDriven)
+                    DynamicGI.UpdateEnvironment(); // refresh skybox-derived ambient on the (few) phase changes only
+            }
+
             DayCycleConfig.Phase a = config.phases[lo];
             DayCycleConfig.Phase b = config.phases[hi];
 
-            // The artificial-light level rides the exact same blend as the sky, so the headlight fades in as it darkens.
-            NightFactor01 = Mathf.Lerp(a.artificialLight, b.artificialLight, ease);
+            tNight = Mathf.Lerp(a.artificialLight, b.artificialLight, ease);
+            tSunRot = Quaternion.Slerp(Quaternion.Euler(a.sunEuler), Quaternion.Euler(b.sunEuler), ease);
+            tSunCol = Color.Lerp(a.sunColour, b.sunColour, ease);
+            tSunInt = Mathf.Lerp(a.sunIntensity, b.sunIntensity, ease);
+            tFog = Color.Lerp(a.fogColour, b.fogColour, ease);
+            tSkyTint = Color.Lerp(a.skyTint, b.skyTint, ease);
+            tGround = Color.Lerp(a.groundColour, b.groundColour, ease);
+            tAtmo = Mathf.Lerp(a.atmosphereThickness, b.atmosphereThickness, ease);
+            tExp = Mathf.Lerp(a.skyExposure, b.skyExposure, ease);
 
             int volumeCount = phaseVolumes == null ? 0 : Mathf.Min(phaseVolumes.Length, config.phases.Length);
             for (int i = 0; i < volumeCount; i++)
             {
                 if (phaseVolumes[i] == null)
                     continue;
-                // A true crossfade of the two active phases; every other phase Volume is off.
                 phaseVolumes[i].weight = i == lo ? 1f - ease : i == hi ? ease : 0f;
             }
+        }
+
+        /// <summary>Eases the applied sun/fog/sky toward the target and writes it. The first apply snaps (no dawn fade
+        /// on boot); after that a time-constant ease smooths any jump (the turn reset) while tracking the slow day arc
+        /// with no visible lag. NightFactor01 rides along, so the headlight/car glows ease with it.</summary>
+        private void EaseAndApply(float dt)
+        {
+            float k = hasApplied ? 1f - Mathf.Exp(-dt / Mathf.Max(0.01f, transitionSmoothing)) : 1f;
+            hasApplied = true;
+
+            aSunRot = Quaternion.Slerp(aSunRot, tSunRot, k);
+            aSunCol = Color.Lerp(aSunCol, tSunCol, k);
+            aSunInt = Mathf.Lerp(aSunInt, tSunInt, k);
+            aFog = Color.Lerp(aFog, tFog, k);
+            aSkyTint = Color.Lerp(aSkyTint, tSkyTint, k);
+            aGround = Color.Lerp(aGround, tGround, k);
+            aAtmo = Mathf.Lerp(aAtmo, tAtmo, k);
+            aExp = Mathf.Lerp(aExp, tExp, k);
+            NightFactor01 = Mathf.Lerp(NightFactor01, tNight, k);
 
             if (sun != null)
             {
-                sun.transform.rotation = Quaternion.Slerp(Quaternion.Euler(a.sunEuler), Quaternion.Euler(b.sunEuler), ease);
-                sun.color = Color.Lerp(a.sunColour, b.sunColour, ease);
-                sun.intensity = Mathf.Lerp(a.sunIntensity, b.sunIntensity, ease);
+                sun.transform.rotation = aSunRot;
+                sun.color = aSunCol;
+                sun.intensity = aSunInt;
             }
-            RenderSettings.fogColor = Color.Lerp(a.fogColour, b.fogColour, ease);
-
+            RenderSettings.fogColor = aFog;
             if (skyDriven && skybox != null)
             {
-                skybox.SetColor(SkyTintId, Color.Lerp(a.skyTint, b.skyTint, ease));
-                skybox.SetColor(GroundColourId, Color.Lerp(a.groundColour, b.groundColour, ease));
-                skybox.SetFloat(AtmosphereId, Mathf.Lerp(a.atmosphereThickness, b.atmosphereThickness, ease));
-                skybox.SetFloat(SkyExposureId, Mathf.Lerp(a.skyExposure, b.skyExposure, ease));
+                skybox.SetColor(SkyTintId, aSkyTint);
+                skybox.SetColor(GroundColourId, aGround);
+                skybox.SetFloat(AtmosphereId, aAtmo);
+                skybox.SetFloat(SkyExposureId, aExp);
+            }
+        }
+
+        /// <summary>Instantly sets the applied look to a phase and writes it to the scene, bypassing the ease — used
+        /// to reset the day to morning behind the hand-off screen, so there is no visible glide.</summary>
+        private void SnapToPhase(int idx)
+        {
+            idx = Mathf.Clamp(idx, 0, config.phases.Length - 1);
+            DayCycleConfig.Phase p = config.phases[idx];
+            aSunRot = Quaternion.Euler(p.sunEuler);
+            aSunCol = p.sunColour;
+            aSunInt = p.sunIntensity;
+            aFog = p.fogColour;
+            aSkyTint = p.skyTint;
+            aGround = p.groundColour;
+            aAtmo = p.atmosphereThickness;
+            aExp = p.skyExposure;
+            NightFactor01 = p.artificialLight;
+            hasApplied = true;
+            targetValid = false; // ComputeTarget re-runs next update (reads morning while holdMorning)
+            CurrentPhase = idx;
+
+            EnsureSkybox();
+            if (sun != null)
+            {
+                sun.transform.rotation = aSunRot;
+                sun.color = aSunCol;
+                sun.intensity = aSunInt;
+            }
+            RenderSettings.fogColor = aFog;
+            if (skyDriven && skybox != null)
+            {
+                skybox.SetColor(SkyTintId, aSkyTint);
+                skybox.SetColor(GroundColourId, aGround);
+                skybox.SetFloat(AtmosphereId, aAtmo);
+                skybox.SetFloat(SkyExposureId, aExp);
+                DynamicGI.UpdateEnvironment();
             }
         }
 
@@ -252,38 +337,15 @@ namespace KenyaScooter.Session
             if (config == null || config.phases.Length == 0)
                 return;
 
-            // Start the turn at the cycle's first phase, or at the chosen fixed phase if the cycle is off.
-            int start = config.cycleEnabled ? 0 : Mathf.Clamp(config.fixedPhaseIndex, 0, config.phases.Length - 1);
-            CurrentPhase = start;
+            // The new turn's timer is now 0, so the day reads morning on its own. The look is ALREADY at morning if a
+            // checkpoint preceded this (OnCheckpointReached snapped it behind the hand-off screen) — so clearing the
+            // hold here leaves nothing to brighten in view. On the rare no-checkpoint restart, snap morning too so the
+            // turn opens at dawn rather than easing up from the frozen night.
+            if (!holdMorning)
+                SnapToPhase(config.cycleEnabled ? 0 : Mathf.Clamp(config.fixedPhaseIndex, 0, config.phases.Length - 1));
+            holdMorning = false;
+            targetValid = false;
             evalAccum = 0f;
-            lastLo = start;
-            lastEase = 0f;
-            DayCycleConfig.Phase phase = config.phases[start];
-            NightFactor01 = phase.artificialLight;
-            int volumeCount = phaseVolumes == null ? 0 : Mathf.Min(phaseVolumes.Length, config.phases.Length);
-            for (int i = 0; i < volumeCount; i++)
-                if (phaseVolumes[i] != null)
-                    phaseVolumes[i].weight = i == start ? 1f : 0f;
-
-            if (sun != null)
-            {
-                sun.transform.rotation = Quaternion.Euler(phase.sunEuler);
-                sun.color = phase.sunColour;
-                sun.intensity = phase.sunIntensity;
-            }
-            RenderSettings.fogColor = phase.fogColour;
-
-            EnsureSkybox();
-            if (skyDriven && skybox != null)
-            {
-                skybox.SetColor(SkyTintId, phase.skyTint);
-                skybox.SetColor(GroundColourId, phase.groundColour);
-                skybox.SetFloat(AtmosphereId, phase.atmosphereThickness);
-                skybox.SetFloat(SkyExposureId, phase.skyExposure);
-                DynamicGI.UpdateEnvironment();
-            }
-
-            GameEvents.RaiseDayPhaseChanged(start, phase.label);
         }
     }
 }

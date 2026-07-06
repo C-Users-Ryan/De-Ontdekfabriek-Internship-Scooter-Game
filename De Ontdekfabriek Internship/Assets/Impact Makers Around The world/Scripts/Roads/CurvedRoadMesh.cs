@@ -39,15 +39,6 @@ namespace KenyaScooter.Roads
         [Tooltip("If a surface renders dark/invisible from above, tick this to reverse the triangle winding.")]
         [SerializeField] private bool flipFaces = false;
 
-        [Header("Dirt look (2026-07-05)")]
-        [Tooltip("When the tile's Surface is Dirt, tint THIS tile's road strip murram red-brown via a " +
-                 "MaterialPropertyBlock — the shared road material is untouched, so paved tiles keep their " +
-                 "asphalt and no dirt material has to exist. Untick on a tile that has its own dirt art.")]
-        [SerializeField] private bool tintDirtRoad = true;
-        [Tooltip("The murram colour the road strip takes on a Dirt tile (it also flattens the gloss so the " +
-                 "surface reads as packed dry earth).")]
-        [SerializeField] private Color dirtRoadColour = new Color(0.66f, 0.40f, 0.24f, 1f);
-
         private Mesh mesh;
         private MeshFilter meshFilter;
         private RoadTile activeTile; // set during BuildFromTile so AddStrip can convert metres → tile local
@@ -118,39 +109,6 @@ namespace KenyaScooter.Roads
             float minRadius = tile.MinBendRadius();
             EmitStrips(minRadius < float.MaxValue ? minRadius * 0.92f : float.MaxValue);
             activeTile = null;
-
-            ApplySurfaceLook(tile);
-        }
-
-        // ---- Dirt look --------------------------------------------------------------------------------
-
-        private static MaterialPropertyBlock dirtBlock; // shared scratch; SetPropertyBlock copies the values
-        private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor"); // URP Lit / Simple Lit
-        private static readonly int LegacyColorId = Shader.PropertyToID("_Color");   // built-in / older shaders
-        private static readonly int SmoothnessId = Shader.PropertyToID("_Smoothness");
-
-        /// <summary>Tints the road strip (sub-mesh 0's material slot) murram on a Dirt tile and restores the
-        /// plain material on a Paved one. Runs at every rebuild — the sequencer's spawn call and the editor
-        /// preview — so flipping the tile's Surface enum shows the dirt immediately, in edit mode too.</summary>
-        private void ApplySurfaceLook(RoadTile tile)
-        {
-            MeshRenderer meshRenderer = GetComponent<MeshRenderer>();
-            if (meshRenderer == null)
-                return;
-
-            if (!tintDirtRoad || tile.surface != RoadSurfaceType.Dirt)
-            {
-                meshRenderer.SetPropertyBlock(null, 0); // back to the shared material exactly as authored
-                return;
-            }
-
-            if (dirtBlock == null)
-                dirtBlock = new MaterialPropertyBlock();
-            dirtBlock.Clear();
-            dirtBlock.SetColor(BaseColorId, dirtRoadColour);
-            dirtBlock.SetColor(LegacyColorId, dirtRoadColour);
-            dirtBlock.SetFloat(SmoothnessId, 0.12f); // dry packed earth, not wet asphalt sheen
-            meshRenderer.SetPropertyBlock(dirtBlock, 0);
         }
 
         /// <summary>Emits the road (and optional ground) strip from the already-sampled centres/rights/uList,

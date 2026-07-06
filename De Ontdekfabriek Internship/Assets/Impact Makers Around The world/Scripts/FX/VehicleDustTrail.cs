@@ -1,94 +1,129 @@
+using System.Collections.Generic;
 using UnityEngine;
 using KenyaScooter.Config;
 using KenyaScooter.Core;
 using KenyaScooter.Roads;
 using KenyaScooter.Settings;
+using KenyaScooter.Traffic;
 
 namespace KenyaScooter.FX
 {
     /// <summary>
-    /// Dust kicked up behind a moving vehicle on a dry Kenyan road (Oplevering 25 Jun 2026). Drop this on a
-    /// traffic-vehicle prefab or the player scooter; it builds its own world-space dust plume on a render-safe
-    /// soft-sprite material (so it can never go magenta under URP, like SpeedLines) and needs no other wiring.
+    /// Dust kicked up behind a moving vehicle on a dry Kenyan road. Builds one soft world-space plume PER REAR
+    /// WHEEL, so the dust rises off the tyres instead of from a single puff at the bumper, on a render-safe
+    /// soft-sprite material (never magenta under URP). Auto-added to traffic by <see cref="TrafficVehicle"/>;
+    /// also works on the player scooter.
     ///
-    /// ADDITIVE AND GATED. Emission scales with world speed and is silenced below a configurable speed, and the
-    /// whole thing is off unless <see cref="WeatherConfig.dustEnabled"/> is on (the facilitator dust toggle).
-    /// If the component is never attached, or no WeatherConfig exists, nothing is emitted and nothing changes.
+    /// SPEED-DRIVEN AND GATED. Emission rises with the vehicle's OWN speed SQUARED — a crawling car barely
+    /// wisps, a fast one throws a full plume — boosted ×<see cref="WeatherConfig.dirtDustMultiplier"/> on a
+    /// Dirt tile, and off entirely unless <see cref="WeatherConfig.dustEnabled"/> is on. Each puff is a random
+    /// blend of a darker and a lighter murram tone, so it reads as billowing dust rather than a flat sheet.
     /// </summary>
     public sealed class VehicleDustTrail : MonoBehaviour
     {
-        [Tooltip("Where the plume sits relative to this object, in its local space. Default is low and behind " +
-                 "(−Z is the vehicle's rear, since vehicles face their travel direction).")]
-        [SerializeField] private Vector3 localOffset = new Vector3(0f, 0.05f, -2f);
+        [Tooltip("Rear-axle reference point in local space (behind, low). A plume is built at each rear wheel, " +
+                 "offset sideways from here, so the dust rises off the tyres.")]
+        [SerializeField] private Vector3 localOffset = new Vector3(0f, 0.2f, -2f);
         [Tooltip("Optional. Leave empty to auto-find the shared WeatherConfig at runtime.")]
         [SerializeField] private WeatherConfig config;
 
-        private ParticleSystem plume;
-        private ParticleSystem.EmissionModule plumeEmission;
+        private readonly List<ParticleSystem> plumes = new List<ParticleSystem>(2);
+        private TrafficVehicle vehicle;
+
+        /// <summary>Own-speed (m/s) at which a traffic vehicle throws its FULL dust.</summary>
+        private const float DustFullSpeed = 8f;
+        private const float MinSpeedRatio = 0.05f;
+        /// <summary>Minimum start-alpha so puffs read against the warm dusty background.</summary>
+        private const float MinAlpha = 0.7f;
+        /// <summary>Plume size boost over the config's authored size.</summary>
+        private const float VisibilityScale = 1.8f;
+        /// <summary>Sideways distance from the centre line to each rear wheel (approx; models vary).</summary>
+        private const float RearWheelHalfWidth = 0.7f;
 
         private void Awake()
         {
             if (config == null)
                 config = DustAtmosphere.ResolveConfig();
-            BuildPlume();
+            vehicle = GetComponent<TrafficVehicle>(); // present on traffic; null on the player scooter
+            BuildPlume(localOffset + new Vector3(-RearWheelHalfWidth, 0f, 0f));
+            BuildPlume(localOffset + new Vector3(RearWheelHalfWidth, 0f, 0f));
         }
 
         private void Update()
         {
-            if (plume == null)
+            if (plumes.Count == 0)
                 return;
 
             float rate = 0f;
             if (config != null && config.dustEnabled && WorldSpeed.Instance != null
                 && (GameManager.State == GameState.Playing || GameManager.State == GameState.AtCheckpoint))
             {
-                float ratio = WorldSpeed.Instance.SpeedRatio;
-                if (ratio > config.vehicleDustMinSpeedRatio)
+                // Dust is thrown by THIS vehicle's own motion over the road (the player scooter falls back to
+                // world-scroll). Speed drives it SQUARED, so a crawling car barely wisps and a fast one plumes.
+                float ratio = vehicle != null
+                    ? Mathf.Clamp01(vehicle.CurrentSpeed / DustFullSpeed)
+                    : WorldSpeed.Instance.SpeedRatio;
+                if (ratio > MinSpeedRatio)
                 {
-                    float t = Mathf.InverseLerp(config.vehicleDustMinSpeedRatio, 1f, ratio);
-                    // On a dirt tile every vehicle churns more — all traffic rides the same road as the
-                    // player, so one shared surface blend is correct for the whole convoy.
-                    rate = t * config.vehicleDustEmission * RoadSurfaceFeel.DustBoost(config.dirtDustMultiplier);
+                    float t = Mathf.InverseLerp(MinSpeedRatio, 1f, ratio);
+                    rate = t * t * config.vehicleDustEmission * RoadSurfaceFeel.DustBoost(config.dirtDustMultiplier);
                 }
 
-                ParticleSystem.MainModule main = plume.main;
-                main.startColor = config.vehicleDustColour;
-                main.startLifetime = config.vehicleDustLifetime;
+                // Layered warm dust: each puff is a random blend of a darker and lighter murram tone.
+                Color hi = config.vehicleDustColour;
+                hi.a = Mathf.Max(hi.a, MinAlpha);
+                Color lo = hi * 0.82f; lo.a = hi.a;
+                var grad = new ParticleSystem.MinMaxGradient(lo, hi);
+                for (int i = 0; i < plumes.Count; i++)
+                {
+                    ParticleSystem.MainModule m = plumes[i].main;
+                    m.startColor = grad;
+                    m.startLifetime = config.vehicleDustLifetime;
+                }
             }
-            plumeEmission.rateOverTime = rate;
+
+            float perWheel = rate * 0.5f; // split the emission across the two wheel plumes
+            for (int i = 0; i < plumes.Count; i++)
+            {
+                ParticleSystem.EmissionModule em = plumes[i].emission;
+                em.rateOverTime = perWheel;
+            }
         }
 
-        private void BuildPlume()
+        private void BuildPlume(Vector3 offset)
         {
             var go = new GameObject("DustTrail");
             go.transform.SetParent(transform, false);
-            go.transform.localPosition = localOffset;
+            go.transform.localPosition = offset;
             go.transform.localRotation = Quaternion.identity;
 
-            plume = go.AddComponent<ParticleSystem>();
+            var plume = go.AddComponent<ParticleSystem>();
             plume.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
 
-            float startSize = config != null ? config.vehicleDustSize.x : 0.5f;
-            float endSize = config != null ? config.vehicleDustSize.y : 1.4f;
+            float startSize = (config != null ? config.vehicleDustSize.x : 0.5f) * VisibilityScale;
+            float endSize = (config != null ? config.vehicleDustSize.y : 1.4f) * VisibilityScale;
             float life = config != null ? config.vehicleDustLifetime : 0.9f;
 
             ParticleSystem.MainModule main = plume.main;
             // World space so each puff is LEFT BEHIND as the vehicle moves, reading as a trailing dust cloud.
             main.simulationSpace = ParticleSystemSimulationSpace.World;
-            main.startSpeed = new ParticleSystem.MinMaxCurve(0.3f, 1.0f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(0.4f, 1.4f); // a touch more spread near the ground
             main.startLifetime = life;
             main.startSize = endSize; // full size; the size curve below scales each puff up to this as it disperses
-            main.startColor = config != null ? config.vehicleDustColour : new Color(0.8f, 0.64f, 0.45f, 0.45f);
+            Color initHi = config != null ? config.vehicleDustColour : new Color(0.8f, 0.64f, 0.45f, 0.45f);
+            initHi.a = Mathf.Max(initHi.a, MinAlpha);
+            Color initLo = initHi * 0.82f; initLo.a = initHi.a;
+            main.startColor = new ParticleSystem.MinMaxGradient(initLo, initHi);
             main.gravityModifier = -0.02f; // a touch of lift, so dust billows up before settling
             main.maxParticles = 120;
             main.playOnAwake = false;
 
-            // Spray low and to the rear: a shallow cone aimed back and slightly up off the wheels.
+            // Spray low and to the rear in a wide fan, so the dust spreads along the ground off the wheel.
             ParticleSystem.ShapeModule shape = plume.shape;
             shape.enabled = true;
             shape.shapeType = ParticleSystemShapeType.Cone;
-            shape.angle = 25f;
-            shape.radius = 0.3f;
+            shape.angle = 35f;
+            shape.radius = 0.2f;
             shape.rotation = new Vector3(110f, 0f, 0f); // tilt the cone back-and-up relative to forward
 
             // Grow each puff as it expands and disperses.
@@ -98,7 +133,7 @@ namespace KenyaScooter.FX
                 new Keyframe(0f, Mathf.Max(0.01f, startSize / Mathf.Max(0.01f, endSize))),
                 new Keyframe(1f, 1f)));
 
-            // Fade out so the trail dissolves instead of cutting off.
+            // Fade in a touch then out, so the trail dissolves instead of cutting off.
             ParticleSystem.ColorOverLifetimeModule col = plume.colorOverLifetime;
             col.enabled = true;
             var grad = new Gradient();
@@ -111,9 +146,11 @@ namespace KenyaScooter.FX
             psr.renderMode = ParticleSystemRenderMode.Billboard;
             psr.material = FXMaterials.SoftDustMaterial();
 
-            plumeEmission = plume.emission;
-            plumeEmission.rateOverTime = 0f;
+            ParticleSystem.EmissionModule emission = plume.emission;
+            emission.rateOverTime = 0f;
             plume.Play();
+
+            plumes.Add(plume);
         }
     }
 }

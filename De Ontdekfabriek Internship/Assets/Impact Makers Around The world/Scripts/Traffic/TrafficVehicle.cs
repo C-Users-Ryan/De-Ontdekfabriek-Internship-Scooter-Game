@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using KenyaScooter.Config;
 using KenyaScooter.Core;
+using KenyaScooter.FX;
 using KenyaScooter.Hazards;
 using KenyaScooter.Roads;
 using KenyaScooter.SafetyNet;
@@ -140,6 +141,17 @@ namespace KenyaScooter.Traffic
         {
             propertyBlock = new MaterialPropertyBlock();
             horn = GetComponent<TrafficHorn>();
+            // Every MOVING vehicle kicks up road dust (base amount on tarmac, much more on a dirt tile via
+            // RoadSurfaceFeel). Self-bootstrap it so ALL traffic dusts without each prefab needing the
+            // "Add Dust Trail to Selection" tool run on it. Idempotent: a prefab that already carries one is
+            // left alone. Skip permanently-parked wrecks (isStaticObstacle) so they don't trail dust while
+            // sitting still. The plume itself stays gated by WeatherConfig.dustEnabled and world speed.
+            // ONE dust system (VehicleDust). It replaces the old VehicleDustTrail + VehicleSandKick pair, which
+            // drove emission through a CACHED particle module and silently threw "Do not create your own module
+            // instances" every frame in this project — so no car dust ever appeared. VehicleDust emits via
+            // ParticleSystem.Emit() (the same safe path as TrafficExhaust) and is heavier on a Dirt tile.
+            if (!isStaticObstacle && GetComponentInChildren<VehicleDust>(true) == null)
+                gameObject.AddComponent<VehicleDust>();
         }
 
         private void OnEnable() => Active.Add(this);
