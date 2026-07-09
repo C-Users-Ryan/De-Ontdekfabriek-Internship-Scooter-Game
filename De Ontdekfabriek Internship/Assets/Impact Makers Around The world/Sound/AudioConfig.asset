@@ -12,8 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f215475ba47155340b6dca9ca9cea619, type: 3}
   m_Name: AudioConfig
   m_EditorClassIdentifier: Assembly-CSharp::KenyaScooter.Config.AudioConfig
-  engineVolume: 0.1
+  engineVolume: 0.053
   motorLoop: {fileID: 8300000, guid: 87f2686fea5136d4eaa67a665fe0357b, type: 3}
+  motorLevel: 1
   motorVolume:
     serializedVersion: 2
     m_Curve:
@@ -63,8 +64,11 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   motorStart: {fileID: 0}
+  motorStartVolume: 1
   motorStop: {fileID: 0}
+  motorStopVolume: 1
   windLoop: {fileID: 8300000, guid: eade3530441e93641936fc34def5c2a5, type: 3}
+  windLevel: 1
   windVolume:
     serializedVersion: 2
     m_Curve:
@@ -99,6 +103,7 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   surfaceLoop: {fileID: 0}
+  surfaceLevel: 1
   surfaceVolume:
     serializedVersion: 2
     m_Curve:
@@ -124,12 +129,15 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   ambientVariants:
-  - contextTag: 
+  - contextTag: Wild
     clip: {fileID: 8300000, guid: 0769c78f67cf8b8428b4afc96c930b55, type: 3}
+    volume: 1
   - contextTag: City
     clip: {fileID: 8300000, guid: d766aaee04a069a45add8ce2d08c00c0, type: 3}
-  - contextTag: 
+    volume: 0.431
+  - contextTag: Wild
     clip: {fileID: 8300000, guid: de6593399443a724ca802aea30c0b312, type: 3}
+    volume: 1
   ambientCrossfadeSeconds: 2.5
   ambientVolume: 0.85
   musicLoop: {fileID: 0}
@@ -139,12 +147,29 @@ MonoBehaviour:
   sfxVolume: 0.1
   sfxPoolSize: 8
   overtakeSting: {fileID: 8300000, guid: 2d87f17ee3e562e4a93a7348106d1b34, type: 3}
+  overtakeStingVolume: 1
   nearMissScreech: {fileID: 0}
+  nearMissScreechVolume: 1
   crashHard: {fileID: 8300000, guid: 69005b78d1fde9a4aa3869176101ee87, type: 3}
+  crashHardVolume: 1
   crashLight: {fileID: 8300000, guid: 0a4a9f09e34db5142b651ba4881497e6, type: 3}
+  crashLightVolume: 1
   potholeBump: {fileID: 8300000, guid: 0a4a9f09e34db5142b651ba4881497e6, type: 3}
+  potholeBumpVolume: 1
   wrongLaneBuzz: {fileID: 8300000, guid: 247ea1e673fac26429dffe1907e15300, type: 3}
+  wrongLaneBuzzVolume: 1
   graceSaved: {fileID: 0}
-  rewindWhoosh: {fileID: 8300000, guid: 9950fe740a3fa9c4a97471f7afbd5eb9, type: 3}
+  graceSavedVolume: 1
+  rewindWhoosh: {fileID: 8300000, guid: 514b23eea39c67a4ebc32124329d3089, type: 3}
+  rewindWhooshVolume: 1
   checkpointArrive: {fileID: 0}
+  checkpointArriveVolume: 1
   hadadaIbis: {fileID: 0}
+  hadadaIbisVolume: 1
+  uiVolume: 0.6
+  uiTap: {fileID: 0}
+  uiTapVolume: 1
+  uiScreenShow: {fileID: 0}
+  uiScreenShowVolume: 1
+  menuWorldDuck: 0
+  menuDucksMusic: 0

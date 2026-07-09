@@ -165,9 +165,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::KenyaScooter.Roads.RoadTile
   length: 200
-  difficulty: 3
+  difficulty: 2
   surface: 0
-  allowedHazards: []
+  allowedHazards:
+  - {fileID: 11400000, guid: 6b552f1b2b753714bacd37cf256d772f, type: 2}
   hazardDensity: 1
   beginPoint: {x: 0, y: 0, z: 5}
   exitPoint: {x: 0, y: 0, z: -5}

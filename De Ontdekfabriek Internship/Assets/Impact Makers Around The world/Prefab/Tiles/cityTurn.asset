@@ -13,7 +13,8 @@ MonoBehaviour:
   m_Name: cityTurn
   m_EditorClassIdentifier: Assembly-CSharp::KenyaScooter.Roads.RoadSequence
   zoneName: HIGHLAND
-  contextTags: []
+  contextTags:
+  - City
   tiles:
   - {fileID: 8678437511983235021, guid: d80724633762f2d4d9528b23bdc01c04, type: 3}
   shuffleTiles: 0

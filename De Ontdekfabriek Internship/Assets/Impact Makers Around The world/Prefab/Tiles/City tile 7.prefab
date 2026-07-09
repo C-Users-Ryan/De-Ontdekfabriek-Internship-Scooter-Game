@@ -165,7 +165,8 @@ MonoBehaviour:
   length: 208.17587
   difficulty: 3
   surface: 0
-  allowedHazards: []
+  allowedHazards:
+  - {fileID: 11400000, guid: 6b552f1b2b753714bacd37cf256d772f, type: 2}
   hazardDensity: 1
   beginPoint: {x: 0, y: 0, z: 5}
   exitPoint: {x: -5, y: 0, z: -0.6017319}
