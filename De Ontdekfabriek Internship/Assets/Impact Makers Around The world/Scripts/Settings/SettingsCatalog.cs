@@ -137,21 +137,49 @@ namespace KenyaScooter.Settings
             }
         }
 
+        // The profile lineup. Two INDEPENDENT axes the facilitator page presents as two labelled sections
+        // (2026-07-14, Ryan): a MODE (Primary presets — how you play: Standaard = the class relay, or Eindeloze
+        // modus = the solo lives run) and a DIFFICULTY (non-primary — Rustig / Normaal / Uitdagend). The three
+        // difficulty presets only touch intensity settings, never session.endless, so any of them stacks cleanly
+        // on EITHER mode. Normaal is the way BACK to normal after Rustig/Uitdagend. The old
+        // Kenia/Nederland/Demo/Prikkelarm/Jonge-kinderen profiles were cut (they added nothing — Ryan); the calm
+        // tuning lives on in Rustig and the drive-side is a quick toggle.
         private static List<SettingsPreset> BuildPresets()
         {
             var list = new List<SettingsPreset>();
 
-            // "Standaard" fully clears every override — the safe way back to the shipped, balanced game.
+            // MAIN MODE 1 — the class relay, as shipped. Clears every override, THEN pins its two signature
+            // values so "standard" is the same on every device: right-side driving (as in the Netherlands) and
+            // a 79 km/h top speed (just under the 80 zone limit — full throttle can never speed).
             list.Add(new SettingsPreset(
                 "preset.standard", "Standaard",
-                "De gebalanceerde standaardinstelling. Zet alles terug zoals het spel bedoeld is.",
-                "Alles terug naar standaard",
-                null, resetToDefault: true));
+                "De klassenrelay zoals bedoeld: rechts rijden (zoals in Nederland), topsnelheid 79 km/u en alle andere instellingen op standaard.",
+                "Klassenrelay · rechts rijden · 79 km/u",
+                new Dictionary<string, float>
+                {
+                    ["world.driveLeft"] = 0f,
+                    ["feel.maxSpeed"] = 22f, // 22 m/s = 79 km/h
+                },
+                resetToDefault: true, primary: true));
 
-            // Young / calm group: slow, forgiving, quiet road, lots of safety net.
+            // MAIN MODE 2 — Eindeloze modus (endless): the solo lives mode. It only flips the mode (session.endless),
+            // leaving the other settings as they are; "Standaard" turns it back off. This — and the toggle under
+            // SPEELDUUR — is the ONLY way into it: there is no title button, so a child can never reach it.
             list.Add(new SettingsPreset(
-                "preset.young", "Jonge kinderen — rustig",
-                "Voor de jongste of voorzichtige kinderen. Rustig tempo, weinig op de weg, veel hulp bij fouten.",
+                "preset.endless", "Eindeloze modus",
+                "Zet het spel in de solomodus: levens in plaats van de klassenrelay, geen teamkeuze, telt niet mee voor de klas. Kies 'Standaard' om terug te gaan naar de klassenrelay.",
+                "Solo · levens · geen teamkeuze",
+                new Dictionary<string, float>
+                {
+                    ["session.endless"] = 1f,
+                },
+                primary: true));
+
+            // DIFFICULTY — Rustig (easy): less going on for the player. Only intensity settings, so it works on top
+            // of either mode (in the eindeloze modus it also grants extra lives).
+            list.Add(new SettingsPreset(
+                "preset.rustig", "Rustig",
+                "Minder om op te letten: rustig tempo, weinig verkeer, geen tegenliggers, minder gevaren en meer hulp bij fouten. Werkt in beide modi.",
                 "Langzaam · weinig verkeer · vergevingsgezind",
                 new Dictionary<string, float>
                 {
@@ -161,19 +189,42 @@ namespace KenyaScooter.Settings
                     ["diff.hazardDensity"] = 0.5f,
                     ["diff.trafficAmount"] = 3f,
                     ["world.oncoming"] = 0f,
-                    ["world.pedestrians"] = 0.3f,
                     ["diff.wrongLaneGrace"] = 8f,
                     ["diff.speedingGrace"] = 6f,
                     ["safe.rewind"] = 3f,
                     ["safe.graceCharges"] = 3f,
                     ["ctrl.motion"] = 0.85f,
-                    ["session.length"] = 90f,
+                    ["session.endlessLives"] = 5f, // in the eindeloze modus: more room for mistakes (inert in the relay)
                 }));
 
-            // Older / confident group: brisk, busy, strict, little safety net.
+            // DIFFICULTY — Normaal: the balanced middle, and the way BACK to normal after Rustig or Uitdagend.
+            // Writes the same keys as those two, at their neutral middle values, so tapping it undoes either.
             list.Add(new SettingsPreset(
-                "preset.challenge", "Uitdagend — oudere kinderen",
-                "Voor oudere of ervaren kinderen. Vlotter tempo, druk verkeer en strenger op fouten.",
+                "preset.normal", "Normaal",
+                "De gewone, gebalanceerde moeilijkheid: normaal tempo en verkeer, gewone hoeveelheid hulp. Gebruik dit om terug te gaan naar normaal na Rustig of Uitdagend.",
+                "Gebalanceerd · normaal verkeer · 3 levens",
+                new Dictionary<string, float>
+                {
+                    ["feel.baseSpeed"] = 10f,
+                    ["feel.maxSpeed"] = 22f,
+                    ["feel.acceleration"] = 15f,
+                    ["diff.hazardDensity"] = 1f,
+                    ["diff.trafficAmount"] = 6f,
+                    ["world.oncoming"] = 4f,
+                    ["diff.wrongLaneGrace"] = 5f,
+                    ["diff.speedingGrace"] = 4f,
+                    ["safe.rewind"] = 2f,
+                    ["safe.graceCharges"] = 2f,
+                    ["ctrl.motion"] = 1f,
+                    ["session.endlessLives"] = 3f,
+                }));
+
+            // DIFFICULTY — Uitdagend (hard): ups the challenge. Faster (108 km/h — managing your speed IS the
+            // challenge), busy road, strict on mistakes, little safety net. Works in both modes (fewer lives in the
+            // eindeloze modus). Deliberately does NOT touch session.length — duration is the facilitator's own call.
+            list.Add(new SettingsPreset(
+                "preset.challenge", "Uitdagend",
+                "Meer uitdaging: sneller (tot 108 km/u — zelf je snelheid bewaken hoort erbij), druk verkeer met tegenliggers, meer gevaren, strenger op fouten en minder vangnet. Werkt in beide modi.",
                 "Sneller · druk verkeer · streng",
                 new Dictionary<string, float>
                 {
@@ -183,83 +234,11 @@ namespace KenyaScooter.Settings
                     ["diff.hazardDensity"] = 1.4f,
                     ["diff.trafficAmount"] = 9f,
                     ["world.oncoming"] = 7f,
-                    ["world.pedestrians"] = 1.0f,
                     ["diff.wrongLaneGrace"] = 3f,
                     ["diff.speedingGrace"] = 2f,
                     ["safe.rewind"] = 1f,
                     ["safe.graceCharges"] = 0f,
-                    ["session.length"] = 150f,
-                }));
-
-            // Authentic Kenya look: drive on the left, warm dust, lively roadside, full day cycle.
-            list.Add(new SettingsPreset(
-                "preset.kenya", "Kenia-modus",
-                "De echte Keniaanse rijervaring: links rijden, warme stoffige lucht en een levendige berm.",
-                "Links rijden · stof · leven langs de weg",
-                new Dictionary<string, float>
-                {
-                    ["world.driveLeft"] = 1f,
-                    ["env.dust"] = 1f,
-                    ["env.roadsideLife"] = 1f,
-                    ["env.roadsideDensity"] = 9f,
-                    ["env.dayCycle"] = 1f,
-                    ["env.dirtFeel"] = 2f,
-                }));
-
-            // Dutch comparison: drive on the right, clearer air — the "now how is it at home?" setup.
-            list.Add(new SettingsPreset(
-                "preset.netherlands", "Nederland-modus",
-                "Ter vergelijking: rijden zoals in Nederland — rechts rijden en een heldere lucht.",
-                "Rechts rijden · heldere lucht",
-                new Dictionary<string, float>
-                {
-                    ["world.driveLeft"] = 0f,
-                    ["env.dust"] = 0f,
-                    ["env.roadsideDensity"] = 6f,
-                }));
-
-            // Open day / demo: short, lively, forgiving and good-looking, so a passer-by has a good first go.
-            list.Add(new SettingsPreset(
-                "preset.demo", "Demo / open dag",
-                "Korte, levendige en vergevingsgezinde beurten die er goed uitzien — ideaal voor een open dag of demo.",
-                "Korte beurt · levendig · vergevingsgezind",
-                new Dictionary<string, float>
-                {
-                    ["session.length"] = 75f,
-                    ["feel.baseSpeed"] = 11f,
-                    ["diff.hazardDensity"] = 0.8f,
-                    ["diff.trafficAmount"] = 6f,
-                    ["world.oncoming"] = 4f,
-                    ["env.roadsideLife"] = 1f,
-                    ["env.roadsideDensity"] = 11f,
-                    ["env.dust"] = 1f,
-                    ["env.dayCycle"] = 1f,
-                    ["safe.rewind"] = 3f,
-                    ["safe.graceCharges"] = 2f,
-                    ["session.cinematicRelay"] = 1f,
-                }));
-
-            // Sensory-friendly / calm: low motion, no dust, quiet road, no haptics, steady light.
-            list.Add(new SettingsPreset(
-                "preset.calm", "Prikkelarm — rustig & kalm",
-                "Voor kinderen die snel overprikkeld raken. Minder beweging, geen stof, rustige weg en stille tablet.",
-                "Weinig beweging · geen stof · stil",
-                new Dictionary<string, float>
-                {
-                    ["ctrl.motion"] = 0.5f,
-                    ["ctrl.smoothing"] = 16f,
-                    ["ctrl.realRider"] = 0f,
-                    ["env.dust"] = 0f,
-                    ["env.dayCycle"] = 0f,
-                    ["env.fixedPhase"] = 1f,
-                    ["env.roadsideDensity"] = 3f,
-                    ["env.dirtFeel"] = 0f,
-                    ["diff.trafficAmount"] = 2f,
-                    ["world.oncoming"] = 0f,
-                    ["world.pedestrians"] = 0.2f,
-                    ["feel.baseSpeed"] = 8f,
-                    ["feel.maxSpeed"] = 16f,
-                    ["audio.haptics"] = 0f,
+                    ["session.endlessLives"] = 2f, // in the eindeloze modus: fewer lives (inert in the relay)
                 }));
 
             return list;
@@ -332,8 +311,6 @@ namespace KenyaScooter.Settings
         private static string Kmh(float v) => Mathf.RoundToInt(v * 3.6f) + " km/u"; // configs store m/s
         private static string Percent(float v) => Mathf.RoundToInt(v * 100f) + "%";
         private static string Points(float v) => Mathf.RoundToInt(v) + " ptn";
-        private static string PedestrianRate(float v) => v <= 0.001f ? "UIT" : v < 0.5f ? "WEINIG" : v < 1.0f ? "NORMAAL" : "VEEL";
-        private static string RoadsideBusyness(float v) => v <= 0.001f ? "LEEG" : v < 4f ? "RUSTIG" : v < 9f ? "NORMAAL" : "DRUK";
         private static string LeftRight(float v) => v >= 0.5f ? "LINKS" : "RECHTS";
         private static string HandheldMode(float v)
         {

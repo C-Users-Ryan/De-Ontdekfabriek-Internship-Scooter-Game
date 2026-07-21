@@ -1,0 +1,155 @@
+<svg viewBox="0 0 820 700" xmlns="http://www.w3.org/2000/svg" role="img" font-family="system-ui,-apple-system,&#39;Segoe UI&#39;,Roboto,Helvetica,Arial,sans-serif">
+<title>Two ways to play — one title screen, two game modes</title>
+<desc>From one title screen (a big orange ANZA! pill with a smaller outlined VRIJ RIJDEN · ENDLESS button beneath it) the game branches into two modes. Left, the Klassenrelay (ANZA!) team game — tagged teamspel, telt mee voor de klas: choose a team from a grid of Swahili animal cards (Simba, Twiga, Chui, Tembo, Faru) plus an accent EIGEN NAAM card that opens an on-screen keyboard, then a roughly 120-second turn on a clock, a charge-station hand-over to the next player, and a shared class leaderboard. Right, the Vrij rijden (Endless) solo game — tagged solo, telt NIET mee voor de klas: drive immediately with no team choice, three lives and a distance readout instead of a clock, a crash costs a life, and at zero lives SPEL VOORBIJ offers NOG EEN KEER or STOPPEN.</desc>
+<rect x="0" y="0" width="820" height="700" fill="#1A1310"></rect>
+
+<defs>
+<marker id="d2ar" markerWidth="9" markerHeight="9" refX="5.5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#8f7d6e"></path></marker>
+<path id="heart" d="M8,14.5 C8,14.5 1,9.7 1,5.4 C1,3 2.9,1.6 4.7,1.6 C6.2,1.6 7.4,2.6 8,3.7 C8.6,2.6 9.8,1.6 11.3,1.6 C13.1,1.6 15,3 15,5.4 C15,9.7 8,14.5 8,14.5 Z"></path>
+</defs>
+
+
+<text x="410" y="38" text-anchor="middle" font-size="12" font-weight="700" letter-spacing="2" fill="#F19141">ÉÉN TITELSCHERM</text>
+<rect x="312" y="50" width="196" height="56" rx="28" fill="#F19141"></rect>
+<text x="410" y="89" text-anchor="middle" font-size="30" font-weight="800" letter-spacing="1" fill="#1A1310">ANZA!</text>
+<text x="410" y="123" text-anchor="middle" font-size="9.5" letter-spacing="1.5" fill="#C9B7A6">tik om te starten</text>
+<rect x="330" y="133" width="160" height="36" rx="18" fill="none" stroke="#F19141" stroke-width="1.6"></rect>
+<text x="410" y="156" text-anchor="middle" font-size="11.5" font-weight="700" letter-spacing="0.5" fill="#F19141">VRIJ RIJDEN · ENDLESS</text>
+
+
+<path d="M382,172 C322,196 268,190 236,200" fill="none" stroke="#8f7d6e" stroke-width="1.6" marker-end="url(#d2ar)"></path>
+<path d="M438,172 C498,196 552,190 584,200" fill="none" stroke="#8f7d6e" stroke-width="1.6" marker-end="url(#d2ar)"></path>
+
+
+<rect x="44" y="200" width="356" height="436" rx="16" fill="#20160F" stroke="#AE5A1C" stroke-opacity="0.5" stroke-width="1.3"></rect>
+<text x="64" y="228" font-size="16" font-weight="700" fill="#FFF6EC">Klassenrelay <tspan fill="#F19141">(ANZA!)</tspan></text>
+<rect x="64" y="240" width="240" height="22" rx="11" fill="#67B44E" fill-opacity="0.15" stroke="#67B44E" stroke-opacity="0.5"></rect>
+<text x="184" y="255" text-anchor="middle" font-size="10" font-weight="600" fill="#67B44E">teamspel · telt mee voor de klas</text>
+
+
+<rect x="64" y="276" width="316" height="126" rx="12" fill="#2A1E18" stroke="#AE5A1C" stroke-opacity="0.4" stroke-width="1.3"></rect>
+<text x="76" y="298" font-size="12.5" font-weight="700" fill="#FFF6EC">Kies je team</text>
+<g>
+
+<rect x="76" y="306" width="92" height="40" rx="8" fill="#FFF6EC" fill-opacity="0.04" stroke="#FFF6EC" stroke-opacity="0.14"></rect>
+<circle cx="93" cy="326" r="11" fill="#F19141" fill-opacity="0.18" stroke="#F19141" stroke-width="1.2"></circle>
+<text x="93" y="330" text-anchor="middle" font-size="11" font-weight="700" fill="#F19141">S</text>
+<text x="109" y="323" font-size="10.5" font-weight="700" fill="#FFF6EC">SIMBA</text>
+<text x="109" y="337" font-size="8" fill="#C9B7A6">Leeuw</text>
+
+<rect x="176" y="306" width="92" height="40" rx="8" fill="#FFF6EC" fill-opacity="0.04" stroke="#FFF6EC" stroke-opacity="0.14"></rect>
+<circle cx="193" cy="326" r="11" fill="#F19141" fill-opacity="0.18" stroke="#F19141" stroke-width="1.2"></circle>
+<text x="193" y="330" text-anchor="middle" font-size="11" font-weight="700" fill="#F19141">T</text>
+<text x="209" y="323" font-size="10.5" font-weight="700" fill="#FFF6EC">TWIGA</text>
+<text x="209" y="337" font-size="8" fill="#C9B7A6">Giraffe</text>
+
+<rect x="276" y="306" width="92" height="40" rx="8" fill="#FFF6EC" fill-opacity="0.04" stroke="#FFF6EC" stroke-opacity="0.14"></rect>
+<circle cx="293" cy="326" r="11" fill="#F19141" fill-opacity="0.18" stroke="#F19141" stroke-width="1.2"></circle>
+<text x="293" y="330" text-anchor="middle" font-size="11" font-weight="700" fill="#F19141">C</text>
+<text x="309" y="323" font-size="10.5" font-weight="700" fill="#FFF6EC">CHUI</text>
+<text x="309" y="337" font-size="8" fill="#C9B7A6">Luipaard</text>
+
+<rect x="76" y="350" width="92" height="40" rx="8" fill="#FFF6EC" fill-opacity="0.04" stroke="#FFF6EC" stroke-opacity="0.14"></rect>
+<circle cx="93" cy="370" r="11" fill="#F19141" fill-opacity="0.18" stroke="#F19141" stroke-width="1.2"></circle>
+<text x="93" y="374" text-anchor="middle" font-size="11" font-weight="700" fill="#F19141">T</text>
+<text x="109" y="367" font-size="10.5" font-weight="700" fill="#FFF6EC">TEMBO</text>
+<text x="109" y="381" font-size="8" fill="#C9B7A6">Olifant</text>
+
+<rect x="176" y="350" width="92" height="40" rx="8" fill="#FFF6EC" fill-opacity="0.04" stroke="#FFF6EC" stroke-opacity="0.14"></rect>
+<circle cx="193" cy="370" r="11" fill="#F19141" fill-opacity="0.18" stroke="#F19141" stroke-width="1.2"></circle>
+<text x="193" y="374" text-anchor="middle" font-size="11" font-weight="700" fill="#F19141">F</text>
+<text x="209" y="367" font-size="10.5" font-weight="700" fill="#FFF6EC">FARU</text>
+<text x="209" y="381" font-size="8" fill="#C9B7A6">Neushoorn</text>
+
+<rect x="276" y="350" width="92" height="40" rx="8" fill="#F19141" fill-opacity="0.14" stroke="#F19141" stroke-opacity="0.7"></rect>
+<rect x="284" y="361" width="22" height="13" rx="2" fill="none" stroke="#F19141" stroke-width="1.2"></rect>
+<g fill="#F19141"><rect x="286.5" y="363" width="2" height="2"></rect><rect x="290" y="363" width="2" height="2"></rect><rect x="293.5" y="363" width="2" height="2"></rect><rect x="297" y="363" width="2" height="2"></rect><rect x="300.5" y="363" width="2" height="2"></rect><rect x="289" y="368.5" width="14" height="2" rx="1"></rect></g>
+<text x="312" y="367" font-size="9.5" font-weight="700" fill="#F19141">EIGEN</text>
+<text x="312" y="380" font-size="9.5" font-weight="700" fill="#F19141">NAAM</text>
+</g>
+<path d="M222,402 V418" stroke="#8f7d6e" stroke-width="1.6" marker-end="url(#d2ar)"></path>
+
+
+<rect x="64" y="418" width="316" height="58" rx="12" fill="#2A1E18" stroke="#AE5A1C" stroke-opacity="0.4" stroke-width="1.3"></rect>
+<circle cx="92" cy="447" r="15" fill="none" stroke="#F19141" stroke-width="1.6"></circle>
+<path d="M92,447 V437 M92,447 L99,450" stroke="#F19141" stroke-width="1.6" stroke-linecap="round"></path>
+<circle cx="92" cy="447" r="1.6" fill="#F19141"></circle>
+<text x="120" y="441" font-size="12.5" font-weight="700" fill="#FFF6EC">Beurt met een klok</text>
+<text x="120" y="461" font-size="10.5" fill="#C9B7A6">≈ 120 s per beurt · <tspan font-family="ui-monospace,&#39;SF Mono&#39;,Menlo,Consolas,monospace" font-weight="700" fill="#F19141">2:00</tspan></text>
+<path d="M222,476 V492" stroke="#8f7d6e" stroke-width="1.6" marker-end="url(#d2ar)"></path>
+
+
+<rect x="64" y="492" width="316" height="58" rx="12" fill="#2A1E18" stroke="#AE5A1C" stroke-opacity="0.4" stroke-width="1.3"></rect>
+<rect x="80" y="514" width="22" height="14" rx="2" fill="none" stroke="#F19141" stroke-width="1.6"></rect>
+<rect x="102" y="518" width="2.5" height="6" rx="1" fill="#F19141"></rect>
+<polygon points="92,515 86,522 90,522 89,527 95,519 91,519" fill="#F19141"></polygon>
+<text x="120" y="514" font-size="12.5" font-weight="700" fill="#FFF6EC">Laadstation-wissel</text>
+<text x="120" y="534" font-size="9.5" fill="#C9B7A6">opladen · geef door aan de volgende speler</text>
+<path d="M222,550 V566" stroke="#8f7d6e" stroke-width="1.6" marker-end="url(#d2ar)"></path>
+
+
+<rect x="64" y="566" width="316" height="58" rx="12" fill="#2A1E18" stroke="#AE5A1C" stroke-opacity="0.4" stroke-width="1.3"></rect>
+<rect x="82" y="596" width="6" height="8" rx="1" fill="#AE5A1C"></rect>
+<rect x="90" y="591" width="6" height="13" rx="1" fill="#D0B85B"></rect>
+<rect x="98" y="586" width="6" height="18" rx="1" fill="#F19141"></rect>
+<text x="120" y="589" font-size="12.5" font-weight="700" fill="#FFF6EC">Eindstand / klassement</text>
+<text x="120" y="609" font-size="9.5" fill="#C9B7A6">gedeelde klasscore op het klassement</text>
+
+
+<rect x="420" y="200" width="356" height="436" rx="16" fill="#20160F" stroke="#AE5A1C" stroke-opacity="0.5" stroke-width="1.3"></rect>
+<text x="440" y="228" font-size="16" font-weight="700" fill="#FFF6EC">Vrij rijden <tspan fill="#F19141">(Endless)</tspan></text>
+<rect x="440" y="240" width="256" height="22" rx="11" fill="#FFF6EC" fill-opacity="0.05" stroke="#C9B7A6" stroke-opacity="0.4"></rect>
+<text x="568" y="255" text-anchor="middle" font-size="10" font-weight="600" fill="#C9B7A6">solo · telt <tspan font-weight="700" fill="#F5B43C">NIET</tspan> mee voor de klas</text>
+
+
+<rect x="440" y="276" width="316" height="46" rx="12" fill="#2A1E18" stroke="#AE5A1C" stroke-opacity="0.4" stroke-width="1.3"></rect>
+<polygon points="462,290 462,308 476,299" fill="#F19141"></polygon>
+<polygon points="477,290 477,308 491,299" fill="#F19141"></polygon>
+<text x="504" y="296" font-size="12" font-weight="700" fill="#FFF6EC">Meteen rijden</text>
+<text x="504" y="312" font-size="10" fill="#C9B7A6">geen teamkeuze</text>
+<path d="M598,322 V338" stroke="#8f7d6e" stroke-width="1.6" marker-end="url(#d2ar)"></path>
+
+
+<rect x="440" y="338" width="316" height="84" rx="12" fill="#2A1E18" stroke="#AE5A1C" stroke-opacity="0.4" stroke-width="1.3"></rect>
+<text x="452" y="360" font-size="12.5" font-weight="700" fill="#FFF6EC">Levens i.p.v. een klok</text>
+<g transform="translate(452,368) scale(1.5)"><use href="#heart" fill="#E5352B"></use></g>
+<g transform="translate(486,368) scale(1.5)"><use href="#heart" fill="#E5352B"></use></g>
+<g transform="translate(520,368) scale(1.5)"><use href="#heart" fill="#E5352B"></use></g>
+<rect x="576" y="371" width="164" height="26" rx="6" fill="#FFF6EC" fill-opacity="0.05" stroke="#FFF6EC" stroke-opacity="0.16"></rect>
+<text x="586" y="388" font-size="9" letter-spacing="1" fill="#8f7d6e">AFSTAND</text>
+<text x="730" y="389" text-anchor="end" font-family="ui-monospace,&#39;SF Mono&#39;,Menlo,Consolas,monospace" font-size="12" font-weight="700" fill="#FFF6EC">0 m</text>
+<circle cx="462" cy="406" r="9" fill="none" stroke="#8f7d6e" stroke-width="1.5"></circle>
+<path d="M462,406 V400 M462,406 L466,407" stroke="#8f7d6e" stroke-width="1.5" stroke-linecap="round"></path>
+<path d="M455,399 L469,413" stroke="#E5352B" stroke-width="2" stroke-linecap="round"></path>
+<text x="480" y="410" font-size="9" font-weight="700" letter-spacing="1" fill="#8f7d6e">GEEN KLOK</text>
+<path d="M598,422 V438" stroke="#8f7d6e" stroke-width="1.6" marker-end="url(#d2ar)"></path>
+
+
+<rect x="440" y="438" width="316" height="54" rx="12" fill="#2A1E18" stroke="#AE5A1C" stroke-opacity="0.4" stroke-width="1.3"></rect>
+<text x="452" y="460" font-size="12" font-weight="700" fill="#FFF6EC">Een botsing kost een leven</text>
+<g transform="translate(560,458) scale(1.1)"><use href="#heart" fill="#E5352B"></use></g>
+<g transform="translate(582,458) scale(1.1)"><use href="#heart" fill="#E5352B"></use></g>
+<g transform="translate(604,458) scale(1.1)"><use href="#heart" fill="none" stroke="#E5352B" stroke-width="1.3"></use></g>
+<text x="636" y="474" font-size="11" font-weight="800" fill="#E5352B">−1</text>
+<path d="M598,492 V508" stroke="#8f7d6e" stroke-width="1.6" marker-end="url(#d2ar)"></path>
+
+
+<rect x="440" y="508" width="316" height="54" rx="12" fill="#2A1E18" stroke="#E5352B" stroke-width="1.4"></rect>
+<g transform="translate(456,526) scale(1.0)"><use href="#heart" fill="none" stroke="#E5352B" stroke-width="1.4"></use></g>
+<g transform="translate(474,526) scale(1.0)"><use href="#heart" fill="none" stroke="#E5352B" stroke-width="1.4"></use></g>
+<g transform="translate(492,526) scale(1.0)"><use href="#heart" fill="none" stroke="#E5352B" stroke-width="1.4"></use></g>
+<text x="524" y="529" font-size="9.5" fill="#C9B7A6">Bij 0 levens:</text>
+<text x="524" y="549" font-size="16" font-weight="800" letter-spacing="1" fill="#E5352B">SPEL VOORBIJ</text>
+<path d="M598,562 V578" stroke="#8f7d6e" stroke-width="1.6" marker-end="url(#d2ar)"></path>
+
+
+<rect x="452" y="580" width="184" height="36" rx="18" fill="#F19141"></rect>
+<text x="544" y="603" text-anchor="middle" font-size="11.5" font-weight="700" fill="#1A1310">NOG EEN KEER</text>
+<rect x="644" y="580" width="104" height="36" rx="18" fill="none" stroke="#F19141" stroke-width="1.5"></rect>
+<text x="696" y="603" text-anchor="middle" font-size="11.5" font-weight="700" fill="#F19141">STOPPEN</text>
+
+
+<line x1="44" y1="650" x2="776" y2="650" stroke="#FFF6EC" stroke-opacity="0.1" stroke-width="1"></line>
+<text x="410" y="671" text-anchor="middle" font-size="11" font-style="italic" fill="#C9B7A6">Eén titelscherm, twee manieren om te spelen —</text>
+<text x="410" y="687" text-anchor="middle" font-size="11" font-style="italic" fill="#C9B7A6">de vertrouwde klassenrelay, of Vrij rijden voor één kind of een wachtrij.</text>
+</svg>

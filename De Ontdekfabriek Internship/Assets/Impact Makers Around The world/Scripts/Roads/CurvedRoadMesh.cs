@@ -42,6 +42,7 @@ namespace KenyaScooter.Roads
         private Mesh mesh;
         private MeshFilter meshFilter;
         private RoadTile activeTile; // set during BuildFromTile so AddStrip can convert metres → tile local
+        private bool builtAtRuntime; // build ONCE per pooled instance in play mode — see BuildFromTile
         private readonly List<Vector3> verts = new List<Vector3>(160);
         private readonly List<Vector3> normals = new List<Vector3>(160);
         private readonly List<Vector2> uvs = new List<Vector2>(160);
@@ -73,6 +74,17 @@ namespace KenyaScooter.Roads
         /// </summary>
         public void BuildFromTile(RoadTile tile)
         {
+            // In play the strip is DETERMINISTIC per instance — it samples only the tile's authored geometry,
+            // which never changes at runtime — yet every pooled respawn rebuilt it TWICE (OnEnable's Preview +
+            // the sequencer's explicit call). On tile-heavy stretches those redundant rebuilds landed on the
+            // same frame as the tile activation itself and fed the load hitch, so: build once, then keep it.
+            // The editor path stays live (OnValidate/Preview rebuild while authoring).
+            if (Application.isPlaying)
+            {
+                if (builtAtRuntime)
+                    return;
+                builtAtRuntime = true;
+            }
             EnsureMesh();
             float length = tile != null ? Mathf.Max(0f, tile.length) : 0f;
             if (length <= 0.0001f) { mesh.Clear(); return; }

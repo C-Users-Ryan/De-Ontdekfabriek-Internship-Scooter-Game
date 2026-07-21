@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: ScooterConfig
   m_EditorClassIdentifier: Assembly-CSharp::KenyaScooter.Config.ScooterConfig
   baseSpeed: 10
-  maxSpeed: 20
+  maxSpeed: 22
   minSpeed: 0
   acceleration: 10
   brakeDeceleration: 25

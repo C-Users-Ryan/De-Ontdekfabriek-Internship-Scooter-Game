@@ -27,6 +27,8 @@ namespace KenyaScooter.Core
         public static event Action ChargingStarted;
         /// <summary>A new class group is starting — group-scoped state (group total, shared streak) resets. Raised by GroupScoreManager.</summary>
         public static event Action GroupReset;
+        /// <summary>Endless mode only: the player's remaining lives changed (parameter = lives left, 0 = game over). Raised by GameManager.</summary>
+        public static event Action<int> LivesChanged;
 
         /// <summary>A full-screen framing/menu screen became visible (true) or was dismissed back to the HUD (false).
         /// Raised by KenyaMenuScreens as the single source of truth for "a UI screen is covering the world". The
@@ -112,6 +114,7 @@ namespace KenyaScooter.Core
         public static void RaiseCheckpointReached() => CheckpointReached?.Invoke();
         public static void RaiseChargingStarted() => SafeInvoke(ChargingStarted);
         public static void RaiseGroupReset() => GroupReset?.Invoke();
+        public static void RaiseLivesChanged(int lives) => LivesChanged?.Invoke(lives);
         public static void RaiseMenuScreenChanged(bool visible)
         {
             MenuScreenVisible = visible;
@@ -170,7 +173,7 @@ namespace KenyaScooter.Core
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ClearAllSubscriptions()
         {
-            SessionReset = null; SessionStarted = null; StateChanged = null; CheckpointReached = null; ChargingStarted = null; GroupReset = null;
+            SessionReset = null; SessionStarted = null; StateChanged = null; CheckpointReached = null; ChargingStarted = null; GroupReset = null; LivesChanged = null;
             MenuScreenChanged = null; MenuScreenVisible = false;
             OvertakeCompleted = null; IllegalOvertake = null; NearMiss = null; CollisionOccurred = null; HazardHit = null;
             WrongLaneChanged = null; WrongLaneTick = null; SpeedingTierChanged = null; SpeedingTick = null;

@@ -60,6 +60,8 @@ namespace KenyaScooter.UI
         private TMP_Text journeyTotal, journeyRank, journeyStat;
         private TMP_Text goScore, goStat;
         private TMP_Text relayKicker, journeyKicker, goKicker;
+        private Button goSecondButton;   // GameOver's second action — relabelled/rewired per GameMode in PopulateGameOver
+        private TMP_Text goSecondLabel;
         private int cachedScore;
         private bool committedThisGroup;
         private Coroutine fade;
@@ -137,9 +139,32 @@ namespace KenyaScooter.UI
         // a running group heads straight into the next turn.
         private void BeginFromTitle()
         {
+            // The game mode is a FACILITATOR choice now (settings menu / a Profiel, behind the access code) — NOT a
+            // child-facing button on the title. If "Vrij rijden (Endless)" is switched on, ANZA drops straight into
+            // a solo lives run; otherwise it's the normal timed class relay (team select for a fresh group, or
+            // straight into the next teammate's turn).
+            if (GameManager.EndlessSelected)
+            {
+                StartEndless();
+                return;
+            }
+            GameManager.Mode = GameMode.GroupRelay;
             if (FreshGroup()) { PopulateChips(); Show(setupRoot); }
             else StartGame();
         }
+
+        // Endless (Vrij rijden): skip the team-select screen entirely and drop straight into a solo run with
+        // lives. The mode flag makes GameManager use lives instead of the timer and commit nothing to the class.
+        private void StartEndless()
+        {
+            GameManager.Mode = GameMode.Endless;
+            teamName = "SPELER"; // endless has no team; a non-empty name keeps the game-over kicker/label code happy
+            StartGame();
+        }
+
+        // Endless "STOPPEN": abandon the run and go back to the title. Commits nothing (endless never touches the
+        // group total or leaderboard).
+        private void BackToTitle() { if (GameManager.Instance != null) GameManager.Instance.ForceReset(); }
 
         private void Show(GameObject only)
         {
@@ -153,6 +178,7 @@ namespace KenyaScooter.UI
             SetActive(relayRoot, only == relayRoot);
             SetActive(journeyRoot, only == journeyRoot);
             SetActive(gameOverRoot, only == gameOverRoot);
+            SetActive(nameRoot, false); // the name-entry modal only lives over the setup screen; drop it on any transition
             // Keep the drive-side toggle in step with the live config (it may have been changed in the facilitator menu).
             if (only == titleRoot) RefreshModeToggle();
             if (only != null) FadeIn(only);
@@ -292,10 +318,22 @@ namespace KenyaScooter.UI
         {
             if (GameManager.Instance != null) GameManager.Instance.CommitTurn(); // idempotent; keep the score read-after-commit like the relay screen
             int o = Overtakes();
-            if (goKicker != null) goKicker.text = "OEPS  ·  " + TeamLabel();
+            bool endless = GameManager.Mode == GameMode.Endless;
+            if (goKicker != null) goKicker.text = endless ? "SPEL VOORBIJ" : "OEPS  ·  " + TeamLabel();
             if (goScore != null) goScore.text = Group(TurnScore());
             if (goStat != null)  goStat.text  = o + " SCHONE INHAALACTIES";
             SetPips(goPips, goStat, 26f, o);
+
+            // The second action swaps by mode: group relay hands the tablet to the next teammate; endless has no
+            // relay, so it just STOPS back to the title. (The first button, NOG EEN KEER → StartGame, works for
+            // both — in endless it restarts a fresh endless run because Mode is still Endless.)
+            if (goSecondButton != null)
+            {
+                goSecondButton.onClick.RemoveAllListeners();
+                if (endless) goSecondButton.onClick.AddListener(BackToTitle);
+                else         goSecondButton.onClick.AddListener(NextPlayer);
+            }
+            if (goSecondLabel != null) goSecondLabel.text = endless ? "STOPPEN" : "VOLGENDE SPELER";
         }
 
         // ---- button actions ---------------------------------------------------------
@@ -394,7 +432,10 @@ namespace KenyaScooter.UI
             // 3×2 grid of big team cards (initial roundel + name + Dutch animal). Wider than the text column
             // on purpose (play-test: the right of the screen sat empty), and each card pulses in a gentle
             // wave — the "tap me" invitation the play-tests liked.
-            int n = Mathf.Min(ChipsShown, pool.Count);
+            // The typed-name option is a facilitator opt-in (settings → Speelduur → "Eigen teamnaam toestaan"),
+            // OFF by default so children don't get a free-text keyboard unless a supervisor turned it on.
+            bool allowCustom = PlayerPrefs.GetInt("ksg.customName", 0) == 1;
+            int n = Mathf.Min(allowCustom ? ChipsShown - 1 : ChipsShown, pool.Count); // last slot reserved for "EIGEN NAAM" only when allowed
             const float w = 500f, h = 130f, gapX = 20f, gapY = 16f;
             for (int i = 0; i < n; i++)
             {
@@ -434,6 +475,40 @@ namespace KenyaScooter.UI
                 // Gentle "tap me" wave (play-test: kids unsure what to tap) — a soft breath, not a bounce:
                 // the default amplitude read as aggressive on cards this size.
                 b.gameObject.AddComponent<UiPulse>().SetWave(i * 0.18f, 0.012f, 1.05f);
+            }
+
+            // One extra card in the same 3×2 grid (the last slot): type your OWN team name. Opens the on-screen
+            // keyboard (KenyaMenuScreens.NameEntry.cs); the typed name routes through the SAME PickTeam(...) the
+            // animal cards use, so it flows everywhere a team name already does. Accent-tinted so it reads as the
+            // "or make your own" option next to the Swahili animals. Only shown when the facilitator allowed it.
+            if (allowCustom)
+            {
+                int col = n % 3, rowIdx = n / 3;
+                RectTransform b = NewRect(chipRow, "CardCustom");
+                b.anchorMin = new Vector2(0f, 1f); b.anchorMax = new Vector2(0f, 1f); b.pivot = new Vector2(0f, 1f);
+                b.sizeDelta = new Vector2(w, h);
+                b.anchoredPosition = new Vector2(col * (w + gapX), -rowIdx * (h + gapY));
+
+                Image border = b.gameObject.AddComponent<Image>();
+                border.sprite = UiKit.Rounded(UiKit.RadiusM); border.type = Image.Type.Sliced;
+                border.color = UiKit.WithAlpha(accent, 0.65f);
+                Image fill = AddImage(b, "Fill", UiKit.WithAlpha(accent, 0.14f), UiKit.Rounded(UiKit.RadiusM));
+                fill.rectTransform.anchorMin = Vector2.zero; fill.rectTransform.anchorMax = Vector2.one;
+                fill.rectTransform.offsetMin = new Vector2(3f, 3f); fill.rectTransform.offsetMax = new Vector2(-3f, -3f);
+
+                var btn = b.gameObject.AddComponent<Button>(); btn.targetGraphic = border;
+                btn.onClick.AddListener(OpenNameEntry);
+                var cb = btn.colors; cb.fadeDuration = 0.08f; cb.pressedColor = new Color(0.85f, 0.85f, 0.85f, 1f); btn.colors = cb;
+
+                TMP_Text label = AddText(b, "Name", "EIGEN NAAM", 31, ink, TextAlignmentOptions.Center);
+                label.fontStyle = FontStyles.Bold; UiKit.Caps(label, 0.03f);
+                label.rectTransform.anchorMin = new Vector2(0f, 1f); label.rectTransform.anchorMax = new Vector2(1f, 1f); label.rectTransform.pivot = new Vector2(0.5f, 1f);
+                label.rectTransform.offsetMin = new Vector2(16f, -78f); label.rectTransform.offsetMax = new Vector2(-16f, -34f);
+                TMP_Text sub = AddText(b, "Sub", "typ je eigen teamnaam", 19, muted, TextAlignmentOptions.Center);
+                sub.rectTransform.anchorMin = new Vector2(0f, 0f); sub.rectTransform.anchorMax = new Vector2(1f, 0f); sub.rectTransform.pivot = new Vector2(0.5f, 0f);
+                sub.rectTransform.offsetMin = new Vector2(16f, 28f); sub.rectTransform.offsetMax = new Vector2(-16f, 62f);
+
+                b.gameObject.AddComponent<UiPulse>().SetWave(n * 0.18f, 0.012f, 1.05f);
             }
         }
 

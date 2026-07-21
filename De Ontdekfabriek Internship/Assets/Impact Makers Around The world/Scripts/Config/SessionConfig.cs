@@ -12,6 +12,12 @@ namespace KenyaScooter.Config
         [Header("Timer (M26)")]
         public float sessionSeconds = 120f;
 
+        [Header("Endless mode (Vrij rijden)")]
+        [Tooltip("Lives in the solo Endless mode: a hard crash costs one life and at zero the run ends. The timed " +
+                 "group relay ignores this. NOTE: this default only seeds a brand-new asset — set it explicitly on " +
+                 "the live SessionConfig.asset (an existing asset keeps whatever value it was serialized with).")]
+        public int endlessLives = 3;
+
         [Header("Checkpoint (Req §9.2)")]
         [Tooltip("Seconds before the timer runs out that the charge station is woven into the road — placed at the " +
                  "far draw horizon (in the haze) with no pop, so the player watches it emerge and grow as they ride " +

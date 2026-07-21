@@ -1,0 +1,109 @@
+<svg viewBox="0 0 820 540" xmlns="http://www.w3.org/2000/svg" role="img" font-family="system-ui,-apple-system,&#39;Segoe UI&#39;,Roboto,Helvetica,Arial,sans-serif">
+<title>Recommendations triage — keep, change or finish, and keep in mind</title>
+<desc>A three-column triage board. KEEP (green) — solid, don&#39;t rewrite: data-driven architecture (new hazard, tile or mode is an asset); facilitator settings plus override plus Profielen plus PIN recovery; point-based RoadTile turns; the single-fixed-camera rule; the honesty guardrails. CHANGE or FINISH (amber) — before real deployment: set the real Android app id, create and back up the keystore and lock LandscapeLeft to a final signed APK; on-device kiosk and gyro-sign test; import the roughly 30 audio clips with a per-clip licence manifest; rename the Tests tilde folder so the EditMode tests run; a documented mirror-to-live sync checklist; a native-Swahili review. KEEP IN MIND (blue) — risks that aren&#39;t bugs: the leaderboard is per-tablet and wiped by a re-signed APK; the deployed control format is still open (plain tablet versus Arduino rig); older-tablet performance is untested at scale; several done items are mirror-only until recompiled. A footer notes what shipped in the July 2026 pass, all needing a Unity recompile and none device-tested yet.</desc>
+<rect x="0" y="0" width="820" height="540" fill="#ffffff"></rect>
+
+<text x="410" y="30" text-anchor="middle" font-size="16" font-weight="700" fill="#1f2328">Recommendations — a triage board</text>
+<text x="410" y="49" text-anchor="middle" font-size="12" fill="#57606a">what to keep, what to finish before deployment, and what to keep in mind</text>
+
+
+<rect x="40" y="62" width="233" height="44" rx="8" fill="#67B44E"></rect>
+<text x="156" y="83" text-anchor="middle" font-size="14" font-weight="800" letter-spacing="0.5" fill="#ffffff">KEEP</text>
+<text x="156" y="99" text-anchor="middle" font-size="9.5" fill="#ffffff" fill-opacity="0.92">solid — don’t rewrite</text>
+
+<rect x="293" y="62" width="233" height="44" rx="8" fill="#F5B43C"></rect>
+<text x="409" y="83" text-anchor="middle" font-size="13" font-weight="800" letter-spacing="0.5" fill="#1f2328">CHANGE / FINISH</text>
+<text x="409" y="99" text-anchor="middle" font-size="9.5" fill="#1f2328" fill-opacity="0.8">before real deployment</text>
+
+<rect x="546" y="62" width="233" height="44" rx="8" fill="#2563eb"></rect>
+<text x="662" y="83" text-anchor="middle" font-size="13" font-weight="800" letter-spacing="0.5" fill="#ffffff">KEEP IN MIND</text>
+<text x="662" y="99" text-anchor="middle" font-size="9.5" fill="#ffffff" fill-opacity="0.92">risks that aren’t bugs</text>
+
+
+<g>
+<rect x="40" y="120" width="233" height="40" rx="6" fill="#ffffff" stroke="#d0d7de" stroke-width="1.3"></rect>
+<rect x="41" y="126" width="3" height="28" rx="1.5" fill="#67B44E"></rect>
+<text x="56" y="138" font-size="10" font-weight="600" fill="#1f2328">Data-driven architecture</text>
+<text x="56" y="151" font-size="9.5" fill="#57606a">new hazard / tile / mode = an asset</text>
+
+<rect x="40" y="170" width="233" height="40" rx="6" fill="#ffffff" stroke="#d0d7de" stroke-width="1.3"></rect>
+<rect x="41" y="176" width="3" height="28" rx="1.5" fill="#67B44E"></rect>
+<text x="56" y="188" font-size="10" font-weight="600" fill="#1f2328">Facilitator settings + override</text>
+<text x="56" y="201" font-size="9.5" fill="#57606a">+ Profielen + PIN recovery</text>
+
+<rect x="40" y="220" width="233" height="28" rx="6" fill="#ffffff" stroke="#d0d7de" stroke-width="1.3"></rect>
+<rect x="41" y="226" width="3" height="16" rx="1.5" fill="#67B44E"></rect>
+<text x="56" y="238" font-size="10" font-weight="600" fill="#1f2328">Point-based <tspan font-family="ui-monospace,&#39;SF Mono&#39;,Menlo,Consolas,monospace">RoadTile</tspan> turns</text>
+
+<rect x="40" y="258" width="233" height="28" rx="6" fill="#ffffff" stroke="#d0d7de" stroke-width="1.3"></rect>
+<rect x="41" y="264" width="3" height="16" rx="1.5" fill="#67B44E"></rect>
+<text x="56" y="276" font-size="10" font-weight="600" fill="#1f2328">The single-fixed-camera rule</text>
+
+<rect x="40" y="296" width="233" height="28" rx="6" fill="#ffffff" stroke="#d0d7de" stroke-width="1.3"></rect>
+<rect x="41" y="302" width="3" height="16" rx="1.5" fill="#67B44E"></rect>
+<text x="56" y="314" font-size="10" font-weight="600" fill="#1f2328">The honesty guardrails</text>
+</g>
+
+
+<g>
+<rect x="293" y="120" width="233" height="53" rx="6" fill="#ffffff" stroke="#d0d7de" stroke-width="1.3"></rect>
+<rect x="294" y="126" width="3" height="41" rx="1.5" fill="#F5B43C"></rect>
+<text x="309" y="138" font-size="10" font-weight="600" fill="#1f2328">Real Android app id + create &amp; back</text>
+<text x="309" y="151" font-size="10" font-weight="600" fill="#1f2328">up the keystore + lock LandscapeLeft</text>
+<text x="309" y="164" font-size="9.5" fill="#57606a">→ final signed APK</text>
+
+<rect x="293" y="183" width="233" height="28" rx="6" fill="#ffffff" stroke="#d0d7de" stroke-width="1.3"></rect>
+<rect x="294" y="189" width="3" height="16" rx="1.5" fill="#F5B43C"></rect>
+<text x="309" y="201" font-size="10" font-weight="600" fill="#1f2328">On-device kiosk + gyro-sign test</text>
+
+<rect x="293" y="221" width="233" height="40" rx="6" fill="#ffffff" stroke="#d0d7de" stroke-width="1.3"></rect>
+<rect x="294" y="227" width="3" height="28" rx="1.5" fill="#F5B43C"></rect>
+<text x="309" y="239" font-size="10" font-weight="600" fill="#1f2328">Import the ~30 audio clips</text>
+<text x="309" y="252" font-size="9.5" fill="#57606a">+ per-clip licence manifest</text>
+
+<rect x="293" y="271" width="233" height="40" rx="6" fill="#ffffff" stroke="#d0d7de" stroke-width="1.3"></rect>
+<rect x="294" y="277" width="3" height="28" rx="1.5" fill="#F5B43C"></rect>
+<text x="309" y="289" font-size="10" font-weight="600" fill="#1f2328">Rename <tspan font-family="ui-monospace,&#39;SF Mono&#39;,Menlo,Consolas,monospace">Tests~/</tspan> so the EditMode</text>
+<text x="309" y="302" font-size="9.5" fill="#57606a">tests run</text>
+
+<rect x="293" y="321" width="233" height="40" rx="6" fill="#ffffff" stroke="#d0d7de" stroke-width="1.3"></rect>
+<rect x="294" y="327" width="3" height="28" rx="1.5" fill="#F5B43C"></rect>
+<text x="309" y="339" font-size="10" font-weight="600" fill="#1f2328">A documented mirror→live sync</text>
+<text x="309" y="352" font-size="9.5" fill="#57606a">checklist</text>
+
+<rect x="293" y="371" width="233" height="28" rx="6" fill="#ffffff" stroke="#d0d7de" stroke-width="1.3"></rect>
+<rect x="294" y="377" width="3" height="16" rx="1.5" fill="#F5B43C"></rect>
+<text x="309" y="389" font-size="10" font-weight="600" fill="#1f2328">Native-Swahili review</text>
+</g>
+
+
+<g>
+<rect x="546" y="120" width="233" height="40" rx="6" fill="#ffffff" stroke="#d0d7de" stroke-width="1.3"></rect>
+<rect x="547" y="126" width="3" height="28" rx="1.5" fill="#2563eb"></rect>
+<text x="562" y="138" font-size="10" font-weight="600" fill="#1f2328">Leaderboard is per-tablet &amp;</text>
+<text x="562" y="151" font-size="9.5" fill="#57606a">wiped by a re-signed APK</text>
+
+<rect x="546" y="170" width="233" height="40" rx="6" fill="#ffffff" stroke="#d0d7de" stroke-width="1.3"></rect>
+<rect x="547" y="176" width="3" height="28" rx="1.5" fill="#2563eb"></rect>
+<text x="562" y="188" font-size="10" font-weight="600" fill="#1f2328">Deployed control format still</text>
+<text x="562" y="201" font-size="9.5" fill="#57606a">open — plain tablet vs Arduino rig</text>
+
+<rect x="546" y="220" width="233" height="40" rx="6" fill="#ffffff" stroke="#d0d7de" stroke-width="1.3"></rect>
+<rect x="547" y="226" width="3" height="28" rx="1.5" fill="#2563eb"></rect>
+<text x="562" y="232" font-size="10" font-weight="600" fill="#1f2328">Older-tablet performance</text>
+<text x="562" y="245" font-size="9.5" fill="#57606a">untested at scale</text>
+
+<rect x="546" y="270" width="233" height="40" rx="6" fill="#ffffff" stroke="#d0d7de" stroke-width="1.3"></rect>
+<rect x="547" y="276" width="3" height="28" rx="1.5" fill="#2563eb"></rect>
+<text x="562" y="282" font-size="10" font-weight="600" fill="#1f2328">Several “done” items are</text>
+<text x="562" y="295" font-size="9.5" fill="#57606a">mirror-only until recompiled</text>
+</g>
+
+
+<rect x="40" y="418" width="739" height="70" rx="8" fill="#f6f8fa" stroke="#d0d7de" stroke-width="1.3"></rect>
+<text x="56" y="440" font-size="10.5"><tspan font-weight="700" fill="#1f2328">Shipped in the July 2026 pass — </tspan><tspan fill="#57606a">kiosk attract crash-immunity · “Code vergeten?” reset · tile-lag budget ·</tspan></text>
+<text x="56" y="457" font-size="10.5" fill="#57606a">“Profiel gewijzigd” toast · Endless mode · typed team name · settings search · night-aware car tail lights</text>
+<text x="56" y="475" font-size="9.5" font-style="italic" fill="#8b949e">all need a Unity recompile; none device-tested yet.</text>
+
+<text x="410" y="516" text-anchor="middle" font-size="11.5" fill="#57606a">The last mile from ‘a playable prototype on PC’ to ‘an exhibit De Ontdekfabriek can run unattended.’</text>
+</svg>

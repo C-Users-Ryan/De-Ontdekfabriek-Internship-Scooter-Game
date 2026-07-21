@@ -54,7 +54,17 @@ namespace KenyaScooter.UI
 
         private void Update()
         {
-            if (TimerManager.Instance == null || timerText == null)
+            if (timerText == null)
+                return;
+
+            // Endless mode has no countdown — blank the MM:SS slot once (the endless HUD shows lives + distance).
+            if (GameManager.Mode == GameMode.Endless)
+            {
+                if (lastSeconds != -2) { lastSeconds = -2; timerText.text = ""; }
+                return;
+            }
+
+            if (TimerManager.Instance == null)
                 return;
 
             int seconds = Mathf.CeilToInt(TimerManager.Instance.Remaining);

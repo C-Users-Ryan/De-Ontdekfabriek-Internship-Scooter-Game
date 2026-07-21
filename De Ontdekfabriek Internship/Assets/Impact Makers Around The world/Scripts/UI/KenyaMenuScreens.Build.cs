@@ -71,6 +71,8 @@ namespace KenyaScooter.UI
             BuildModeToggle(root); // pinned to the bottom edge, small — never competing with the CTA
             return root.gameObject;
         }
+        // (The "VRIJ RIJDEN · ENDLESS" title button was REMOVED 2026-07-13 — it was child-reachable. Endless mode
+        // is now a facilitator setting / Profiel behind the access code; ANZA reads GameManager.EndlessSelected.)
 
         // The Nairobi → Mombasa route motif under the title: departure dot, dashed road, destination bolt.
         private void BuildRouteMotif()
@@ -344,8 +346,13 @@ namespace KenyaScooter.UI
             soft.fontStyle = FontStyles.Italic; // a soft aside, not a verdict
             BuildAccomplishmentCard();
             Gap(10f);
-            // Second action: hand the tablet on without retrying — matches the relay flow.
-            ButtonRow("NOG EEN KEER", StartGame, "VOLGENDE SPELER", NextPlayer);
+            // Two actions. The FIRST (NOG EEN KEER → StartGame) works for both modes — in endless it restarts a
+            // fresh run. The SECOND is relabelled/rewired per GameMode in PopulateGameOver (group = VOLGENDE
+            // SPELER → next teammate; endless = STOPPEN → back to title), so it is captured here.
+            RectTransform goButtons = Place("Buttons", 118f, 0f);
+            float gw1 = ButtonWidth("NOG EEN KEER");
+            AddButton(goButtons, 0f, "NOG EEN KEER", StartGame, true);
+            AddButton(goButtons, gw1 + 20f, "VOLGENDE SPELER", NextPlayer, false, out goSecondButton, out goSecondLabel);
             return root.gameObject;
         }
 
@@ -538,6 +545,11 @@ namespace KenyaScooter.UI
         // Spec buttons, v2.4: mock-scale full-radius pills. PRIMARY = flat accent fill + ink-on-accent
         // text (pressed dims toward burnt); SECONDARY = outline (accent border on a translucent dark fill).
         private float AddButton(RectTransform row, float x, string label, UnityEngine.Events.UnityAction action, bool primary)
+            => AddButton(row, x, label, action, primary, out _, out _);
+
+        // Same, but hands back the Button + its label so a caller can relabel/rewire it later (the GameOver
+        // second action swaps between "VOLGENDE SPELER" and endless's "STOPPEN").
+        private float AddButton(RectTransform row, float x, string label, UnityEngine.Events.UnityAction action, bool primary, out Button button, out TMP_Text labelText)
         {
             const float h = 110f;
             float w = ButtonWidth(label);
@@ -568,6 +580,7 @@ namespace KenyaScooter.UI
 
             TMP_Text t = AddText(b, "Label", label, 30, primary ? UiKit.InkOnAccent : ink, TextAlignmentOptions.Center);
             t.fontStyle = FontStyles.Bold; UiKit.Caps(t, 0.04f); Stretch(t.rectTransform);
+            button = btn; labelText = t;
             return w;
         }
 

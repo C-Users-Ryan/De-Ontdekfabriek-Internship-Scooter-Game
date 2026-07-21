@@ -22,7 +22,7 @@ namespace KenyaScooter.FX
     public sealed class ScooterHeadlight : MonoBehaviour
     {
         [Header("Spot (the real light — reaches as far as the pool)")]
-        [SerializeField] private float maxIntensity = 9f;
+        [SerializeField] private float maxIntensity = 13f;
         [Tooltip("How far the real light reaches (metres) — how far ahead things are actually lit. Keep long so the far road the pool covers is really lit.")]
         [SerializeField] private float range = 260f;
         [SerializeField] private float spotAngle = 72f;
@@ -36,8 +36,8 @@ namespace KenyaScooter.FX
         [SerializeField] private Vector3 localOffset = new Vector3(0f, 0.72f, 1.35f);
 
         [Header("Visible lamp glow")]
-        [SerializeField] private float glowSize = 0.18f;
-        [SerializeField] private float glowStrength = 0.7f;
+        [SerializeField] private float glowSize = 0.34f;
+        [SerializeField] private float glowStrength = 1f;
 
         [Header("Visible light pool on the road (additive — the headlight's throw)")]
         [Tooltip("Pool colour — tint the light on the road independently of the real spot.")]
@@ -50,10 +50,10 @@ namespace KenyaScooter.FX
         [SerializeField] private float poolFarWidth = 9f;
         [Tooltip("Metres to drop the pool below the lamp so it lies ON the road. Raise if it floats, lower if it sinks.")]
         [SerializeField] private float poolDrop = 0.8f;
-        [Tooltip("Base opacity of the pool (before the night fade).")]
-        [SerializeField, Range(0f, 1f)] private float poolAlpha = 0.28f;
+        [Tooltip("Base opacity of the pool (before the night fade). Alpha-blended, so this is the on-road glow strength.")]
+        [SerializeField, Range(0f, 1f)] private float poolAlpha = 0.6f;
         [Tooltip("Brightness multiplier on the additive pool — push above 1 for a stronger glow.")]
-        [SerializeField] private float poolIntensity = 1.15f;
+        [SerializeField] private float poolIntensity = 1.3f;
 
         [Header("Fade")]
         [SerializeField] private float fadeSpeed = 2.2f;
@@ -132,9 +132,9 @@ namespace KenyaScooter.FX
             if (pool != null && !Mathf.Approximately(current, lastPool))
             {
                 lastPool = current;
-                // Additive: rgb (× intensity) is the added light; alpha gates it by the night fade + base opacity.
-                float k = poolIntensity;
-                var c = new Color(poolColour.r * k, poolColour.g * k, poolColour.b * k, current * poolAlpha);
+                // Alpha-blended (Sprites/Default): rgb is the warm pool colour, alpha is the strength gated by the
+                // night fade — kept fairly opaque so it reads as a clearly lit patch of road at night.
+                var c = new Color(poolColour.r, poolColour.g, poolColour.b, Mathf.Clamp01(current * poolAlpha * poolIntensity));
                 Tint(pool, c, lit);
             }
         }
@@ -227,6 +227,9 @@ namespace KenyaScooter.FX
                 new Vector2(0f, 0f), new Vector2(1f, 0f), // v = 0 at the bike
                 new Vector2(1f, 1f), new Vector2(0f, 1f), // v = 1 far down the road
             };
+            // White vertex colours: Sprites/Default multiplies the texture by the vertex colour, and an ABSENT
+            // colour channel can read as black on mobile GPUs (→ an invisible pool). QuadMesh does the same.
+            mesh.colors = new[] { Color.white, Color.white, Color.white, Color.white };
             mesh.triangles = new[] { 0, 2, 1, 0, 3, 2 }; // material is double-sided, so winding is cosmetic
             mesh.RecalculateNormals();
             mesh.RecalculateBounds();
@@ -269,26 +272,19 @@ namespace KenyaScooter.FX
             return glowMat;
         }
 
-        /// <summary>ADDITIVE translucent material for the road pool (adds warm light = enhances sight). Per-instance so
-        /// the gradient is its own. URP/Unlit set additive-transparent; alpha-sprite fallback.</summary>
+        /// <summary>Translucent material for the road light-pool (the visible headlight throw). Uses the built-in
+        /// "Sprites/Default" shader — which is in the project's Always-Included-Shaders list and needs NO
+        /// runtime-set keywords — so it renders RELIABLY in an Android/URP build. The previous version reconfigured
+        /// "Universal Render Pipeline/Unlit" into a transparent-additive material at runtime, but URP strips that
+        /// unused transparent/additive VARIANT from a mobile build, which left the pool invisible on the tablet
+        /// while it showed fine in the Editor (the reported "no light beam on the tablet"). Sprites/Default is
+        /// alpha-blended, so the pool is boosted in Update() to read as a strong warm glow on the dark night road.</summary>
         private Material MakePoolMaterial()
         {
             Texture2D grad = PoolGradient();
-            Shader urp = Shader.Find("Universal Render Pipeline/Unlit");
-            if (urp != null)
-            {
-                var m = new Material(urp) { name = "HeadlightPool", mainTexture = grad };
-                m.SetFloat("_Surface", 1f);   // transparent
-                m.SetFloat("_Blend", 2f);     // additive
-                m.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
-                m.SetFloat("_DstBlend", (float)BlendMode.One);
-                m.SetFloat("_ZWrite", 0f);
-                m.SetFloat("_Cull", (float)CullMode.Off);
-                m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-                m.renderQueue = (int)RenderQueue.Transparent;
-                return m;
-            }
-            return new Material(Shader.Find("Sprites/Default")) { name = "HeadlightPool", mainTexture = grad };
+            Shader shader = Shader.Find("Sprites/Default");
+            if (shader == null) shader = Shader.Find("Universal Render Pipeline/Unlit"); // last-ditch; Sprites/Default is Always-Included
+            return new Material(shader) { name = "HeadlightPool", mainTexture = grad };
         }
 
         // 2-D soft-edged gradient: bright down the centre, fading at the sides (u) and fading in near / out far (v),
@@ -300,13 +296,19 @@ namespace KenyaScooter.FX
             for (int y = 0; y < h; y++)
             {
                 float v = y / (float)(h - 1);
-                // faint right under the bike, builds to a peak just ahead, then fades to the far end
-                float lengthA = Mathf.SmoothStep(0f, 0.28f, v) * Mathf.Pow(1f - v, 1.3f);
+                // Builds fast to a HIGH peak just ahead of the bike, then fades slowly to the far end. THE old
+                // curve was SmoothStep(0f, 0.28f, v) — but Unity's Mathf.SmoothStep(from, to, t) is a smoothed
+                // LERP (result ranges from..to), NOT GLSL smoothstep(edge0, edge1, x), so it returned at most
+                // 0.28: the whole pool texture peaked around ~0.13 alpha. THAT is why the player's light barely
+                // read at dusk. Here t = v/0.16 (SmoothStep clamps it), so the curve genuinely ramps 0→1 over
+                // the first 16% and then fades (1-v)^0.9 — peak ≈ 0.86. Alpha-blended glows have no HDR
+                // headroom, so the texture must carry the brightness.
+                float lengthA = Mathf.SmoothStep(0f, 1f, v / 0.16f) * Mathf.Pow(1f - v, 0.9f);
                 for (int x = 0; x < w; x++)
                 {
                     float u = x / (float)(w - 1);
-                    float widthA = Mathf.Sin(u * Mathf.PI); // 0 at the edges, 1 down the centre
-                    widthA *= widthA;                        // tighter, softer sides
+                    // Max() guards the edges: float Sin(π) dips fractionally NEGATIVE, and Pow(neg, 1.4) is NaN.
+                    float widthA = Mathf.Pow(Mathf.Max(0f, Mathf.Sin(u * Mathf.PI)), 1.4f); // wide bright core, soft edges
                     tex.SetPixel(x, y, new Color(1f, 1f, 1f, lengthA * widthA));
                 }
             }

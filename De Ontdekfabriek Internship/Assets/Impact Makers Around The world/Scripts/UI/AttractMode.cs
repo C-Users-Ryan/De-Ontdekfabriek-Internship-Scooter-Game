@@ -8,6 +8,7 @@ using KenyaScooter.Settings; // ConfigLocator (the live SessionConfig, for the f
 using KenyaScooter.Player;
 using KenyaScooter.Roads;
 using KenyaScooter.Traffic;
+using KenyaScooter.Hazards;
 
 namespace KenyaScooter.UI
 {
@@ -23,8 +24,10 @@ namespace KenyaScooter.UI
     ///    checkpoint/finish commit path can never fire. The group score and journey cannot be polluted.
     ///  - Driving reuses PlayerController's existing scripted-pose mode (the charge-station API): the bike
     ///    cruises at base speed while this component steers the lateral target with a simple road-space
-    ///    dodge brain (pull toward the oncoming lane to pass slower cars, only when oncoming is clear).
-    ///    A rare failed pass just exercises the grace/rewind safety net — itself a fine demo.
+    ///    dodge brain (pull toward the oncoming lane to pass slower cars/obstacles, only when oncoming is clear,
+    ///    and ease around hazards). During the demo the player is COLLISION-IMMUNE (DemoActive, honoured by
+    ///    PlayerCollisionHandler), so a missed dodge simply glides through instead of hard-crashing and snapping
+    ///    the kiosk back to the title after a few seconds — the demo keeps playing and keeps attracting.
     ///  - GameManager's own tap-to-start runs earlier in the frame (execution order -100) and only acts in
     ///    Ready, so the tap that ends the demo can never double as a game start.
     /// Self-bootstraps like the other kiosk helpers; disable by deleting the component or via idleSeconds = 0.
@@ -45,6 +48,12 @@ namespace KenyaScooter.UI
         public static float IdleSecondsOverride = -1f;
 
         private float IdleSeconds => IdleSecondsOverride >= 0f ? IdleSecondsOverride : idleSeconds;
+
+        /// <summary>True only while the self-play demo is running. During the demo the player is collision-immune
+        /// (<see cref="KenyaScooter.Player.PlayerCollisionHandler"/> checks this), so a missed dodge can never
+        /// hard-crash the run and snap the kiosk back to the title — the demo can only ever end on its own timer
+        /// or a real human tap. This is what makes the attract loop actually attract: it keeps playing.</summary>
+        public static bool DemoActive { get; private set; }
 
         private float idleTimer;
         private float demoTimer;
@@ -110,6 +119,8 @@ namespace KenyaScooter.UI
             if (player == null)
                 return;
 
+            DemoActive = true;                              // collision-immune for the whole demo (see PlayerCollisionHandler)
+            GameManager.Mode = GameMode.GroupRelay;         // the demo is always a normal timed run, never a leftover endless one
             GameManager.Instance.StartSession();            // real world, real traffic — the demo IS the game
             float lane = RoadSideConfig.Active != null ? RoadSideConfig.Active.OwnLaneCentre : 2f;
             player.BeginScriptedPose(lane, 0f, 2.5f, 120f); // cruise in-lane at base speed (throttle is scripted idle)
@@ -127,6 +138,7 @@ namespace KenyaScooter.UI
 
         private void EndDemo()
         {
+            DemoActive = false;
             demoRunning = false;
             idleTimer = 0f;
             if (player != null) player.EndScriptedPose();
@@ -152,15 +164,27 @@ namespace KenyaScooter.UI
             {
                 TrafficVehicle v = vehicles[i];
                 float gap = v.RoadArc - playerArc;
-                if (v.Direction == LaneDirection.SameDirection)
-                {
-                    if (gap > 1f && gap < passLookahead && Mathf.Abs(v.RoadLateral - ownLane) < 1.6f)
-                        wantPass = true; // slower car ahead in our lane (same-direction traffic is always below our base speed)
-                }
-                else if (gap > -6f && gap < oncomingClear)
-                {
+
+                // Pull out around anything sitting ahead in our lane: a slower same-direction car, OR any static
+                // obstacle (a parked wreck / rock) whatever way it faces. Both are things a real rider would pass.
+                bool aheadInLane = gap > 1f && gap < passLookahead && Mathf.Abs(v.RoadLateral - ownLane) < 1.6f;
+                if (aheadInLane && (v.Direction == LaneDirection.SameDirection || v.isStaticObstacle))
+                    wantPass = true;
+
+                // Never borrow the oncoming lane while a (moving) car is coming down it.
+                if (v.Direction == LaneDirection.Oncoming && !v.isStaticObstacle && gap > -6f && gap < oncomingClear)
                     oncomingBlocked = true;
-                }
+            }
+
+            // Ease around a pothole / rock sitting ahead in our lane too. Purely for looks — the demo is
+            // collision-immune — but weaving around hazards reads as skilled play and shows the world off.
+            var hazards = Hazard.Active;
+            for (int i = 0; i < hazards.Count; i++)
+            {
+                Hazard h = hazards[i];
+                float gap = h.RoadArc - playerArc;
+                if (gap > 1f && gap < passLookahead && Mathf.Abs(h.RoadLateral - ownLane) < 1.4f)
+                    wantPass = true;
             }
 
             float targetLane = wantPass && !oncomingBlocked ? passLane : ownLane;

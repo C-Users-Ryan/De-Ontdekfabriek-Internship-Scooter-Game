@@ -24,4 +24,4 @@ MonoBehaviour:
   forbiddenPrevTags: []
   preferredPrevTags: []
   trafficProfileOverride: {fileID: 11400000, guid: a32f1bbd675e05e4ba943f288961fd3c, type: 2}
-  speedLimitKmh: 0
+  speedLimitKmh: 80

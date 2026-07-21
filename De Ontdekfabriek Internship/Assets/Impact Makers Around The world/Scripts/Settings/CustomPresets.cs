@@ -18,12 +18,30 @@ namespace KenyaScooter.Settings
     public static class CustomPresets
     {
         public const int SlotCount = 3;
+        public const int MaxLabelLength = 24;
 
         private static string FilledKey(int slot) => "ksg.slot." + slot + ".on";
         private static string ValueKey(int slot, string settingKey) => "ksg.slot." + slot + "." + settingKey;
+        private static string NameKey(int slot) => "ksg.slot." + slot + ".name";
 
-        /// <summary>Plain-language slot name shown on the card.</summary>
-        public static string Label(int slot) => "Mijn profiel " + slot;
+        /// <summary>Plain-language slot name shown on the card: the facilitator's own name if they set one
+        /// (<see cref="SetLabel"/>), else the numbered default.</summary>
+        public static string Label(int slot)
+        {
+            string custom = PlayerPrefs.GetString(NameKey(slot), "");
+            return string.IsNullOrEmpty(custom) ? "Mijn profiel " + slot : custom;
+        }
+
+        /// <summary>Facilitator renames a slot. Trimmed and capped; empty/whitespace restores the numbered default.
+        /// The name is label-only — it never touches the saved values, so renaming a filled slot is always safe.</summary>
+        public static void SetLabel(int slot, string name)
+        {
+            name = name != null ? name.Trim() : "";
+            if (name.Length > MaxLabelLength) name = name.Substring(0, MaxLabelLength);
+            if (string.IsNullOrEmpty(name)) PlayerPrefs.DeleteKey(NameKey(slot));
+            else PlayerPrefs.SetString(NameKey(slot), name);
+            PlayerPrefs.Save();
+        }
 
         public static bool IsFilled(int slot) => PlayerPrefs.GetInt(FilledKey(slot), 0) == 1;
 
@@ -59,12 +77,14 @@ namespace KenyaScooter.Settings
             return true;
         }
 
-        /// <summary>Empties a slot (the saved values, not the live game).</summary>
+        /// <summary>Empties a slot (the saved values, not the live game). The custom name goes with it — an
+        /// emptied slot reading "Nog leeg" under someone's old label would look like it still held that setup.</summary>
         public static void Clear(int slot)
         {
             foreach (var def in SettingsCatalog.All)
                 PlayerPrefs.DeleteKey(ValueKey(slot, def.Key));
             PlayerPrefs.DeleteKey(FilledKey(slot));
+            PlayerPrefs.DeleteKey(NameKey(slot));
             PlayerPrefs.Save();
         }
     }

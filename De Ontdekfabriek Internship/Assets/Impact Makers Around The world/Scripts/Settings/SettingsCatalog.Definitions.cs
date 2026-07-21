@@ -60,13 +60,9 @@ namespace KenyaScooter.Settings
                 get: () => ConfigLocator.Traffic != null ? ConfigLocator.Traffic.maxOncoming : 8f,
                 set: v => { if (ConfigLocator.Traffic != null) ConfigLocator.Traffic.maxOncoming = Mathf.RoundToInt(v); }));
 
-            list.Add(new SettingDefinition(
-                "world.pedestrians", "Voetgangers",
-                "Hoe vaak voetgangers de weg oversteken die je moet laten voorgaan. Uit = geen voetgangers.",
-                SettingCategory.TrafficWorld, SettingWidget.Slider, 0f, 1.5f, 0.1f,
-                get: () => ConfigLocator.Pedestrian != null ? ConfigLocator.Pedestrian.crossingsPer100m : 0.6f,
-                set: v => { if (ConfigLocator.Pedestrian != null) ConfigLocator.Pedestrian.crossingsPer100m = v; },
-                format: PedestrianRate));
+            // ("Voetgangers" was REMOVED here 2026-07-14: the pedestrian system never made it into the shipped
+            // game, so the setting adjusted nothing a player could see. The Pedestrian code itself remains for a
+            // future team; re-exposing it = re-adding one SettingDefinition. See GameSettings.CleanRetiredKeys.)
 
             list.Add(new SettingDefinition(
                 "world.driveLeft", "Rijden aan welke kant",
@@ -120,24 +116,10 @@ namespace KenyaScooter.Settings
                 set: v => { if (ConfigLocator.Weather != null) ConfigLocator.Weather.dustEnabled = v >= 0.5f; },
                 format: OnOff));
 
-            // Roadside life: stalls, people, windmills, solar panels, animals along the shoulders (the "it feels
-            // empty" fix). Needs a RoadsidePropConfig asset; if none is found both rows read their defaults and do
-            // nothing. One toggle (on/off) plus one density dial — the facilitator turns one knob, not ten.
-            list.Add(new SettingDefinition(
-                "env.roadsideLife", "Leven langs de weg",
-                "Aan: kraampjes, mensen, dieren, windmolens en zonnepanelen langs de weg. Uit: een lege berm (de weg zonder omgeving).",
-                SettingCategory.Environment, SettingWidget.Toggle, 0f, 1f, 1f,
-                get: () => ConfigLocator.RoadsideProps != null && ConfigLocator.RoadsideProps.enabled ? 1f : 0f,
-                set: v => { if (ConfigLocator.RoadsideProps != null) ConfigLocator.RoadsideProps.enabled = v >= 0.5f; },
-                format: OnOff));
-
-            list.Add(new SettingDefinition(
-                "env.roadsideDensity", "Drukte langs de weg",
-                "Hoeveel er langs de weg staat. Meer = voller en levendiger (een dorp), minder = rustiger (platteland).",
-                SettingCategory.Environment, SettingWidget.Slider, 0f, 14f, 1f,
-                get: () => ConfigLocator.RoadsideProps != null ? ConfigLocator.RoadsideProps.propsPer100m : 6f,
-                set: v => { if (ConfigLocator.RoadsideProps != null) ConfigLocator.RoadsideProps.propsPer100m = v; },
-                format: RoadsideBusyness));
+            // ("Leven langs de weg" + "Drukte langs de weg" were REMOVED here 2026-07-14: the roadside-prop
+            // spawner never got its RoadsidePropConfig asset wired in the live scene, so both rows read defaults
+            // and did nothing. The spawner code remains; re-exposing it = wiring the asset + re-adding the two
+            // SettingDefinitions. See GameSettings.CleanRetiredKeys.)
 
             list.Add(new SettingDefinition(
                 "env.skyShifts", "Lucht kleurt mee met de dag",
@@ -176,24 +158,16 @@ namespace KenyaScooter.Settings
             list.Add(new SettingDefinition(
                 "env.zone", "Omgeving kiezen",
                 "Welke omgeving je ziet onderweg. Automatisch laat de omgeving vanzelf wisselen tijdens de rit; " +
-                "kies een omgeving om vooral díe te laten zien. (Bij Regio-reis AAN bepaalt de route de omgeving.)",
+                "kies een omgeving om vooral díe te laten zien.",
                 SettingCategory.Environment, SettingWidget.Stepper, 0f, zoneMax, 1f,
                 get: () => PlayerPrefs.GetInt(RoadSequencer.ZoneBiasPrefKey, 0),
                 set: v => { PlayerPrefs.SetInt(RoadSequencer.ZoneBiasPrefKey, Mathf.RoundToInt(v)); PlayerPrefs.Save(); },
                 format: ZoneName));
 
-            // REGIO-REIS (2026-07-05, Ryan's design): the road follows the regions in the order they are
-            // authored on the RoadSequencer (region 1 → 2 → 3 → …, wrapping) instead of the weighted random
-            // mix — so the environment genuinely CHANGES along the ride and each region keeps its own tiles.
-            // Every turn rides the same route from region 1, which keeps the relay fair between students.
-            list.Add(new SettingDefinition(
-                "env.regionJourney", "Regio-reis",
-                "De weg volgt de regio's in de volgorde van de wegenplanner (regio 1 → 2 → 3 → …) in plaats van " +
-                "willekeurig te wisselen — zo verandert de omgeving echt onderweg. Elke beurt begint bij regio 1.",
-                SettingCategory.Environment, SettingWidget.Toggle, 0f, 1f, 1f,
-                get: () => PlayerPrefs.GetInt(RoadSequencer.RegionJourneyPrefKey, 0),
-                set: v => { PlayerPrefs.SetInt(RoadSequencer.RegionJourneyPrefKey, v >= 0.5f ? 1 : 0); PlayerPrefs.Save(); },
-                format: OnOff));
+            // ("Regio-reis" was REMOVED here 2026-07-14: with the shipped sequence set its ordered-route mode was
+            // indistinguishable from the normal mix ("doesn't really seem to do anything" — Ryan). The
+            // RoadSequencer.PickNextRegion code path remains; its raw PlayerPrefs key is wiped at boot by
+            // GameSettings.CleanRetiredKeys so a lingering AAN can't keep steering the road with no UI left.)
 
             // How strongly a DIRT tile (RoadTile.surface) is FELT: the handlebar shake plus the extra dust on
             // murram stretches, both scaled by the shared RoadSurfaceFeel signal this stepper writes. The
@@ -670,6 +644,36 @@ namespace KenyaScooter.Settings
                 format: Points));
 
             // ---- SPEELDUUR ---------------------------------------------------------------
+
+            // Eindeloze modus (endless): the facilitator switch that changes the WHOLE game shape — a solo run with
+            // lives instead of the timed class relay. Deliberately a FACILITATOR setting (behind the access code),
+            // never a button on the title screen, so a child can't put the game into it. The menu reads
+            // GameManager.EndlessSelected when a run starts; "Alles terug naar standaard" turns it back off (default UIT).
+            list.Add(new SettingDefinition(
+                "session.endless", "Eindeloze modus",
+                "AAN: solomodus met levens in plaats van een klok — geen teamkeuze, geen relay, telt niet mee voor de klas; het kind rijdt door tot de levens op zijn. UIT (standaard): de gewone klassenrelay.",
+                SettingCategory.Session, SettingWidget.Toggle, 0f, 1f, 1f,
+                get: () => GameManager.EndlessSelected ? 1f : 0f,
+                set: v => GameManager.EndlessSelected = v >= 0.5f,
+                format: OnOff));
+
+            list.Add(new SettingDefinition(
+                "session.endlessLives", "Levens in de eindeloze modus",
+                "Hoeveel levens een kind heeft in de eindeloze modus. Een zware botsing kost een leven; bij het laatste leven stopt de rit. Geldt alleen in de eindeloze modus.",
+                SettingCategory.Session, SettingWidget.Stepper, 1f, 5f, 1f,
+                get: () => ConfigLocator.Session != null ? ConfigLocator.Session.endlessLives : 3f,
+                set: v => { if (ConfigLocator.Session != null) ConfigLocator.Session.endlessLives = Mathf.RoundToInt(v); },
+                format: v => { int n = Mathf.RoundToInt(v); return n + (n == 1 ? " leven" : " levens"); }));
+
+            // Whether children may type their OWN team name. OFF by default (they only get the fixed Swahili animal
+            // names, no free-text keyboard); a facilitator turns it ON to add the "EIGEN NAAM" card on team-select.
+            list.Add(new SettingDefinition(
+                "team.customName", "Eigen teamnaam toestaan",
+                "AAN: op het teamkeuze-scherm staat een extra kaart 'EIGEN NAAM' waarmee een groep zelf een naam typt op een schermtoetsenbord. UIT (standaard): alleen de vaste Swahili-dierennamen — geen toetsenbord voor de kinderen.",
+                SettingCategory.Session, SettingWidget.Toggle, 0f, 1f, 1f,
+                get: () => PlayerPrefs.GetInt("ksg.customName", 0) == 1 ? 1f : 0f,
+                set: v => { PlayerPrefs.SetInt("ksg.customName", v >= 0.5f ? 1 : 0); PlayerPrefs.Save(); },
+                format: OnOff));
 
             list.Add(new SettingDefinition(
                 "session.length", "Lengte van een beurt",

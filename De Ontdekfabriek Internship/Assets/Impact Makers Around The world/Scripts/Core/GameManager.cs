@@ -4,6 +4,7 @@ using KenyaScooter.Config;
 using KenyaScooter.SafetyNet;
 using KenyaScooter.Scoring;
 using KenyaScooter.Session;
+using KenyaScooter.Settings; // ConfigLocator — the live SessionConfig, for the endless-mode life count
 using KenyaScooter.Traffic;
 
 namespace KenyaScooter.Core
@@ -36,6 +37,33 @@ namespace KenyaScooter.Core
         /// menu's first Show() ran. (Earlier fix 2026-06-24 stopped a stray tap starting the game as TEAM SIMBA;
         /// this removes the last path where a background tap advanced the title.)</summary>
         public static bool AllowTapToStart { get; set; } = false;
+
+        /// <summary>Which session shape is running (GroupRelay = the timed team relay, the default; Endless = the
+        /// solo Vrij-rijden arcade run with lives). Static like <see cref="AllowTapToStart"/>, set once before
+        /// StartSession by the menu / attract mode. It MUST be set at every entry point (the menu sets GroupRelay
+        /// on the group path and Endless on the Vrij-rijden button; attract forces GroupRelay) so a previous
+        /// endless run can never leave the next group session's timer disabled.</summary>
+        public static GameMode Mode { get; set; } = GameMode.GroupRelay;
+
+        /// <summary>Endless mode: lives left this run. Reset on StartSession; a hard crash decrements it; at 0 the run ends.</summary>
+        public static int LivesRemaining { get; private set; }
+        /// <summary>The life count an endless run STARTED with, so the HUD's lives gauge knows what "full" is. Set on StartSession.</summary>
+        public static int EndlessMaxLives { get; private set; } = 3;
+        private const int DefaultEndlessLives = 3;
+
+        /// <summary>PlayerPrefs key for the facilitator's persisted choice of whether the game runs in Endless
+        /// (Vrij rijden) mode. Set ONLY from the settings menu / a Profiel (behind the access code), never from a
+        /// child-facing button on the title screen.</summary>
+        public const string EndlessPrefKey = "ksg.endlessMode";
+
+        /// <summary>The facilitator's saved choice: does pressing ANZA start a solo Endless run (lives, no team,
+        /// no relay) instead of the timed class relay? The menu reads this when a run begins and sets
+        /// <see cref="Mode"/> accordingly. Distinct from <see cref="Mode"/>, which is the live per-run value.</summary>
+        public static bool EndlessSelected
+        {
+            get => PlayerPrefs.GetInt(EndlessPrefKey, 0) == 1;
+            set { PlayerPrefs.SetInt(EndlessPrefKey, value ? 1 : 0); PlayerPrefs.Save(); }
+        }
 
         [SerializeField] private RoadSideConfig roadSideConfig;
         [SerializeField] private Transform player;
@@ -117,6 +145,13 @@ namespace KenyaScooter.Core
 
             Stats.Reset();
             turnCommitted = false;
+            if (Mode == GameMode.Endless)
+            {
+                LivesRemaining = ConfigLocator.Session != null && ConfigLocator.Session.endlessLives > 0
+                    ? ConfigLocator.Session.endlessLives : DefaultEndlessLives;
+                EndlessMaxLives = LivesRemaining;
+                GameEvents.RaiseLivesChanged(LivesRemaining);
+            }
             RoadDirection.ResetToDefault();
             GameEvents.RaiseSessionReset();
             SetState(GameState.Playing);
@@ -140,6 +175,21 @@ namespace KenyaScooter.Core
         /// </summary>
         public CrashOutcome HandleHardCrash()
         {
+            // Endless (Vrij rijden): a hard crash costs a LIFE instead of rewinding; the run ends only when the
+            // last life is spent. Light/medium hits are still soaked by grace upstream, so only real crashes cost.
+            if (Mode == GameMode.Endless)
+            {
+                LivesRemaining = Mathf.Max(0, LivesRemaining - 1);
+                GameEvents.RaiseLivesChanged(LivesRemaining);
+                if (LivesRemaining <= 0)
+                {
+                    EndTurn(GameState.GameOver);
+                    return CrashOutcome.GameOver;
+                }
+                WorldSpeed.Instance.SetCurrent(WorldSpeed.Instance.BaseSpeed);
+                return CrashOutcome.Recovered;
+            }
+
             if (rewind != null && rewind.CanRewind)
             {
                 SetState(GameState.Rewinding);
@@ -200,7 +250,9 @@ namespace KenyaScooter.Core
 
             Stats.FinalScore = ScoreManager.Instance != null ? ScoreManager.Instance.Score : 0;
             Stats.DistanceMetres = WorldSpeed.Instance.DistanceTravelled;
-            if (GroupScoreManager.Instance != null)
+            // Endless is a solo run — it must never add to the shared class relay total (the leaderboard commit
+            // itself lives in the menu's group flow, which endless never enters).
+            if (Mode == GameMode.GroupRelay && GroupScoreManager.Instance != null)
                 GroupScoreManager.Instance.CommitTurn(Stats.FinalScore);
         }
 

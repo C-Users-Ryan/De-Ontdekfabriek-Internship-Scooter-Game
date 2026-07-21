@@ -11,7 +11,10 @@ namespace KenyaScooter.Config
     {
         [Header("Speed (M2)")]
         public float baseSpeed = 10f;
-        public float maxSpeed = 30f;
+        [Tooltip("Top speed with full gas. 22 m/s = 79 km/h — deliberately JUST under the 80 km/h zone limit, so " +
+                 "children holding full throttle can never speed (2026-07-14, Ryan). Only the Uitdagend preset " +
+                 "raises this (30 = 108 km/h): managing your speed IS that mode's challenge.")]
+        public float maxSpeed = 22f;
         [Tooltip("Brake floor. 0 allows a full stop (needed for the checkpoint arrival).")]
         public float minSpeed = 0f;
         public float acceleration = 15f;

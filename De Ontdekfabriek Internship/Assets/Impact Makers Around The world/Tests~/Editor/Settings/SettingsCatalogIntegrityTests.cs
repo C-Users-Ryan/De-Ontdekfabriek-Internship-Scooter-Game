@@ -55,12 +55,9 @@ namespace KenyaScooter.SettingsTests
         {
             foreach (var preset in SettingsCatalog.Presets)
             {
-                if (preset.ResetToDefault)
-                {
-                    Assert.IsEmpty(preset.Values, $"the reset profile '{preset.Key}' should not list any values");
-                    continue;
-                }
-
+                // (2026-07-14: a ResetToDefault profile may now ALSO pin values — it clears every override and
+                // THEN writes its list, which is how "Standaard" guarantees right-side driving + 79 km/u. So its
+                // values go through the same range checks as everyone else's instead of being asserted empty.)
                 foreach (var pair in preset.Values)
                 {
                     var def = SettingsCatalog.ById(pair.Key);

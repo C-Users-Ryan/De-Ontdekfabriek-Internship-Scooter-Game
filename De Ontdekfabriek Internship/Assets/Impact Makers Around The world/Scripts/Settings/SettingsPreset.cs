@@ -26,13 +26,18 @@ namespace KenyaScooter.Settings
         public string Description { get; }
         /// <summary>A short plain-language summary of WHAT it changes, shown as a chip line, e.g. "Rustig · weinig verkeer · vergevingsgezind".</summary>
         public string Summary { get; }
-        /// <summary>When true this profile is the full "back to standard" reset; <see cref="Values"/> is ignored.</summary>
+        /// <summary>When true this profile FIRST clears every override, then writes <see cref="Values"/> on the
+        /// clean slate — so a "Standaard" profile can both reset everything AND pin its few signature values
+        /// (e.g. right-side driving) regardless of what the device captured as its factory baseline.</summary>
         public bool ResetToDefault { get; }
         /// <summary>The setting-key → value pairs this profile writes. Keys not in the catalog are ignored.</summary>
         public IReadOnlyDictionary<string, float> Values { get; }
+        /// <summary>True for the two MODE presets (Standaard, Eindeloze modus). The Profielen page renders these
+        /// in a separate "MODUS" section from the non-primary DIFFICULTY presets (Rustig/Normaal/Uitdagend).</summary>
+        public bool Primary { get; }
 
         public SettingsPreset(string key, string label, string description, string summary,
-                              Dictionary<string, float> values, bool resetToDefault = false)
+                              Dictionary<string, float> values, bool resetToDefault = false, bool primary = false)
         {
             Key = key;
             Label = label;
@@ -40,17 +45,16 @@ namespace KenyaScooter.Settings
             Summary = summary;
             Values = values ?? new Dictionary<string, float>();
             ResetToDefault = resetToDefault;
+            Primary = primary;
         }
 
-        /// <summary>Applies this profile: clears overrides for the reset profile, else writes each listed value
-        /// through the override store (persisted + applied to the live game immediately). Unknown keys are skipped.</summary>
+        /// <summary>Applies this profile: the reset profile clears every override first, then any profile writes
+        /// its listed values through the override store (persisted + applied to the live game immediately).
+        /// Unknown keys are skipped.</summary>
         public void Apply()
         {
             if (ResetToDefault)
-            {
                 GameSettings.ResetAll();
-                return;
-            }
             foreach (var pair in Values)
             {
                 var def = SettingsCatalog.ById(pair.Key);

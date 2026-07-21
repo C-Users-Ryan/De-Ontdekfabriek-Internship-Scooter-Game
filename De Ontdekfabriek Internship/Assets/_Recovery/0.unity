@@ -19308,8 +19308,6 @@ MonoBehaviour:
   sequences:
   - {fileID: 11400000, guid: 5cd39b66b7974d34597e747832276aa5, type: 2}
   - {fileID: 11400000, guid: 3afa3f60e6fa44041812b1f1c4330d75, type: 2}
-  - {fileID: 11400000, guid: 5cd39b66b7974d34597e747832276aa5, type: 2}
-  - {fileID: 11400000, guid: f807e5edde1b46c48b6e82df23150d53, type: 2}
   checkpointTile: {fileID: 8678437511983235021, guid: 363633453d734e449b1dc377e528989e, type: 3}
   startTile: {fileID: 8678437511983235021, guid: c53af1bc2ca5a1540a00e64a68976f11, type: 3}
   spawnHorizon: 200

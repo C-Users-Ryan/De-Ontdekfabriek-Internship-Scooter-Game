@@ -96,6 +96,7 @@ namespace KenyaScooter.UI
             float pillLeft = w * 0.10f; // the backing pill is w*0.80 wide, centred
             Image sun = AddImage(strip, "SunDot", Hex("#F6A949"), CircleSprite());
             Anchor(sun.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(20f, 20f), new Vector2(pillLeft + 36f, 0f));
+            sunDotGO = sun.gameObject; // hidden in endless — the heart pips take this corner of the strip
 
             TMP_Text day = AddText(strip, "DayLabel", "ASUBUHI", 24, accent, TextAlignmentOptions.Left);
             Anchor(day.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(230f, 30f), Vector2.zero);
@@ -127,6 +128,29 @@ namespace KenyaScooter.UI
             Anchor(chargeDisc.rectTransform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(32f, 32f), new Vector2(10f, 0f));
             Image charge = AddImage(chargeDisc.rectTransform, "Bolt", panelColour, BoltSprite());
             Anchor(charge.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(20f, 20f), Vector2.zero);
+            chargeDiscGO = chargeDisc.gameObject; // hidden in endless (no charge-station goal there)
+
+            // Endless-only DISTANCE readout, styled into the strip (accent, right-aligned). It sits roughly where the
+            // charge-station goal marker is in the relay; ApplyModeLayout swaps the two by GameMode so only one shows.
+            // Anchored INSIDE the backing pill (the pill's right edge sits w*0.10 in from the strip's).
+            TMP_Text dist = AddText(strip, "Distance", "0 m", 22, accent, TextAlignmentOptions.Right);
+            Anchor(dist.rectTransform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(180f, 28f), new Vector2(-(w * 0.10f + 24f), 0f));
+            dist.rectTransform.pivot = new Vector2(1f, 0.5f);
+            dist.gameObject.SetActive(false);
+            distanceText = dist;
+
+            // Endless-only LIVES: one heart pip per life, in the day label's spot (ApplyModeLayout swaps them —
+            // in a solo lives run the lives are the headline, the time of day is set dressing). Big, red and at
+            // the top of the screen so a child reads "how am I doing" at a glance; the LEVENS battery gauge in
+            // the cluster below mirrors the same count. DriveBattery paints them.
+            heartPips = new Image[MaxHearts];
+            for (int i = 0; i < MaxHearts; i++)
+            {
+                Image heart = AddImage(strip, "Heart" + i, danger, HeartSprite());
+                Anchor(heart.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(30f, 30f), new Vector2(pillLeft + 36f + i * 34f, 0f));
+                heart.gameObject.SetActive(false);
+                heartPips[i] = heart;
+            }
 
             // rider marker rides the head of the fill (stand-in for a scooter sprite)
             Image rider = AddImage(bar.rectTransform, "Rider", ink, CircleSprite());
@@ -297,6 +321,7 @@ namespace KenyaScooter.UI
             TMP_Text sub = AddText(block, "Sub", "MUDA", 15, muted, TextAlignmentOptions.Center);
             Anchor(sub.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(90f, 18f), new Vector2(0f, 2f));
             UiKit.Caps(sub, 0.14f);
+            batterySubLabel = sub; // relabelled "LEVENS" in endless (the battery becomes a lives gauge)
         }
 
         private void BuildLimit(RectTransform parent, Vector2 pos)
@@ -429,6 +454,28 @@ namespace KenyaScooter.UI
             tex.Apply(); _circle = ToSprite(tex); return _circle;
         }
 
+        private Sprite _heart;
+        // A filled heart (lobes up, point down) from the classic implicit curve (x²+y²−1)³ − x²y³ ≤ 0,
+        // supersampled 2×2 for a soft edge — same no-art-asset approach as the other cluster sprites.
+        private Sprite HeartSprite()
+        {
+            if (_heart != null) return _heart;
+            int s = 64; var tex = NewTex(s, s);
+            for (int y = 0; y < s; y++) for (int x = 0; x < s; x++)
+            {
+                int inside = 0;
+                for (int sy = 0; sy < 2; sy++) for (int sx = 0; sx < 2; sx++)
+                {
+                    float u = (x + 0.25f + sx * 0.5f) / s * 2.9f - 1.45f;
+                    float v = (y + 0.25f + sy * 0.5f) / s * 2.9f - 1.35f;
+                    float a = u * u + v * v - 1f;
+                    if (a * a * a - u * u * v * v * v < 0f) inside++;
+                }
+                tex.SetPixel(x, y, new Color(1f, 1f, 1f, inside / 4f));
+            }
+            tex.Apply(); _heart = ToSprite(tex); return _heart;
+        }
+
         private Sprite RingSprite(float innerFrac)
         {
             if (_ring.TryGetValue(innerFrac, out var cached)) return cached;
@@ -468,7 +515,10 @@ namespace KenyaScooter.UI
             {
                 float dx = (x - c) / c, dy = (y - c) / c;
                 float d = Mathf.Sqrt(dx * dx + dy * dy);
-                tex.SetPixel(x, y, new Color(1, 1, 1, Mathf.SmoothStep(0.65f, 1.15f, d)));
+                // t = distance remapped over [0.65, 1.15]: Mathf.SmoothStep(from,to,t) is a smoothed LERP whose
+                // FROM/TO are output values — the old SmoothStep(0.65, 1.15, d) returned ≥0.65 at the screen
+                // CENTRE, tinting the whole view red on a crash instead of just the edges (2026-07-14).
+                tex.SetPixel(x, y, new Color(1, 1, 1, Mathf.SmoothStep(0f, 1f, (d - 0.65f) / 0.5f)));
             }
             tex.Apply(); _vignette = ToSprite(tex); return _vignette;
         }

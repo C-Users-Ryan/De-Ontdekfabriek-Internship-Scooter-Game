@@ -45,10 +45,31 @@ namespace KenyaScooter.Settings
         public static void ApplyOnStartup()
         {
             ConfigLocator.Forget(); // fresh resolve for this run (Editor enter-play safety)
+            CleanRetiredKeys();
             CaptureBaselinesIfNeeded();
             ApplyAll();
             _applied = true;
             PlayerPrefs.SetInt(AppliedFlag, 1);
+        }
+
+        /// <summary>
+        /// Deletes the PlayerPrefs residue of settings REMOVED from the catalog (2026-07-14: Voetgangers,
+        /// Leven/Drukte langs de weg, Regio-reis). Their ksg.set./ksg.def. entries are merely stale (ApplyAll
+        /// loops the catalog, so unknown keys are never applied), but a setter that wrote a RAW key the game
+        /// reads directly — Regio-reis wrote "ksg.regionJourney", read by RoadSequencer every zone pick — would
+        /// keep steering the game FOREVER with no UI left to turn it off. Wiping here makes removal complete.
+        /// GOTCHA FOR FUTURE REMOVALS: if the setting's set() wrote PlayerPrefs directly (not a config field),
+        /// add its raw key here when you delete its SettingDefinition.
+        /// </summary>
+        private static void CleanRetiredKeys()
+        {
+            PlayerPrefs.DeleteKey("ksg.regionJourney"); // = RoadSequencer.RegionJourneyPrefKey (raw, game-read)
+            string[] retired = { "world.pedestrians", "env.roadsideLife", "env.roadsideDensity", "env.regionJourney" };
+            for (int i = 0; i < retired.Length; i++)
+            {
+                PlayerPrefs.DeleteKey(OverridePrefix + retired[i]);
+                PlayerPrefs.DeleteKey(DefaultPrefix + retired[i]);
+            }
         }
 
         /// <summary>Pushes every saved override onto the live configs. Settings with no saved override are left at default.</summary>

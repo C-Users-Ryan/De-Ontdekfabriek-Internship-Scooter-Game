@@ -52,7 +52,7 @@ namespace KenyaScooter.Traffic
         private static Material glowMat, beamMat;
 
         private TrafficVehicle vehicle;
-        private Renderer head, tailL, tailR, beamL, beamR;
+        private Renderer head, tailL, tailR, tailHaloL, tailHaloR, beamL, beamR;
         private MaterialPropertyBlock mpb;
         private float prevSpeed;
         private float lastHead = -1f, lastTail = -1f, lastBeam = -1f;
@@ -72,16 +72,66 @@ namespace KenyaScooter.Traffic
             float halfLen = (vehicle != null ? vehicle.length : 4.5f) * 0.5f;
             float w = (vehicle != null ? vehicle.width : 1.9f);
 
+            // Place the lamps on the vehicle's REAL silhouette, measured from its renderers, not from the
+            // configured TrafficVehicle.length/width. Those config values drive spacing/AI and routinely run
+            // SHORTER than the visual mesh — which buried the nose/tail glow quads INSIDE the body, so the rear
+            // showed no lights at all ("the backs have no lights visible in the dark"). The 12 m beams escaped
+            // the mesh regardless, which is why the fronts looked fine while the small quads vanished.
+            float front = halfLen + 0.03f, rear = -(halfLen + 0.03f), tailY = TailHeight, headY = HeadHeight;
+            if (TryGetLocalBounds(out Bounds body))
+            {
+                front = body.max.z + 0.06f;
+                rear = body.min.z - 0.06f;
+                w = Mathf.Max(w, body.size.x);
+                // Keep the lamps on the body: clamp their height into the lower half of the real silhouette.
+                tailY = Mathf.Clamp(TailHeight, body.min.y + 0.2f, body.min.y + body.size.y * 0.55f);
+                headY = Mathf.Clamp(HeadHeight, body.min.y + 0.2f, body.min.y + body.size.y * 0.55f);
+            }
+
             // A wide, short glow bar reads as "lights on" without pretending to be two separate lamps.
-            head = BuildBar("HeadlightGlow", new Vector3(0f, HeadHeight, halfLen + 0.03f), faceBack: false, new Vector2(w * 0.72f, 0.34f));
+            head = BuildBar("HeadlightGlow", new Vector3(0f, headY, front), faceBack: false, new Vector2(w * 0.72f, 0.34f));
             // Two tail lights at the rear corners (mirroring the two front beams) so the back reads as real tail
             // lights, not one central blob; brightened at night in Update so the car is clearly visible in the dark.
-            tailL = BuildBar("TaillightGlowL", new Vector3(-w * TailEdgeFactor, TailHeight, -(halfLen + 0.03f)), faceBack: true, new Vector2(w * 0.34f, 0.30f));
-            tailR = BuildBar("TaillightGlowR", new Vector3(w * TailEdgeFactor, TailHeight, -(halfLen + 0.03f)), faceBack: true, new Vector2(w * 0.34f, 0.30f));
+            tailL = BuildBar("TaillightGlowL", new Vector3(-w * TailEdgeFactor, tailY, rear), faceBack: true, new Vector2(w * 0.34f, 0.34f));
+            tailR = BuildBar("TaillightGlowR", new Vector3(w * TailEdgeFactor, tailY, rear), faceBack: true, new Vector2(w * 0.34f, 0.34f));
+            // A soft red HALO behind each tail lamp: alpha-blended quads can't over-brighten the way the old
+            // additive material did, so SIZE does the work — the big low-alpha aura is what makes the rear read
+            // from a distance in the dark, the small core above reads as the lamp itself.
+            tailHaloL = BuildBar("TaillightHaloL", new Vector3(-w * TailEdgeFactor, tailY, rear - 0.03f), faceBack: true, new Vector2(w * 0.6f, 0.9f));
+            tailHaloR = BuildBar("TaillightHaloR", new Vector3(w * TailEdgeFactor, tailY, rear - 0.03f), faceBack: true, new Vector2(w * 0.6f, 0.9f));
             // Two headlight beams, out toward the car's left/right edges (like real headlights), each tilted down a touch.
-            beamL = BuildBeam(new Vector3(-w * BeamEdgeFactor, BeamHeight, halfLen));
-            beamR = BuildBeam(new Vector3(w * BeamEdgeFactor, BeamHeight, halfLen));
+            beamL = BuildBeam(new Vector3(-w * BeamEdgeFactor, BeamHeight, front - 0.02f));
+            beamR = BuildBeam(new Vector3(w * BeamEdgeFactor, BeamHeight, front - 0.02f));
             prevSpeed = vehicle != null ? vehicle.CurrentSpeed : 0f;
+        }
+
+        /// <summary>Combined bounds of the vehicle's mesh renderers in ROOT-local space, so the lamps sit on the
+        /// real body instead of the configured length. Built from each renderer's LOCAL bounds mapped renderer→root
+        /// (never through a world AABB, which is already inflated while the car sits at a mid-bend yaw when the
+        /// Provisioner attaches this — and the built flag would bake that error in for the car's pooled lifetime).
+        /// False if there are no renderers yet.</summary>
+        private bool TryGetLocalBounds(out Bounds local)
+        {
+            local = new Bounds();
+            var renderers = GetComponentsInChildren<MeshRenderer>(false);
+            bool has = false;
+            Matrix4x4 toRoot = transform.worldToLocalMatrix;
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                Bounds lb = renderers[i].localBounds;
+                Matrix4x4 toRootLocal = toRoot * renderers[i].transform.localToWorldMatrix;
+                Vector3 min = lb.min, max = lb.max;
+                for (int c = 0; c < 8; c++)
+                {
+                    var corner = new Vector3((c & 1) == 0 ? min.x : max.x,
+                                             (c & 2) == 0 ? min.y : max.y,
+                                             (c & 4) == 0 ? min.z : max.z);
+                    Vector3 lp = toRootLocal.MultiplyPoint3x4(corner);
+                    if (!has) { local = new Bounds(lp, Vector3.zero); has = true; }
+                    else local.Encapsulate(lp);
+                }
+            }
+            return has;
         }
 
         private void Update()
@@ -120,6 +170,11 @@ namespace KenyaScooter.Traffic
                 Color tailC = (braking ? BrakeColour : TailColour) * tailLevel;
                 Apply(tailL, tailC);
                 Apply(tailR, tailC);
+                // The halo carries the same red at a soft alpha — its size (not brightness) makes the rear read
+                // in the dark; slightly stronger at night / while braking, subtle by day.
+                var haloC = new Color(tailC.r, tailC.g, tailC.b, Mathf.Lerp(0.25f, 0.55f, night) * (braking ? 1.25f : 1f));
+                Apply(tailHaloL, haloC);
+                Apply(tailHaloR, haloC);
             }
 
             // Headlight beam: a visible additive shaft from the nose, fading in at night (off by day). The rgb carries
@@ -180,6 +235,10 @@ namespace KenyaScooter.Traffic
                 new Vector3(0.5f, 0.5f, 0f), new Vector3(-0.5f, 0.5f, 0f)
             };
             quadMesh.uv = new[] { new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(0f, 1f) };
+            // White vertex colours: Sprites/Default multiplies the texture by the vertex colour, and an ABSENT
+            // colour channel can read as BLACK on mobile GPUs — which leaves every car glow / tail light invisible
+            // on the tablet while they show in the Editor. This is the fix for "the vehicle lights don't show".
+            quadMesh.colors = new[] { Color.white, Color.white, Color.white, Color.white };
             quadMesh.triangles = new[] { 0, 1, 2, 0, 2, 3 }; // faces +Z
             quadMesh.RecalculateBounds();
             return quadMesh;
@@ -262,34 +321,29 @@ namespace KenyaScooter.Traffic
             }
             beamMesh.vertices = verts;
             beamMesh.uv = uvs;
+            var cols = new Color[verts.Length];
+            for (int i = 0; i < cols.Length; i++) cols[i] = Color.white; // Sprites/Default needs vertex colours (mobile: absent = black)
+            beamMesh.colors = cols;
             beamMesh.triangles = tris;
             beamMesh.RecalculateBounds();
             return beamMesh;
         }
 
-        /// <summary>Shared ADDITIVE material for every car beam (adds warm light; order-independent so overlaps are
-        /// fine). URP/Unlit set additive-transparent; alpha-sprite fallback if URP/Unlit is unavailable.</summary>
+        /// <summary>Shared material for every car beam (a translucent warm shaft). Uses the built-in "Sprites/Default"
+        /// shader — Always-Included, needs no runtime-set keywords — so it renders RELIABLY on the Android/URP build.
+        /// The previous version reconfigured "Universal Render Pipeline/Unlit" into a transparent-additive material at
+        /// runtime, but URP strips that unused variant from a mobile build, leaving the beams invisible on the tablet
+        /// while they showed in the Editor. Alpha-blended rather than additive; the beams are night-only and warm, so
+        /// overlapping shafts still read fine.</summary>
         private static Material BeamMaterial()
         {
             if (beamMat != null)
                 return beamMat;
             Texture2D grad = BeamGradient();
-            Shader urp = Shader.Find("Universal Render Pipeline/Unlit");
-            if (urp != null)
-            {
-                beamMat = new Material(urp) { name = "CarHeadlightBeam", mainTexture = grad };
-                beamMat.SetFloat("_Surface", 1f);
-                beamMat.SetFloat("_Blend", 2f);
-                beamMat.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
-                beamMat.SetFloat("_DstBlend", (float)BlendMode.One);
-                beamMat.SetFloat("_ZWrite", 0f);
-                beamMat.SetFloat("_Cull", (float)CullMode.Off);
-                beamMat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-                beamMat.renderQueue = (int)RenderQueue.Transparent;
-                beamMat.enableInstancing = true;
-                return beamMat;
-            }
-            beamMat = new Material(Shader.Find("Sprites/Default")) { name = "CarHeadlightBeam", mainTexture = grad };
+            Shader shader = Shader.Find("Sprites/Default");
+            if (shader == null) shader = Shader.Find("Universal Render Pipeline/Unlit"); // last-ditch; Sprites/Default is Always-Included
+            beamMat = new Material(shader) { name = "CarHeadlightBeam", mainTexture = grad };
+            beamMat.enableInstancing = true;
             return beamMat;
         }
 

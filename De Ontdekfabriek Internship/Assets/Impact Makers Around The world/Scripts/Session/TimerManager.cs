@@ -38,7 +38,9 @@ namespace KenyaScooter.Session
 
         private void Update()
         {
-            if (expired || GameManager.State != GameState.Playing)
+            // Endless mode has no countdown — lives are the fail condition, so the timer never runs (and so the
+            // checkpoint/relay, which keys off it, never triggers). One guard beside the existing state check.
+            if (expired || GameManager.State != GameState.Playing || GameManager.Mode == GameMode.Endless)
                 return;
 
             Remaining -= Time.deltaTime;

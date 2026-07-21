@@ -4,6 +4,7 @@ using KenyaScooter.Core;
 using KenyaScooter.Hazards;
 using KenyaScooter.SafetyNet;
 using KenyaScooter.Traffic;
+using KenyaScooter.UI; // AttractMode.DemoActive — the kiosk self-play demo is collision-immune
 
 namespace KenyaScooter.Player
 {
@@ -42,6 +43,8 @@ namespace KenyaScooter.Player
 
         private void HandleContact(Collider other)
         {
+            if (AttractMode.DemoActive)
+                return; // kiosk attract demo: the autopilot phases through traffic so the self-play can never crash-and-reset
             if (GameManager.State != GameState.Playing)
                 return;
             if (Time.time < cooldownUntil || Time.time < invulnerableUntil || RoadDirection.IsTurning)

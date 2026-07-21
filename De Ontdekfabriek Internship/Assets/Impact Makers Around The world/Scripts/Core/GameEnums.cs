@@ -16,6 +16,14 @@ namespace KenyaScooter.Core
         Finished      // session ended via timer without a checkpoint prefab assigned
     }
 
+    /// <summary>
+    /// Which session shape is running. GroupRelay = the timed, team-based class relay (the default, and every
+    /// existing system's behaviour is unchanged under it). Endless = a solo "Vrij rijden" arcade run: lives
+    /// instead of a countdown, no team select and no relay/leaderboard framing. Set once (before StartSession)
+    /// by the menu / attract mode; every system that must differ branches on GameManager.Mode.
+    /// </summary>
+    public enum GameMode { GroupRelay, Endless }
+
     /// <summary>Collision classes derived from relative impact speed (M15).</summary>
     public enum CollisionSeverity
     {

@@ -112,7 +112,9 @@ namespace KenyaScooter.Settings
             var cx = AddImage(close, "x", Cream, XSprite());
             Anchor(cx.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(34f, 34f), Vector2.zero);
 
-            BuildDetailLevelControl(head);
+            // (2026-07-14: the BASIS|EXPERT header switch was REMOVED — "expert" read as a difficulty setting to
+            // facilitators while it only unhid menu rows. Each category still opens with its essentials and the
+            // per-category "MEER OPTIES (n)" button reveals the finer tuning; difficulty lives in the Profielen.)
 
             // Header hairline.
             var rule = AddImage(panel, "HeaderRule", UiKit.WithAlpha(UiKit.Rust, 0.4f), Rounded(2));
@@ -148,41 +150,6 @@ namespace KenyaScooter.Settings
             return (p - (a + ab * t)).magnitude;
         }
 
-        // BASIS | EXPERT master switch in the header. BASIS keeps every category to its essentials (finer tuning
-        // behind "Meer opties"); EXPERT opens them fully. Persisted, and re-renders the current page on change.
-        private void BuildDetailLevelControl(RectTransform head)
-        {
-            RectTransform seg = NewRect(head, "DetailLevel");
-            seg.anchorMin = new Vector2(1f, 0.5f); seg.anchorMax = new Vector2(1f, 0.5f); seg.pivot = new Vector2(1f, 0.5f);
-            seg.sizeDelta = new Vector2(360f, 68f); seg.anchoredPosition = new Vector2(-128f, 2f);
-            var segBg = seg.gameObject.AddComponent<Image>(); segBg.sprite = Rounded(34); segBg.type = Image.Type.Sliced; segBg.color = TrackFill;
-
-            Image basImg = null, expImg = null; TMP_Text basT = null, expT = null;
-            System.Action paint = () =>
-            {
-                bool e = ExpertMode;
-                var clear = new Color(0f, 0f, 0f, 0f);
-                basImg.color = e ? clear : Accent; basT.color = e ? Ink : InkOnLight;
-                expImg.color = e ? Accent : clear; expT.color = e ? InkOnLight : Ink;
-            };
-
-            RectTransform a = NewRect(seg, "Basis");
-            a.anchorMin = new Vector2(0f, 0f); a.anchorMax = new Vector2(0.5f, 1f); a.offsetMin = new Vector2(5f, 5f); a.offsetMax = new Vector2(-2.5f, -5f);
-            basImg = a.gameObject.AddComponent<Image>(); basImg.sprite = Rounded(29); basImg.type = Image.Type.Sliced;
-            var ab = a.gameObject.AddComponent<Button>(); ab.targetGraphic = basImg;
-            basT = AddText(a, "t", "BASIS", 24, Ink, TextAlignmentOptions.Center); basT.fontStyle = FontStyles.Bold; Stretch(basT.rectTransform);
-            ab.onClick.AddListener(() => { ExpertMode = false; showAdvanced = false; paint(); ShowCategory(current); });
-
-            RectTransform b = NewRect(seg, "Expert");
-            b.anchorMin = new Vector2(0.5f, 0f); b.anchorMax = new Vector2(1f, 1f); b.offsetMin = new Vector2(2.5f, 5f); b.offsetMax = new Vector2(-5f, -5f);
-            expImg = b.gameObject.AddComponent<Image>(); expImg.sprite = Rounded(29); expImg.type = Image.Type.Sliced;
-            var bb = b.gameObject.AddComponent<Button>(); bb.targetGraphic = expImg;
-            expT = AddText(b, "t", "EXPERT", 24, Ink, TextAlignmentOptions.Center); expT.fontStyle = FontStyles.Bold; Stretch(expT.rectTransform);
-            bb.onClick.AddListener(() => { ExpertMode = true; showAdvanced = true; paint(); ShowCategory(current); });
-
-            paint();
-        }
-
         private void BuildSidebar(RectTransform panel)
         {
             // v2.8: wider column (500), clear of the header (top −210) and footer (bottom 150).
@@ -206,11 +173,13 @@ namespace KenyaScooter.Settings
             int catCount = 0;
             foreach (SettingCategory cat in System.Enum.GetValues(typeof(SettingCategory)))
                 if (eligible(cat)) catCount++;
-            float colH = panelH - 366f; // categoryHost height (top −210, bottom 156)
+            const float searchH = 64f, searchGap = 18f;
+            BuildSearchField(categoryHost, searchH); // a search box pinned to the top of the sidebar
+            float colH = panelH - 366f - (searchH + searchGap); // categoryHost height, minus the search field on top
             float pitch = catCount > 0 ? Mathf.Min(84f, colH / catCount) : 84f;
             float itemH = Mathf.Clamp(pitch - 8f, 52f, 76f);
 
-            float y = 0f;
+            float y = searchH + searchGap; // categories start below the search field
             foreach (SettingCategory cat in System.Enum.GetValues(typeof(SettingCategory)))
             {
                 if (!eligible(cat)) continue;
@@ -263,6 +232,93 @@ namespace KenyaScooter.Settings
                 var img = badgeT.transform.parent != null ? badgeT.transform.parent.GetComponent<Image>() : null;
                 if (img != null) img.enabled = n > 0;
             }
+        }
+
+        // ---- settings search (#2) -----------------------------------------------------
+
+        // A search box pinned to the top of the sidebar. Typing filters every category's rows into one list
+        // (reusing BuildRow), so a facilitator who knows a setting's NAME doesn't have to know its category.
+        // On a tablet, tapping it summons the OS keyboard — acceptable here because this is a post-PIN
+        // facilitator surface, not a child-facing one. Same full-width top-anchored layout the categories use.
+        private void BuildSearchField(RectTransform host, float height)
+        {
+            RectTransform area = NewRect(host, "SearchField");
+            area.anchorMin = new Vector2(0f, 1f); area.anchorMax = new Vector2(1f, 1f); area.pivot = new Vector2(0.5f, 1f);
+            area.sizeDelta = new Vector2(0f, height); area.anchoredPosition = new Vector2(0f, 0f);
+            var bg = area.gameObject.AddComponent<Image>(); bg.sprite = Rounded(28); bg.type = Image.Type.Sliced; bg.color = TrackFill;
+
+            RectTransform viewport = NewRect(area, "TextArea");
+            viewport.anchorMin = Vector2.zero; viewport.anchorMax = Vector2.one; viewport.pivot = new Vector2(0.5f, 0.5f);
+            viewport.offsetMin = new Vector2(26f, 4f); viewport.offsetMax = new Vector2(-26f, -4f);
+            viewport.gameObject.AddComponent<RectMask2D>();
+
+            TMP_Text placeholder = AddText(viewport, "Placeholder", "Zoek een instelling...", 24, Muted, TextAlignmentOptions.Left);
+            placeholder.fontStyle = FontStyles.Italic; Stretch(placeholder.rectTransform);
+            TMP_Text text = AddText(viewport, "Text", "", 24, Cream, TextAlignmentOptions.Left);
+            Stretch(text.rectTransform);
+
+            searchInput = area.gameObject.AddComponent<TMP_InputField>();
+            searchInput.textViewport = viewport;
+            searchInput.textComponent = text;
+            searchInput.placeholder = placeholder;
+            searchInput.lineType = TMP_InputField.LineType.SingleLine;
+            searchInput.characterLimit = 24;
+            searchInput.targetGraphic = bg;
+            searchInput.onValueChanged.AddListener(OnSearchChanged);
+        }
+
+        private void OnSearchChanged(string q)
+        {
+            searchQuery = q ?? "";
+            if (string.IsNullOrWhiteSpace(searchQuery)) ShowCategory(current); // cleared → back to the normal category view
+            else ShowSearchResults(searchQuery);
+        }
+
+        // Renders every setting (across all categories, ignoring the BASIS/EXPERT gate — the user searched, so show
+        // all matches) whose label or description contains the query. Reuses BuildRow, so each row behaves exactly
+        // as it does inside its own category.
+        private void ShowSearchResults(string q)
+        {
+            // Clear the sidebar highlight — no single category is "active" during a search.
+            for (int i = 0; i < categoryButtons.Count; i++)
+            {
+                var catImg = categoryButtons[i].targetGraphic as Image;
+                if (catImg != null) catImg.color = new Color(0f, 0f, 0f, 0f);
+                var catLabel = categoryButtons[i].GetComponentInChildren<TMP_Text>();
+                if (catLabel != null) catLabel.color = Ink;
+            }
+            ClearChildren(rowHost);
+
+            string needle = q.Trim().ToLowerInvariant();
+            float y = 4f;
+            const float rowH = 158f, gap = 16f;
+            int shown = 0;
+            foreach (SettingCategory cat in System.Enum.GetValues(typeof(SettingCategory)))
+            {
+                if (cat == SettingCategory.Profiles || cat == SettingCategory.Overview) continue;
+                foreach (var def in SettingsCatalog.InCategory(cat))
+                {
+                    if (!MatchesSearch(def, needle)) continue;
+                    BuildRow(def, y, rowH);
+                    y += rowH + gap;
+                    shown++;
+                }
+            }
+            if (shown == 0)
+            {
+                BuildOverviewNote("Geen instelling gevonden voor '" + q.Trim() + "'.", y);
+                y += 60f + gap;
+            }
+            rowHost.sizeDelta = new Vector2(rowHost.sizeDelta.x, y);
+            if (scroll != null) scroll.verticalNormalizedPosition = 1f;
+        }
+
+        private static bool MatchesSearch(SettingDefinition def, string needle)
+        {
+            if (string.IsNullOrEmpty(needle) || def == null) return false;
+            if (def.Label != null && def.Label.ToLowerInvariant().Contains(needle)) return true;
+            if (def.Description != null && def.Description.ToLowerInvariant().Contains(needle)) return true;
+            return false;
         }
 
         private ScrollRect scroll;
@@ -430,14 +486,22 @@ namespace KenyaScooter.Settings
                 if (lockMode == LockMode.Unlock) Close(); else Open();
             }, drawnX: true);
 
-            // v2: the padlock press-hold recovery becomes discoverable microcopy instead of tribal knowledge.
-            // Only shown in Unlock mode (PaintLock drives that), and the wording follows the real hold time.
-            lockHint = AddText(lockPanel, "Hint",
-                "Code kwijt? Houd het slotje " + Mathf.RoundToInt(FacilitatorLock.RecoveryHoldSeconds) + " seconden ingedrukt.",
-                18, Muted, TextAlignmentOptions.Center);
-            lockHint.rectTransform.anchorMin = new Vector2(0f, 1f); lockHint.rectTransform.anchorMax = new Vector2(1f, 1f);
-            lockHint.rectTransform.pivot = new Vector2(0.5f, 1f);
-            lockHint.rectTransform.sizeDelta = new Vector2(0f, 30f); lockHint.rectTransform.anchoredPosition = new Vector2(0f, -922f);
+            // "Code vergeten?" — a VISIBLE, tappable reset for staff who don't know the current code, so a
+            // forgotten PIN can never lock the facilitator out of the menu. It's a real button now (the old
+            // version was only a hint telling you to press-and-hold the padlock, which was easy to miss). Two-tap
+            // confirm (armed in OnForgotCode) so a stray tap can't reset a venue's chosen code; the padlock
+            // press-hold above still works as a second path. Only shown in Unlock mode (PaintLock toggles
+            // forgotButton). The default code is never printed here — staff know it from the handover.
+            RectTransform forgot = NewRect(lockPanel, "ForgotCode");
+            forgot.anchorMin = new Vector2(0.5f, 1f); forgot.anchorMax = new Vector2(0.5f, 1f); forgot.pivot = new Vector2(0.5f, 1f);
+            forgot.sizeDelta = new Vector2(600f, 46f); forgot.anchoredPosition = new Vector2(0f, -918f);
+            var forgotImg = forgot.gameObject.AddComponent<Image>(); forgotImg.sprite = Rounded(22); forgotImg.type = Image.Type.Sliced; forgotImg.color = RowFill; forgotImg.raycastTarget = true;
+            var forgotBtn = forgot.gameObject.AddComponent<Button>(); forgotBtn.targetGraphic = forgotImg;
+            var fbc = forgotBtn.colors; fbc.fadeDuration = 0.08f; fbc.highlightedColor = Color.white; fbc.pressedColor = new Color(1f, 1f, 1f, 0.85f); forgotBtn.colors = fbc;
+            forgotButton = forgot.gameObject;
+            lockHint = AddText(forgot, "Label", ForgotIdle, 18, Muted, TextAlignmentOptions.Center);
+            Stretch(lockHint.rectTransform);
+            forgotBtn.onClick.AddListener(OnForgotCode);
         }
 
         private void MakeKeyButton(RectTransform grid, string glyph, int col, int row, Color fill, System.Action onClick, bool drawnX = false)
@@ -496,7 +560,7 @@ namespace KenyaScooter.Settings
 
         private void ShowCategory(SettingCategory cat)
         {
-            if (cat != current) showAdvanced = ExpertMode; // a fresh category follows the master detail level
+            if (cat != current) showAdvanced = false; // a fresh category opens with its essentials ("Meer opties" reveals the rest)
             current = cat;
             HighlightCategory(cat);
             ClearChildren(rowHost);
@@ -718,31 +782,23 @@ namespace KenyaScooter.Settings
             intro.anchorMin = new Vector2(0f, 1f); intro.anchorMax = new Vector2(1f, 1f); intro.pivot = new Vector2(0.5f, 1f);
             intro.offsetMin = new Vector2(20f, 0f); intro.offsetMax = new Vector2(-20f, 0f);
             intro.sizeDelta = new Vector2(intro.sizeDelta.x, 110f); intro.anchoredPosition = new Vector2(0f, -y);
-            TMP_Text head = AddText(intro, "Head", "Kies een profiel om snel te starten", 40, Cream, TextAlignmentOptions.TopLeft);
+            TMP_Text head = AddText(intro, "Head", "Kies een modus en een moeilijkheid", 40, Cream, TextAlignmentOptions.TopLeft);
             head.fontStyle = FontStyles.Bold;
             head.rectTransform.anchorMin = new Vector2(0f, 1f); head.rectTransform.anchorMax = new Vector2(1f, 1f); head.rectTransform.pivot = new Vector2(0.5f, 1f);
             head.rectTransform.offsetMin = new Vector2(4f, -52f); head.rectTransform.offsetMax = new Vector2(-4f, -2f);
-            TMP_Text introT = AddText(intro, "t",
-                "Eén tik zet alles goed. Daarna kun je links nog alles zelf bijstellen.",
-                24, Muted, TextAlignmentOptions.TopLeft);
-            introT.rectTransform.anchorMin = new Vector2(0f, 1f); introT.rectTransform.anchorMax = new Vector2(1f, 1f); introT.rectTransform.pivot = new Vector2(0.5f, 1f);
-            introT.rectTransform.offsetMin = new Vector2(4f, -100f); introT.rectTransform.offsetMax = new Vector2(-4f, -58f);
-            y += 110f + 18f;
+            intro.sizeDelta = new Vector2(intro.sizeDelta.x, 64f);
+            y += 64f + 14f;
 
-            // The 2-wide preset grid — cards sized to the live content width (20px padding each side, one gap
-            // between), so they fill the column at any panel width instead of a fixed 588. Tall enough that
-            // even a two-line title plus a three-line description never overruns the card (auto-layout inside).
+            // The page reads as two clearly-labelled choices, each its own section: MODUS (how you play) then
+            // MOEILIJKHEID (how hard). Both are 2-wide grids of the same tappable cards; the current mode AND the
+            // current difficulty each wear the ACTIEF ring (they're tracked independently — see BuildPresetCard).
             const float cardH = 236f, gap = 22f;
-            float cardW = Mathf.Max(360f, (RowHostWidth() - 40f - gap) * 0.5f);
-            int i = 0, presetRows = 0;
-            foreach (var preset in SettingsCatalog.Presets)
-            {
-                int col = i % 2, gridRow = i / 2;
-                BuildPresetCard(preset, 20f + col * (cardW + gap), y + gridRow * (cardH + gap), cardW, cardH);
-                presetRows = gridRow + 1;
-                i++;
-            }
-            y += presetRows * (cardH + gap) + 12f;
+
+            y = BuildProfilesSectionHeader("MODUS", "Hóe je speelt: samen de klassenrelay, of solo de eindeloze modus.", y) + 6f;
+            y = BuildPresetGrid(wantPrimary: true, y, cardH, gap) + 18f;
+
+            y = BuildProfilesSectionHeader("MOEILIJKHEID", "Hoe zwaar het is. Werkt in beide modi — kies er één.", y) + 6f;
+            y = BuildPresetGrid(wantPrimary: false, y, cardH, gap) + 12f;
 
             // "— OF PAS ZELF AAN —"
             BuildProfilesDivider(y);
@@ -771,8 +827,8 @@ namespace KenyaScooter.Settings
 
             for (int s = 1; s <= CustomPresets.SlotCount; s++)
             {
-                BuildSlotCard(s, y, 172f);
-                y += 172f + gap;
+                BuildSlotCard(s, y, 200f); // taller than v2.8's 172: the three stacked buttons get real air between them
+                y += 200f + gap;
             }
 
             rowHost.sizeDelta = new Vector2(rowHost.sizeDelta.x, y);
@@ -781,6 +837,8 @@ namespace KenyaScooter.Settings
 
         // One facilitator save-slot: shows its state and the right buttons (save when empty; apply / overwrite /
         // clear when filled). Destructive/overwrite buttons confirm on a second tap, like the rest of the menu.
+        // The WHOLE CARD is also a button — tap the body to apply a filled slot (or save into an empty one), the
+        // same way the preset cards above work; the small buttons stay for the explicit/destructive actions.
         private void BuildSlotCard(int slot, float y, float cardH)
         {
             bool filled = CustomPresets.IsFilled(slot);
@@ -791,13 +849,39 @@ namespace KenyaScooter.Settings
             card.sizeDelta = new Vector2(card.sizeDelta.x, cardH); card.anchoredPosition = new Vector2(0f, -y);
             var bg = card.gameObject.AddComponent<Image>(); bg.sprite = Rounded(18); bg.type = Image.Type.Sliced; bg.color = RowFill;
 
+            // Tap anywhere on the card body = the card's main action. Child buttons (the column on the right,
+            // the rename pencil) sit on top and swallow their own taps, so they never double-fire this.
+            var cardBtn = card.gameObject.AddComponent<Button>(); cardBtn.targetGraphic = bg;
+            var cc = cardBtn.colors; cc.fadeDuration = 0.08f; cc.pressedColor = new Color(0.8f, 0.8f, 0.8f, 1f); cardBtn.colors = cc;
+            if (filled)
+                cardBtn.onClick.AddListener(() =>
+                {
+                    CustomPresets.Apply(slot);
+                    RefreshSidebarCounts();
+                    ShowToast("Profiel toegepast: " + CustomPresets.Label(slot));
+                });
+            else
+                cardBtn.onClick.AddListener(() =>
+                {
+                    CustomPresets.Save(slot);
+                    ShowCategory(SettingCategory.Profiles);
+                    ShowToast("Huidige instellingen opgeslagen in: " + CustomPresets.Label(slot));
+                });
+
             TMP_Text label = AddText(card, "Label", CustomPresets.Label(slot), 26, Cream, TextAlignmentOptions.TopLeft); label.fontStyle = FontStyles.Bold;
             label.rectTransform.anchorMin = new Vector2(0f, 1f); label.rectTransform.anchorMax = new Vector2(0.5f, 1f); label.rectTransform.pivot = new Vector2(0f, 1f);
             label.rectTransform.sizeDelta = new Vector2(0f, 36f); label.rectTransform.anchoredPosition = new Vector2(28f, -28f);
 
-            TMP_Text status = AddText(card, "Status", filled ? "Opgeslagen — klaar om toe te passen" : "Nog leeg", 18, filled ? Kicker : Muted, TextAlignmentOptions.TopLeft);
-            status.rectTransform.anchorMin = new Vector2(0f, 1f); status.rectTransform.anchorMax = new Vector2(0.5f, 1f); status.rectTransform.pivot = new Vector2(0f, 1f);
-            status.rectTransform.sizeDelta = new Vector2(0f, 28f); status.rectTransform.anchoredPosition = new Vector2(28f, -72f);
+            // Rename pencil, next to the name: the facilitator can give a slot their own label ("Groep 7 rustig")
+            // instead of the numbered default. Opens an inline text field on this card (on-screen keyboard on the
+            // tablet); the name is label-only, the saved values are untouched.
+            MakeRenameButton(card, slot, label);
+
+            TMP_Text status = AddText(card, "Status",
+                filled ? "Opgeslagen — tik op de kaart om toe te passen" : "Nog leeg — tik om je huidige instellingen op te slaan",
+                18, filled ? Kicker : Muted, TextAlignmentOptions.TopLeft);
+            status.rectTransform.anchorMin = new Vector2(0f, 1f); status.rectTransform.anchorMax = new Vector2(0.55f, 1f); status.rectTransform.pivot = new Vector2(0f, 1f);
+            status.rectTransform.sizeDelta = new Vector2(0f, 52f); status.rectTransform.anchoredPosition = new Vector2(28f, -76f);
 
             if (!filled)
             {
@@ -811,23 +895,86 @@ namespace KenyaScooter.Settings
             }
             else
             {
-                // Filled: apply / overwrite / clear, stacked.
-                MakeSlotButton(card, "TOEPASSEN", 46f, Accent, InkOnLight, false, () =>
+                // Filled: apply / overwrite / clear, stacked with clear air between them (±58 on a 200-tall card
+                // = 18 px gaps; the old ±46/172 packed them 6 px apart, which read as one un-tappable block).
+                MakeSlotButton(card, "TOEPASSEN", 58f, Accent, InkOnLight, false, () =>
                 {
                     CustomPresets.Apply(slot);
                     RefreshSidebarCounts();
+                    ShowToast("Profiel toegepast: " + CustomPresets.Label(slot));
                 });
                 MakeSlotButton(card, "OPSLAAN", 0f, TrackFill, Cream, true, () =>
                 {
                     CustomPresets.Save(slot);
                     ShowCategory(SettingCategory.Profiles);
                 });
-                MakeSlotButton(card, "WISSEN", -46f, Hex("#8c2f17"), Cream, true, () =>
+                MakeSlotButton(card, "WISSEN", -58f, Hex("#8c2f17"), Cream, true, () =>
                 {
                     CustomPresets.Clear(slot);
                     ShowCategory(SettingCategory.Profiles);
                 });
             }
+        }
+
+        // The small "naam" pencil next to a slot's label. Tapping it swaps the label for an inline input field
+        // (same TMP_InputField construction as the search box), pre-filled with the current name; confirming with
+        // the keyboard OR tapping away commits it. Empty text restores the numbered default.
+        private void MakeRenameButton(RectTransform card, int slot, TMP_Text label)
+        {
+            RectTransform b = NewRect(card, "Rename");
+            b.anchorMin = new Vector2(0.5f, 1f); b.anchorMax = new Vector2(0.5f, 1f); b.pivot = new Vector2(0f, 1f);
+            b.sizeDelta = new Vector2(110f, 34f); b.anchoredPosition = new Vector2(10f, -26f);
+            var bi = b.gameObject.AddComponent<Image>(); bi.sprite = Rounded(16); bi.type = Image.Type.Sliced; bi.color = TrackFill;
+            var btn = b.gameObject.AddComponent<Button>(); btn.targetGraphic = bi;
+            // Plain text, no pencil glyph — the default TMP font atlas has no U+270E, it would render as a box.
+            TMP_Text bt = AddText(b, "t", "NAAM", 16, Muted, TextAlignmentOptions.Center); bt.fontStyle = FontStyles.Bold; UiKit.Caps(bt, 0.04f); Stretch(bt.rectTransform);
+            btn.onClick.AddListener(() => StartSlotRename(card, slot, label, b.gameObject));
+        }
+
+        private void StartSlotRename(RectTransform card, int slot, TMP_Text label, GameObject renameBtn)
+        {
+            label.gameObject.SetActive(false);
+            renameBtn.SetActive(false);
+
+            RectTransform area = NewRect(card, "NameField");
+            area.anchorMin = new Vector2(0f, 1f); area.anchorMax = new Vector2(0.55f, 1f); area.pivot = new Vector2(0f, 1f);
+            area.offsetMin = new Vector2(24f, 0f); area.offsetMax = new Vector2(-8f, 0f); // left/right margins inside the card
+            area.sizeDelta = new Vector2(area.sizeDelta.x, 46f);
+            area.anchoredPosition = new Vector2(area.anchoredPosition.x, -20f); // vertical only — x is set by the offsets above
+            var bg = area.gameObject.AddComponent<Image>(); bg.sprite = Rounded(16); bg.type = Image.Type.Sliced; bg.color = TrackFill;
+
+            RectTransform viewport = NewRect(area, "TextArea");
+            viewport.anchorMin = Vector2.zero; viewport.anchorMax = Vector2.one; viewport.pivot = new Vector2(0.5f, 0.5f);
+            viewport.offsetMin = new Vector2(16f, 4f); viewport.offsetMax = new Vector2(-16f, -4f);
+            viewport.gameObject.AddComponent<RectMask2D>();
+
+            TMP_Text placeholder = AddText(viewport, "Placeholder", "Naam van dit profiel...", 22, Muted, TextAlignmentOptions.Left);
+            placeholder.fontStyle = FontStyles.Italic; Stretch(placeholder.rectTransform);
+            TMP_Text text = AddText(viewport, "Text", "", 22, Cream, TextAlignmentOptions.Left);
+            Stretch(text.rectTransform);
+
+            var input = area.gameObject.AddComponent<TMP_InputField>();
+            input.textViewport = viewport;
+            input.textComponent = text;
+            input.placeholder = placeholder;
+            input.lineType = TMP_InputField.LineType.SingleLine;
+            input.characterLimit = CustomPresets.MaxLabelLength;
+            input.targetGraphic = bg;
+            input.text = CustomPresets.Label(slot);
+
+            bool committed = false; // submit AND deselect can both fire on one keyboard-close — commit once
+            void Commit(string value)
+            {
+                if (committed) return;
+                committed = true;
+                CustomPresets.SetLabel(slot, value);
+                ShowCategory(SettingCategory.Profiles); // rebuild the page so the card shows its new name
+                ShowToast("Profielnaam: " + CustomPresets.Label(slot));
+            }
+            input.onSubmit.AddListener(Commit);
+            input.onDeselect.AddListener(Commit);
+            input.Select();
+            input.ActivateInputField(); // focus now → the tablet's on-screen keyboard opens immediately
         }
 
         // A button on a slot card (column on the right). `yOffset` stacks it; `confirm` asks for a second tap first.
@@ -851,15 +998,56 @@ namespace KenyaScooter.Settings
             });
         }
 
-        // The most recently applied preset, so its card can wear the ACTIEF chip. Presets are additive and a
-        // facilitator can still hand-tune afterwards, so this deliberately tracks "last applied", not "still exact".
-        private const string LastPresetKey = "ksg.preset.last";
+        // A caps section header ("MODUS" / "MOEILIJKHEID") with a one-line description on the Profielen page.
+        // Returns the y just below it. Same layout as the EIGEN PROFIELEN header below.
+        private float BuildProfilesSectionHeader(string title, string desc, float y)
+        {
+            RectTransform sub = NewRect(rowHost, "Header_" + title);
+            sub.anchorMin = new Vector2(0f, 1f); sub.anchorMax = new Vector2(1f, 1f); sub.pivot = new Vector2(0.5f, 1f);
+            sub.offsetMin = new Vector2(20f, 0f); sub.offsetMax = new Vector2(-20f, 0f);
+            sub.sizeDelta = new Vector2(sub.sizeDelta.x, 76f); sub.anchoredPosition = new Vector2(0f, -y);
+            TMP_Text t = AddText(sub, "t", title, 28, Kicker, TextAlignmentOptions.TopLeft); t.fontStyle = FontStyles.Bold; UiKit.Caps(t, 0.06f);
+            t.rectTransform.anchorMin = new Vector2(0f, 1f); t.rectTransform.anchorMax = new Vector2(1f, 1f); t.rectTransform.pivot = new Vector2(0.5f, 1f);
+            t.rectTransform.offsetMin = new Vector2(4f, -40f); t.rectTransform.offsetMax = new Vector2(-4f, -4f);
+            TMP_Text d = AddText(sub, "d", desc, 21, Muted, TextAlignmentOptions.TopLeft);
+            d.rectTransform.anchorMin = new Vector2(0f, 1f); d.rectTransform.anchorMax = new Vector2(1f, 1f); d.rectTransform.pivot = new Vector2(0.5f, 1f);
+            d.rectTransform.offsetMin = new Vector2(4f, -74f); d.rectTransform.offsetMax = new Vector2(-4f, -42f);
+            return y + 76f;
+        }
 
-        // One compact grid card (mock): the WHOLE card is the button; the active one wears the accent ring
-        // and the ACTIEF chip. Applying repaints the page — the chip moving IS the confirmation.
+        // Renders the preset cards whose Primary flag matches `wantPrimary` in a 2-wide grid from y; returns the y
+        // just below the last row. Primary = the two MODE cards; !Primary = the three DIFFICULTY cards.
+        private float BuildPresetGrid(bool wantPrimary, float y, float cardH, float gap)
+        {
+            // Cards sized to the live content width (20px padding each side, one gap between), so they fill the
+            // column at any panel width. Tall enough that a two-line title + a three-line description never overruns.
+            float cardW = Mathf.Max(360f, (RowHostWidth() - 40f - gap) * 0.5f);
+            int i = 0, rows = 0;
+            foreach (var preset in SettingsCatalog.Presets)
+            {
+                if (preset.Primary != wantPrimary) continue;
+                int col = i % 2, gridRow = i / 2;
+                BuildPresetCard(preset, 20f + col * (cardW + gap), y + gridRow * (cardH + gap), cardW, cardH);
+                rows = gridRow + 1;
+                i++;
+            }
+            return y + rows * (cardH + gap);
+        }
+
+        // The last-applied DIFFICULTY profile, so its card can wear the ACTIEF chip. The MODE's active card is
+        // read from live state (GameManager.EndlessSelected) instead, so it stays truthful even when a facilitator
+        // flips the mode from the SPEELDUUR toggle rather than these cards. Difficulty has no single live flag
+        // (it's a bundle of settings), so it tracks "last applied" and is cleared when Standaard wipes every override.
+        private const string LastDifficultyKey = "ksg.preset.difficulty";
+
+        // One compact grid card (mock): the WHOLE card is the button; the selected one wears the accent ring and
+        // the ACTIEF chip. Applying repaints the page — the chip moving IS the confirmation. Because MODE and
+        // DIFFICULTY are tracked independently, the current mode AND the current difficulty both read as ACTIEF.
         private void BuildPresetCard(SettingsPreset preset, float x, float y, float w, float h)
         {
-            bool active = PlayerPrefs.GetString(LastPresetKey, "") == preset.Key;
+            bool active = preset.Primary
+                ? (preset.Key == "preset.endless") == KenyaScooter.Core.GameManager.EndlessSelected
+                : PlayerPrefs.GetString(LastDifficultyKey, "") == preset.Key;
 
             RectTransform card = NewRect(rowHost, "Preset_" + preset.Key);
             card.anchorMin = new Vector2(0f, 1f); card.anchorMax = new Vector2(0f, 1f); card.pivot = new Vector2(0f, 1f);
@@ -871,9 +1059,16 @@ namespace KenyaScooter.Settings
             btn.onClick.AddListener(() =>
             {
                 try { preset.Apply(); } catch (System.Exception e) { Debug.LogException(e); }
-                PlayerPrefs.SetString(LastPresetKey, preset.Key); PlayerPrefs.Save();
+                if (preset.Primary)
+                {
+                    // "Standaard" (resetToDefault) wipes every override — the difficulty with it — so drop its marker.
+                    if (preset.ResetToDefault) PlayerPrefs.DeleteKey(LastDifficultyKey);
+                }
+                else PlayerPrefs.SetString(LastDifficultyKey, preset.Key);
+                PlayerPrefs.Save();
                 RefreshSidebarCounts();
                 ShowCategory(SettingCategory.Profiles); // clean repaint — the ACTIEF chip moves to this card
+                ShowToast("Profiel gewijzigd: " + preset.Label); // worded confirmation on top of the colour change
             });
 
             if (active)

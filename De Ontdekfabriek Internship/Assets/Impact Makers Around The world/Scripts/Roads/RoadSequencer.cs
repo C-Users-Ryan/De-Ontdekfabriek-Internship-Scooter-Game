@@ -74,7 +74,9 @@ namespace KenyaScooter.Roads
         /// sequences array is ridden as an ORDERED ROUTE of regions (1 → 2 → 3 → …, wrapping), so the world
         /// visibly changes as the ride progresses and every region keeps its own tiles. 0 (default) = the
         /// weighted random Journey-Arc grammar. Authoring the route = ordering the sequences on this
-        /// component. Written by SettingsCatalog "env.regionJourney".</summary>
+        /// component. (2026-07-14: the "Regio-reis" facilitator setting was RETIRED and its key is wiped at boot
+        /// by GameSettings.CleanRetiredKeys, so this path is dormant — kept for a future team; re-exposing it =
+        /// re-adding one SettingDefinition and removing the key from the retired list.)</summary>
         public const string RegionJourneyPrefKey = "ksg.regionJourney";
 
         /// <summary>How many zones a facilitator can bias towards — the serialized grammar pool. The opening
@@ -123,10 +125,31 @@ namespace KenyaScooter.Roads
         // (a zero-length tile) so the build loop can never freeze the game.
         private const int MaxTilesPerFill = 128;
 
+        // Per-FRAME tile budget during play: how many tiles Update() may spawn in a single frame. Entering a turn
+        // can need several short tiles at once; capping the per-frame build (spawnHorizon is far past the camera)
+        // spreads those spawns + curved-mesh rebuilds across a few frames so no single frame stalls (2026-07-13).
+        // Dropped 2 → 1 (2026-07-14): a CITY tile is dozens of building renderers, and SetActive(true) on that
+        // hierarchy is the dominant spawn cost — one per frame halves the worst frame while the refill rate
+        // (60/s at 60 fps) still dwarfs consumption (~1 tile/s at full speed).
+        private const int TilesPerFrame = 1;
+
+        // Frame of the most recent tile activation, so DespawnBehind never stacks a big-hierarchy DEACTIVATION
+        // onto (or right after) a frame that just paid for an activation (2026-07-14).
+        private int lastSpawnFrame = -10;
+
         private void Awake() => Instance = this;
 
         private void Start()
         {
+            // Size each prefab's pool from how often it actually REPEATS inside a sequence, before any pool is
+            // built. poolSizePerTile (4) was a flat guess: a sequence listing the same tile 5+ times inside the
+            // ~195 m active window ran its pool dry, and ObjectPool.Get then Instantiates a fresh copy MID-GAME —
+            // for a city tile that is a whole neighbourhood instantiated on one frame, every time that zone
+            // plays. Prewarming to the real per-sequence count moves that cost to this Start, where it belongs.
+            CountOccurrences(openingSequence);
+            for (int i = 0; i < sequences.Length; i++)
+                CountOccurrences(sequences[i]);
+
             BuildPoolsFor(openingSequence);
             for (int i = 0; i < sequences.Length; i++)
                 BuildPoolsFor(sequences[i]);
@@ -174,8 +197,12 @@ namespace KenyaScooter.Roads
             // The player advanced this many metres along the road this frame (M1).
             playerArc += WorldSpeed.Instance.Current * Time.deltaTime;
 
-            DespawnBehind();
-            BuildAhead();
+            // One heavy hierarchy toggle per frame, never both: a frame that released a tile skips this frame's
+            // build (the 160 m horizon makes a one-frame deferral invisible), and DespawnBehind itself skips the
+            // frames right after a spawn — so a city tile's activation always gets its frame to itself.
+            bool released = DespawnBehind();
+            if (!released)
+                BuildAhead(TilesPerFrame); // per-frame budget: spread turn-entry tile spawns across frames (no lag spike)
             RenderChain();
         }
 
@@ -358,28 +385,45 @@ namespace KenyaScooter.Roads
 
         // ---- Chain building ----------------------------------------------------------
 
-        /// <summary>Builds road forward until at least <see cref="spawnHorizon"/> metres of road sit ahead of the player.</summary>
-        private void BuildAhead()
+        /// <summary>
+        /// Builds road forward until at least <see cref="spawnHorizon"/> metres of road sit ahead of the player,
+        /// but never spawns more than <paramref name="maxThisCall"/> tiles in one call. During play (Update) this
+        /// is a small per-frame BUDGET so entering a turn — where several short turn tiles plus their curved-mesh
+        /// rebuilds would otherwise all land on ONE frame — is spread over a few frames instead, killing the lag
+        /// spike. The horizon (160 m) sits far beyond the camera, so refilling 1–2 tiles/frame is invisible. The
+        /// pre-play fill (HandleSessionReset) and the checkpoint cap pass a large budget so the road is fully
+        /// present before it is needed. The <c>activeTiles.Count == before</c> guard still breaks on a zero-length
+        /// tile so the loop can never freeze.
+        /// </summary>
+        private void BuildAhead(int maxThisCall)
         {
             int built = 0;
             while (!buildHalted && buildArc - playerArc < spawnHorizon)
             {
                 int before = activeTiles.Count;
                 SpawnNextTile();
-                if (activeTiles.Count == before || ++built >= MaxTilesPerFill)
+                if (activeTiles.Count == before || ++built >= maxThisCall)
                     break;
             }
         }
 
-        /// <summary>Releases the oldest tile once it sits fully <see cref="despawnBehind"/> metres of road behind the player.</summary>
-        private void DespawnBehind()
+        /// <summary>Releases the oldest tile once it sits fully <see cref="despawnBehind"/> metres of road behind the
+        /// player — at most ONE per frame, and never right after a frame that spawned a tile. SetActive(false) on
+        /// a city tile costs real milliseconds too; a retiring tile is a full despawn gap behind the player, so
+        /// deferring its release a few frames is invisible while it keeps activation + deactivation off one frame.
+        /// Returns true when a tile was released this frame (the caller then skips this frame's build).</summary>
+        private bool DespawnBehind()
         {
-            while (activeTiles.Count > 1 &&
-                   playerArc - (activeTiles[0].StartArc + activeTiles[0].length) >= despawnBehind)
+            if (Time.frameCount <= lastSpawnFrame + 1)
+                return false;
+            if (activeTiles.Count > 1 &&
+                playerArc - (activeTiles[0].StartArc + activeTiles[0].length) >= despawnBehind)
             {
                 activeTiles[0].SourcePool.Release(activeTiles[0]);
                 activeTiles.RemoveAt(0);
+                return true;
             }
+            return false;
         }
 
         private void SpawnNextTile()
@@ -407,6 +451,7 @@ namespace KenyaScooter.Roads
                 curvedMesh.BuildFromTile(tile);
 
             tile.gameObject.SetActive(true);
+            lastSpawnFrame = Time.frameCount;
             activeTiles.Add(tile);
 
             // Note: ActiveCheckpointTile is set ONLY by SpawnCheckpoint (the end-of-turn relay), never from the
@@ -631,7 +676,7 @@ namespace KenyaScooter.Roads
                 prefabQueue.Enqueue(startTile);
             EnqueueTiles(openingSequence);
 
-            BuildAhead();
+            BuildAhead(MaxTilesPerFill); // pre-play: fill the whole horizon at once (nothing renders yet)
             RenderChain(); // place the road for the Ready state before play begins
         }
 
@@ -746,6 +791,35 @@ namespace KenyaScooter.Roads
 
         // ---- Pools -------------------------------------------------------------------
 
+        // The most times each prefab appears within any ONE sequence — the real ceiling on how many copies the
+        // active window can need at once (plus headroom for a window spanning two sequences). Filled by
+        // CountOccurrences in Start, read by EnsurePool to size the prewarm.
+        private readonly Dictionary<RoadTile, int> maxOccurrences = new Dictionary<RoadTile, int>();
+        private readonly Dictionary<RoadTile, int> occurrenceScratch = new Dictionary<RoadTile, int>();
+
+        private void CountOccurrences(RoadSequence sequence)
+        {
+            if (sequence == null || sequence.tiles == null)
+                return;
+            occurrenceScratch.Clear();
+            for (int i = 0; i < sequence.tiles.Length; i++)
+            {
+                RoadTile t = sequence.tiles[i];
+                if (t == null) continue;
+                occurrenceScratch.TryGetValue(t, out int n);
+                occurrenceScratch[t] = n + 1;
+            }
+            // A sequence with no cooldown can be re-picked back-to-back, so the active window can straddle TWO
+            // consecutive plays of it — its repeats can need up to twice as many live copies at once.
+            int adjacency = sequence.cooldownTiles <= 0 ? 2 : 1;
+            foreach (var pair in occurrenceScratch)
+            {
+                maxOccurrences.TryGetValue(pair.Key, out int best);
+                if (pair.Value * adjacency > best)
+                    maxOccurrences[pair.Key] = pair.Value * adjacency;
+            }
+        }
+
         private void BuildPoolsFor(RoadSequence sequence)
         {
             if (sequence == null || sequence.tiles == null)
@@ -761,8 +835,14 @@ namespace KenyaScooter.Roads
             if (prefab == null || pools.ContainsKey(prefab))
                 return;
 
+            // At least the configured floor; at most-repeated + 2 (headroom for an active window that straddles
+            // two sequences both using this prefab). ObjectPool still expands as a last resort — with a warning.
+            int prewarm = poolSizePerTile;
+            if (maxOccurrences.TryGetValue(prefab, out int occ) && occ + 2 > prewarm)
+                prewarm = occ + 2;
+
             ObjectPool<RoadTile> pool = null;
-            pool = new ObjectPool<RoadTile>(prefab, transform, poolSizePerTile,
+            pool = new ObjectPool<RoadTile>(prefab, transform, prewarm,
                 created =>
                 {
                     // Covers pool expansion mid-game (see the note in HazardSpawner): an

@@ -1,0 +1,116 @@
+<svg viewBox="0 0 820 600" xmlns="http://www.w3.org/2000/svg" role="img" font-family="system-ui,-apple-system,&#39;Segoe UI&#39;,Roboto,Helvetica,Arial,sans-serif">
+<title>Facilitator PIN recovery — the unlock keypad and the two ways back to the default code</title>
+<desc>A simplified mock of the facilitator access-code keypad on the game&#39;s warm brand sheet: a round PIN padlock badge, the title TOEGANGSCODE, the prompt &#34;Voer de begeleiderscode in&#34;, a row of four entry dots with the first filled, a numeric keypad of keys one to nine with phone letters (three spells D, six O, eight T, three F — the default code 3683 = DOTF), a bottom row of WIS, zero and a cross, and a pinned &#34;Code vergeten? Tik om terug te zetten&#34; pill. To the right, a three-step recovery flow: tap &#34;Code vergeten?&#34;, it arms and warns &#34;Zeker? Tik nog eens — de code gaat terug naar de standaardcode&#34;, tap again and the status reads &#34;Code teruggezet naar de standaardcode&#34;. A legend notes the default code 3683 spells DOTF on a phone keypad, and a hidden second path: press and hold the padlock badge for four seconds does the same reset.</desc>
+<rect x="0" y="0" width="820" height="600" fill="#1A1310"></rect>
+
+<text x="44" y="44" font-size="12" font-weight="700" letter-spacing="1.5" fill="#F19141">BEGELEIDER · TOEGANGSCODE &amp; HERSTEL</text>
+<text x="44" y="64" font-size="12" fill="#C9B7A6">De ontgrendel-keypad — en de twee wegen terug naar de standaardcode.</text>
+
+
+<rect x="44" y="80" width="312" height="470" rx="20" fill="#221812" stroke="#AE5A1C" stroke-opacity="0.7" stroke-width="1.4"></rect>
+
+
+<circle cx="200" cy="126" r="32" fill="#1A1310" stroke="#F19141" stroke-width="2.5"></circle>
+<rect x="189" y="124" width="22" height="18" rx="3" fill="none" stroke="#F19141" stroke-width="2.6"></rect>
+<path d="M193,124 v-5 a7,7 0 0 1 14,0 v5" fill="none" stroke="#F19141" stroke-width="2.6"></path>
+<circle cx="200" cy="131" r="2.3" fill="#F19141"></circle>
+<path d="M200,133 v4" stroke="#F19141" stroke-width="2" stroke-linecap="round"></path>
+<text x="200" y="153" text-anchor="middle" font-size="8" font-weight="700" letter-spacing="2" fill="#8f7d6e">PIN</text>
+
+<text x="200" y="197" text-anchor="middle" font-size="21" font-weight="700" letter-spacing="1.5" fill="#FFF6EC">TOEGANGSCODE</text>
+<text x="200" y="218" text-anchor="middle" font-size="12" fill="#C9B7A6">Voer de begeleiderscode in</text>
+
+
+<circle cx="161" cy="240" r="8" fill="#F19141"></circle>
+<circle cx="187" cy="240" r="8" fill="none" stroke="#FFF6EC" stroke-opacity="0.4" stroke-width="2"></circle>
+<circle cx="213" cy="240" r="8" fill="none" stroke="#FFF6EC" stroke-opacity="0.4" stroke-width="2"></circle>
+<circle cx="239" cy="240" r="8" fill="none" stroke="#FFF6EC" stroke-opacity="0.4" stroke-width="2"></circle>
+
+
+<g>
+<rect x="84" y="258" width="70" height="46" rx="12" fill="#FFF6EC" fill-opacity="0.05" stroke="#FFF6EC" stroke-opacity="0.16" stroke-width="1.3"></rect>
+<rect x="166" y="258" width="70" height="46" rx="12" fill="#FFF6EC" fill-opacity="0.05" stroke="#FFF6EC" stroke-opacity="0.16" stroke-width="1.3"></rect>
+<rect x="248" y="258" width="70" height="46" rx="12" fill="#FFF6EC" fill-opacity="0.05" stroke="#FFF6EC" stroke-opacity="0.16" stroke-width="1.3"></rect>
+<rect x="84" y="316" width="70" height="46" rx="12" fill="#FFF6EC" fill-opacity="0.05" stroke="#FFF6EC" stroke-opacity="0.16" stroke-width="1.3"></rect>
+<rect x="166" y="316" width="70" height="46" rx="12" fill="#FFF6EC" fill-opacity="0.05" stroke="#FFF6EC" stroke-opacity="0.16" stroke-width="1.3"></rect>
+<rect x="248" y="316" width="70" height="46" rx="12" fill="#FFF6EC" fill-opacity="0.05" stroke="#FFF6EC" stroke-opacity="0.16" stroke-width="1.3"></rect>
+<rect x="84" y="374" width="70" height="46" rx="12" fill="#FFF6EC" fill-opacity="0.05" stroke="#FFF6EC" stroke-opacity="0.16" stroke-width="1.3"></rect>
+<rect x="166" y="374" width="70" height="46" rx="12" fill="#FFF6EC" fill-opacity="0.05" stroke="#FFF6EC" stroke-opacity="0.16" stroke-width="1.3"></rect>
+<rect x="248" y="374" width="70" height="46" rx="12" fill="#FFF6EC" fill-opacity="0.05" stroke="#FFF6EC" stroke-opacity="0.16" stroke-width="1.3"></rect>
+<rect x="84" y="432" width="70" height="46" rx="12" fill="#FFF6EC" fill-opacity="0.05" stroke="#FFF6EC" stroke-opacity="0.16" stroke-width="1.3"></rect>
+<rect x="166" y="432" width="70" height="46" rx="12" fill="#FFF6EC" fill-opacity="0.05" stroke="#FFF6EC" stroke-opacity="0.16" stroke-width="1.3"></rect>
+<rect x="248" y="432" width="70" height="46" rx="12" fill="#FFF6EC" fill-opacity="0.05" stroke="#FFF6EC" stroke-opacity="0.16" stroke-width="1.3"></rect>
+</g>
+<g text-anchor="middle" font-size="22" font-weight="600" fill="#FFF6EC">
+<text x="119" y="285">1</text><text x="201" y="285">2</text><text x="283" y="285">3</text>
+<text x="119" y="343">4</text><text x="201" y="343">5</text><text x="283" y="343">6</text>
+<text x="119" y="401">7</text><text x="201" y="401">8</text><text x="283" y="401">9</text>
+<text x="201" y="462">0</text>
+</g>
+<g text-anchor="middle" font-size="7.5" letter-spacing="1.5" fill="#8f7d6e">
+<text x="201" y="298">ABC</text>
+<text x="283" y="298"><tspan fill="#F19141">D</tspan>E<tspan fill="#F19141">F</tspan></text>
+<text x="119" y="356">GHI</text><text x="201" y="356">JKL</text>
+<text x="283" y="356">MN<tspan fill="#F19141">O</tspan></text>
+<text x="119" y="414">PQRS</text>
+<text x="201" y="414"><tspan fill="#F19141">T</tspan>UV</text>
+<text x="283" y="414">WXYZ</text>
+</g>
+<text x="119" y="461" text-anchor="middle" font-size="14" font-weight="700" fill="#C9B7A6">WIS</text>
+<path d="M274,446 L292,464 M292,446 L274,464" stroke="#C9B7A6" stroke-width="2.6" stroke-linecap="round"></path>
+
+
+<rect x="72" y="498" width="256" height="36" rx="18" fill="#F19141" fill-opacity="0.1" stroke="#F19141" stroke-opacity="0.55" stroke-width="1.3"></rect>
+<text x="200" y="521" text-anchor="middle" font-size="11.5"><tspan font-weight="700" fill="#F19141">Code vergeten?</tspan><tspan fill="#C9B7A6">  ·  Tik om terug te zetten</tspan></text>
+
+
+<text x="388" y="110" font-size="12" font-weight="700" letter-spacing="1.5" fill="#F19141">DE ZICHTBARE WEG TERUG</text>
+<text x="388" y="128" font-size="11" fill="#C9B7A6">één knop · twee tikken</text>
+
+<defs><marker id="d1ar" markerWidth="9" markerHeight="9" refX="5.5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#8f7d6e"></path></marker></defs>
+
+
+<rect x="388" y="144" width="404" height="62" rx="12" fill="#2A1E18" stroke="#AE5A1C" stroke-opacity="0.5" stroke-width="1.3"></rect>
+<circle cx="416" cy="175" r="15" fill="#F19141"></circle>
+<text x="416" y="180" text-anchor="middle" font-size="15" font-weight="800" fill="#1A1310">1</text>
+<text x="444" y="170" font-size="13" font-weight="700" fill="#FFF6EC">Tik op “Code vergeten?”</text>
+<text x="444" y="190" font-size="10.5" fill="#C9B7A6">de knop onderaan de keypad</text>
+<path d="M590,206 V222" stroke="#8f7d6e" stroke-width="1.6" marker-end="url(#d1ar)"></path>
+
+
+<rect x="388" y="224" width="404" height="76" rx="12" fill="#2A1E18" stroke="#F19141" stroke-width="1.5"></rect>
+<circle cx="416" cy="262" r="15" fill="#F19141"></circle>
+<text x="416" y="267" text-anchor="middle" font-size="15" font-weight="800" fill="#1A1310">2</text>
+<text x="444" y="252" font-size="13" font-weight="700" fill="#F19141">Zeker? Tik nog eens.</text>
+<text x="444" y="272" font-size="10.5" fill="#C9B7A6">De code gaat terug naar</text>
+<text x="444" y="287" font-size="10.5" fill="#C9B7A6">de standaardcode.</text>
+<path d="M590,300 V316" stroke="#8f7d6e" stroke-width="1.6" marker-end="url(#d1ar)"></path>
+
+
+<rect x="388" y="318" width="404" height="76" rx="12" fill="#2A1E18" stroke="#67B44E" stroke-width="1.5"></rect>
+<circle cx="416" cy="356" r="15" fill="#67B44E"></circle>
+<path d="M409,356 l4,5 l9,-11" fill="none" stroke="#1A1310" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path>
+<text x="444" y="346" font-size="13" font-weight="700" fill="#67B44E">Code teruggezet.</text>
+<text x="444" y="366" font-size="10.5" fill="#C9B7A6">“Code teruggezet naar de standaardcode.”</text>
+<text x="444" y="382" font-size="10.5" fill="#C9B7A6">De code staat weer op <tspan font-family="ui-monospace,&#39;SF Mono&#39;,Menlo,Consolas,monospace" fill="#FFF6EC">3683</tspan>.</text>
+
+
+<rect x="388" y="410" width="404" height="118" rx="12" fill="#221812" stroke="#AE5A1C" stroke-opacity="0.4" stroke-width="1.3"></rect>
+<text x="406" y="434" font-size="11" font-weight="700" letter-spacing="2" fill="#8f7d6e">SLEUTEL</text>
+<text x="406" y="470" font-family="ui-monospace,&#39;SF Mono&#39;,Menlo,Consolas,monospace" font-size="30" font-weight="700" fill="#FFF6EC">3683</text>
+<text x="500" y="459" font-size="13" font-weight="700" fill="#F19141">D · O · T · F</text>
+<text x="500" y="476" font-size="10" fill="#C9B7A6">op een telefoontoetsenbord</text>
+<line x1="406" y1="486" x2="774" y2="486" stroke="#FFF6EC" stroke-opacity="0.08" stroke-width="1"></line>
+
+<circle cx="416" cy="505" r="12" fill="none" stroke="#C9B7A6" stroke-opacity="0.5" stroke-width="1.4"></circle>
+<path d="M416,505 m0,-12 a12,12 0 0 1 10.4,6" fill="none" stroke="#F19141" stroke-width="2" stroke-linecap="round"></path>
+<rect x="411" y="503" width="10" height="8" rx="1.6" fill="none" stroke="#C9B7A6" stroke-width="1.6"></rect>
+<path d="M413,503 v-2.5 a3,3 0 0 1 6,0 v2.5" fill="none" stroke="#C9B7A6" stroke-width="1.6"></path>
+<text x="440" y="502" font-size="10.5" fill="#C9B7A6">Verborgen 2e weg — houd het slotje</text>
+<text x="440" y="517" font-size="10.5" fill="#C9B7A6"><tspan font-weight="700" fill="#F19141">4 seconden</tspan> vast → dezelfde reset.</text>
+
+
+<line x1="44" y1="552" x2="792" y2="552" stroke="#FFF6EC" stroke-opacity="0.1" stroke-width="1"></line>
+<text x="410" y="573" text-anchor="middle" font-size="11" font-style="italic" fill="#C9B7A6">Een begeleider kan nooit buitengesloten raken: één zichtbare knop (twee tikken),</text>
+<text x="410" y="589" text-anchor="middle" font-size="11" font-style="italic" fill="#C9B7A6">of het slotje 4 seconden vasthouden, zet de code terug naar de standaard.</text>
+</svg>

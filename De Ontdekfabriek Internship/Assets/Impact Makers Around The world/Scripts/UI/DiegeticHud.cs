@@ -100,6 +100,18 @@ namespace KenyaScooter.UI
         private TMP_Text warningSub;    // line 2: the fix ("← BLIJF LINKS")
         private Image routeMarker;
         private float routeBarWidth, routePenalty;
+        // Endless-mode HUD (2026-07-13): the battery gauge becomes a LIVES gauge and the route bar fills by DISTANCE,
+        // so nothing looks frozen and lives/distance live INSIDE the diegetic cluster (no separate overlay).
+        private TMP_Text batterySubLabel;   // "MUDA" (time) in the relay, relabelled "LEVENS" in endless
+        private GameObject chargeDiscGO;    // route end-cap (charge-station goal) — hidden in endless (no goal)
+        private TMP_Text distanceText;      // endless-only distance readout in the top strip
+        private int hudModeApplied = -1;    // -1 forces the mode layout to apply on the first frame
+        // Endless lives as HEART PIPS in the top strip (2026-07-14, Ryan: the battery-only lives read was too
+        // subtle for children). One heart per life, ghosted when spent; they take the day label's spot — in a
+        // solo lives run the lives are the headline, the time of day is set dressing.
+        private Image[] heartPips;
+        private GameObject sunDotGO;        // the day label's sun dot — hidden with it in endless
+        private const int MaxHearts = 5;    // matches the "Levens bij Vrij rijden" setting's 1–5 range
         private float alertTimer;       // momentary alert banner (hazard hit, illegal overtake)
         private string alertMsg;
         private float cautionTimer;     // calm caution banner, lower priority than alert (crossing-ahead telegraph)
@@ -164,6 +176,9 @@ namespace KenyaScooter.UI
         private void Update()
         {
             if (!built) return;
+            // Swap the strip/battery labels + charge-disc/distance visibility when the game mode changes.
+            int em = GameManager.Mode == GameMode.Endless ? 1 : 0;
+            if (em != hudModeApplied) { hudModeApplied = em; ApplyModeLayout(em == 1); }
             DriveSpeedometer();
             DriveBattery();
             DriveRoute();
@@ -203,6 +218,46 @@ namespace KenyaScooter.UI
         {
             if (batterySegments == null) return;
 
+            // Endless: the battery is a LIVES gauge — "full" = the lives you started with; losing a life drops the
+            // charge. Red (hearts); the last life pulses. (The charge beat never fires in endless — no charge station.)
+            if (GameManager.Mode == GameMode.Endless)
+            {
+                // Locals named livesLit/livesPulse, NOT lit/pulse: the relay path below declares lit/pulse at
+                // method-body level, and C# (CS0136) forbids a nested block re-declaring a name the enclosing
+                // scope declares ANYWHERE — even later in the text.
+                int maxLives = Mathf.Max(1, GameManager.EndlessMaxLives);
+                int lives = Mathf.Max(0, GameManager.LivesRemaining);
+                int livesLit = Mathf.Clamp(Mathf.CeilToInt((float)lives / maxLives * batterySegments.Length), 0, batterySegments.Length);
+                bool critical = lives <= 1;
+                float livesPulse = critical ? (0.55f + 0.45f * Mathf.Abs(Mathf.Sin(Time.time * 4f))) : 1f;
+                for (int i = 0; i < batterySegments.Length; i++)
+                {
+                    bool on = i < livesLit;
+                    Color c = danger; // lives read as red hearts
+                    if (on && critical) c *= new Color(livesPulse, livesPulse, livesPulse, 1f);
+                    batterySegments[i].color = on ? c : ledOff;
+                }
+
+                // The kid-facing display: heart pips in the top strip, one per life (2026-07-14 — the battery
+                // alone was too subtle for children to read "how am I doing"). Spent lives ghost out; the last
+                // life shares the battery's pulse. SetActive is guarded so this repaints, never rebuilds.
+                if (heartPips != null)
+                {
+                    int shown = Mathf.Min(maxLives, heartPips.Length);
+                    for (int i = 0; i < heartPips.Length; i++)
+                    {
+                        if (heartPips[i] == null) continue;
+                        bool show = i < shown;
+                        if (heartPips[i].gameObject.activeSelf != show) heartPips[i].gameObject.SetActive(show);
+                        if (!show) continue;
+                        Color hc = i < lives ? danger : ledOff;
+                        if (i < lives && critical) hc *= new Color(livesPulse, livesPulse, livesPulse, 1f);
+                        heartPips[i].color = hc;
+                    }
+                }
+                return;
+            }
+
             // Charge-station beat: the battery visibly refills (green, with a charging shimmer) so the stop reads
             // as a positive top-up. Runs from the ChargingStarted event for a fixed visual duration.
             if (charging)
@@ -235,6 +290,23 @@ namespace KenyaScooter.UI
 
         private void DriveRoute()
         {
+            // Endless: the route bar fills by DISTANCE within each kilometre (so it visibly MOVES — there is no timer
+            // to drive it), and the distance readout shows how far you've got. This is the "progression" in endless.
+            if (GameManager.Mode == GameMode.Endless)
+            {
+                float dist = WorldSpeed.Instance != null ? WorldSpeed.Instance.DistanceTravelled : 0f;
+                const float legMetres = 1000f;
+                float frac = Mathf.Clamp01((dist % legMetres) / legMetres);
+                if (routeFill != null) routeFill.fillAmount = frac;
+                if (routeMarker != null) routeMarker.rectTransform.anchoredPosition = new Vector2(frac * routeBarWidth, 0f);
+                if (distanceText != null)
+                {
+                    int m = Mathf.FloorToInt(dist);
+                    distanceText.text = m < 1000 ? m + " m" : (m / 1000f).ToString("0.0") + " km";
+                }
+                return;
+            }
+
             routePenalty = Mathf.MoveTowards(routePenalty, 0f, 0.06f * Time.deltaTime); // a crash setback recovers over ~2s
             if (routeFill != null)
             {
@@ -243,6 +315,23 @@ namespace KenyaScooter.UI
             }
             if (routeMarker != null && routeFill != null)
                 routeMarker.rectTransform.anchoredPosition = new Vector2(routeFill.fillAmount * routeBarWidth, 0f);
+        }
+
+        // Swap the strip/battery between the timed-relay look and the endless (lives + distance) look. Called from
+        // Update only when the mode changes.
+        private void ApplyModeLayout(bool endless)
+        {
+            if (batterySubLabel != null) batterySubLabel.text = endless ? "LEVENS" : "MUDA";
+            if (chargeDiscGO != null) chargeDiscGO.SetActive(!endless);
+            if (distanceText != null) distanceText.gameObject.SetActive(endless);
+            // The day label yields its corner of the strip to the heart pips in endless (lives are the headline
+            // there); DriveBattery activates the right number of hearts, this only clears them on the way OUT.
+            if (sunDotGO != null) sunDotGO.SetActive(!endless);
+            if (dayLabel != null) dayLabel.gameObject.SetActive(!endless);
+            if (!endless && heartPips != null)
+                for (int i = 0; i < heartPips.Length; i++)
+                    if (heartPips[i] != null && heartPips[i].gameObject.activeSelf)
+                        heartPips[i].gameObject.SetActive(false);
         }
 
         private void DriveLimit()
@@ -361,7 +450,9 @@ namespace KenyaScooter.UI
         private void OnScore(int total, int delta)
         {
             // Show the running GROUP total (previous players + this turn) so the score never resets between players.
-            int groupBase = GroupScoreManager.Instance != null ? GroupScoreManager.Instance.GroupTotal : 0;
+            // Group relay: the odometer reads the running CLASS total (this turn joins it). Endless is solo, so it
+            // shows just this run's own score — never the leftover group total from an earlier class session.
+            int groupBase = (GameManager.Mode == GameMode.GroupRelay && GroupScoreManager.Instance != null) ? GroupScoreManager.Instance.GroupTotal : 0;
             SetScore(groupBase + total, delta);
             reelColour = delta >= 0 ? success : danger;
             flashDuration = delta >= 0 ? PosFlashSeconds : NegFlashSeconds;

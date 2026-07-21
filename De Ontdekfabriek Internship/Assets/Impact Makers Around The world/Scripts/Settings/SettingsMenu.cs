@@ -57,15 +57,8 @@ namespace KenyaScooter.Settings
         private readonly List<SettingCategory> categoryOrder = new();
         private readonly List<TMP_Text> categoryBadges = new(); // per-category "how many settings changed" count
         private bool showAdvanced; // whether the current category's "Meer opties" rows are revealed
-
-        // Master detail level. Basis = each category opens with just its essentials (the finer tuning behind
-        // "Meer opties"); Expert = every category opens fully expanded. Persisted, so a venue keeps its choice.
-        private const string ExpertKey = "ksg.ui.expert";
-        private bool ExpertMode
-        {
-            get => PlayerPrefs.GetInt(ExpertKey, 0) == 1;
-            set { PlayerPrefs.SetInt(ExpertKey, value ? 1 : 0); PlayerPrefs.Save(); }
-        }
+        // (2026-07-14: the persisted BASIS|EXPERT master detail level — `ksg.ui.expert` — was removed: "expert"
+        // read as a difficulty setting while it only unhid rows. A stale pref key on deployed tablets is harmless.)
 
         // ---- access code (PIN) state --------------------------------------------------
         // The keypad screen has three jobs: unlock the menu, set a new code (twice), confirm it. One small
@@ -83,6 +76,15 @@ namespace KenyaScooter.Settings
         private string firstNewPin = "";      // remembered between the two "set a new code" steps
         private float recoveryHeldSince = -1f; // unscaled time the padlock was first held, for lock-out recovery
         private Coroutine shake;               // handle to the running shake, so a re-trigger can stop it (nameof can't)
+        private GameObject forgotButton;       // the visible "Code vergeten?" reset shown on the Unlock keypad (staff can never be locked out)
+        private bool forgotArmed;              // two-tap confirm state for that reset, so a stray tap can't wipe the code
+        private const string ForgotIdle = "Code vergeten?  Tik om terug te zetten.";
+        private GameObject toast;              // transient confirmation pill (e.g. "Profiel gewijzigd: …"), lives on root so a page repaint can't destroy it
+        private TMP_Text toastText;
+        private CanvasGroup toastGroup;
+        private Coroutine toastRoutine;
+        private TMP_InputField searchInput;    // facilitator settings SEARCH box (top of the sidebar); filters all categories
+        private string searchQuery = "";
 
         // ---- lifecycle / access -------------------------------------------------------
 
@@ -138,6 +140,7 @@ namespace KenyaScooter.Settings
             if (lockRoot != null) lockRoot.SetActive(false);
             root.SetActive(true);
             RefreshHeader();
+            if (searchInput != null) { searchInput.SetTextWithoutNotify(""); searchQuery = ""; } // a fresh open starts unfiltered
             ShowCategory(current);
             Time.timeScale = 0f;
             AudioListener.pause = true;
@@ -199,8 +202,11 @@ namespace KenyaScooter.Settings
                 }
             }
             if (lockStatus != null) lockStatus.text = status;
-            // The padlock recovery hint only applies where the padlock hold works (Unlock mode).
-            if (lockHint != null) lockHint.gameObject.SetActive(lockMode == LockMode.Unlock);
+            // The "Code vergeten?" reset is only shown (and only works) in Unlock mode; any repaint disarms it
+            // and restores its resting label so a half-armed confirm never lingers.
+            if (forgotButton != null) forgotButton.SetActive(lockMode == LockMode.Unlock);
+            forgotArmed = false;
+            if (lockHint != null) { lockHint.text = ForgotIdle; lockHint.color = Muted; }
             UpdateDots();
         }
 
@@ -228,6 +234,28 @@ namespace KenyaScooter.Settings
         {
             if (entered.Length > 0) entered = entered.Substring(0, entered.Length - 1);
             UpdateDots();
+        }
+
+        /// <summary>Field recovery for a forgotten access code: the visible "Code vergeten?" button on the Unlock
+        /// keypad. Tap once to arm, tap again to put the code back to the documented default — so a facilitator
+        /// who does not know the current code can never be locked out of the menu. Deliberately a two-tap confirm
+        /// so a stray tap cannot wipe a venue's chosen code. The default itself is NEVER printed on screen (staff
+        /// know it from the handover) — and resetting only sets the code back to the default, it does not unlock:
+        /// whoever reset it still has to enter the default, which a curious child does not know. The padlock
+        /// press-and-hold recovery (see Update) still works too, as a second path.</summary>
+        private void OnForgotCode()
+        {
+            if (lockMode != LockMode.Unlock) return;
+            if (!forgotArmed)
+            {
+                forgotArmed = true;
+                if (lockHint != null) { lockHint.text = "Zeker? Tik nog eens — de code gaat terug naar de standaardcode."; lockHint.color = Accent; }
+                return;
+            }
+            forgotArmed = false;
+            FacilitatorLock.ResetToDefault();
+            entered = "";
+            PaintLock("Code teruggezet naar de standaardcode."); // PaintLock restores the resting label + disarms
         }
 
         private void Evaluate()
@@ -284,6 +312,51 @@ namespace KenyaScooter.Settings
                 yield return null;
             }
             lockPanel.anchoredPosition = home;
+        }
+
+        // ---- confirmation toast -------------------------------------------------------
+
+        /// <summary>A brief, self-fading confirmation pill (e.g. "Profiel gewijzigd: Kenia") so a tap that changes
+        /// something the facilitator can't immediately see — applying a profile/preset — gives clear WORDED feedback
+        /// on top of the card's colour change (the #7/#10b ask). Built lazily on the settings ROOT, not the row host,
+        /// so the page repaint that follows a profile apply can't destroy it. Unscaled time — the menu runs paused.</summary>
+        private void ShowToast(string message)
+        {
+            if (!built || root == null) return;
+            if (toast == null) BuildToast();
+            toastText.text = message;
+            toast.SetActive(true);
+            toast.transform.SetAsLastSibling(); // draw above the panel
+            if (toastRoutine != null) StopCoroutine(toastRoutine);
+            toastRoutine = StartCoroutine(ToastRoutine());
+        }
+
+        private System.Collections.IEnumerator ToastRoutine()
+        {
+            float t = 0f;
+            while (t < 0.15f) { t += Time.unscaledDeltaTime; toastGroup.alpha = Mathf.Clamp01(t / 0.15f); yield return null; }
+            toastGroup.alpha = 1f;
+            yield return new WaitForSecondsRealtime(1.5f);
+            t = 0f;
+            while (t < 0.4f) { t += Time.unscaledDeltaTime; toastGroup.alpha = 1f - Mathf.Clamp01(t / 0.4f); yield return null; }
+            toastGroup.alpha = 0f;
+            if (toast != null) toast.SetActive(false);
+        }
+
+        private void BuildToast()
+        {
+            RectTransform t = NewRect((RectTransform)root.transform, "Toast");
+            t.anchorMin = new Vector2(0.5f, 0f); t.anchorMax = new Vector2(0.5f, 0f); t.pivot = new Vector2(0.5f, 0f);
+            t.sizeDelta = new Vector2(760f, 92f); t.anchoredPosition = new Vector2(0f, 190f);
+            toast = t.gameObject;
+            toastGroup = toast.AddComponent<CanvasGroup>();
+            toastGroup.interactable = false; toastGroup.blocksRaycasts = false; // never eats a tap
+            UiKit.AddDropShadow(t, UiKit.RadiusXl, 0.4f, 24f, 8f);
+            var bg = toast.AddComponent<Image>(); bg.sprite = Rounded(40); bg.type = Image.Type.Sliced; bg.color = Accent; bg.raycastTarget = false;
+            toastText = AddText(t, "Label", "", 30, UiKit.InkOnAccent, TextAlignmentOptions.Center);
+            toastText.fontStyle = FontStyles.Bold; Stretch(toastText.rectTransform);
+            toastText.rectTransform.offsetMin = new Vector2(28f, 0f); toastText.rectTransform.offsetMax = new Vector2(-28f, 0f);
+            toast.SetActive(false);
         }
 
         // The padlock can be press-held to recover from a forgotten code (staff-only, documented). Runs in Update
